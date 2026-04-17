@@ -1,0 +1,57 @@
+---
+description: Express routing + controller conventions for the Oxxila REST API
+globs: src/routes/**/*.js,src/controllers/**/*.js,src/middlewares/**/*.js,src/validators/**/*.js
+alwaysApply: false
+---
+
+# Express API Patterns
+
+## Routes
+- Name files by resource: `user.routes.js`, `product.routes.js`.
+- Mount under versioned prefix in `app.js`: `app.use('/api/v1/users', userRouter)`.
+- Routers stay thin — mount validator arrays + middleware + controller only.
+- Place `/me`-style routes **before** `/:id` routes to avoid path collisions.
+
+## Controllers
+Wrap **every** handler with `asyncHandler` and do all the work inline — no services layer.
+
+```javascript
+import asyncHandler from 'express-async-handler';
+import User from '../models/User.js';
+import ApiError from '../utils/apiError.js';
+import sendResponse from '../utils/apiResponse.js';
+
+export const getUser = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.params.id);
+  if (!user) return next(new ApiError(`No user found with id: ${req.params.id}`, 404));
+  sendResponse(res, { message: 'User retrieved successfully', data: user });
+});
+```
+
+Rules:
+- Use `next(new ApiError(...))` for control-flow errors. `asyncHandler` forwards thrown errors automatically.
+- Never `try/catch` unless you need **compensating action** (e.g. roll back DB state on external-service failure).
+
+## Validation (express-validator)
+Each validator is an **array ending in `validate`**:
+
+```javascript
+// src/validators/user.validator.js
+import { body, param } from 'express-validator';
+import validate from '../middlewares/validate.middleware.js';
+
+export const createUserValidator = [
+  body('email').trim().isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('name').trim().isLength({ min: 2, max: 60 }),
+  validate,
+];
+```
+
+Mount in the router:
+```javascript
+router.post('/', createUserValidator, users.createUser);
+```
+
+## Middleware
+- Auth: `protectedRoutes` verifies JWT + loads user into `req.user`. Authorize with `allowTo('admin', ...)`.
+- Error handler (`globalError`) is registered **last** in `app.js`.

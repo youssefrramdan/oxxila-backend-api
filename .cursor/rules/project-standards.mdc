@@ -1,0 +1,42 @@
+---
+description: Core coding standards for the Oxxila Node.js e-commerce project
+alwaysApply: true
+---
+
+# Oxxila – Project Standards
+
+## Module & Syntax
+- **ES modules only** (`import`/`export`). Never `require()`.
+- Every file opens with a one-line path comment: `// src/path/to/file.js`.
+- Favor modern JS: optional chaining, nullish coalescing, top-level await.
+
+## Folder Structure
+```
+src/
+  config/       # env + db connection
+  models/       # Mongoose schemas + instance methods
+  routes/       # Express routers (thin, mount validators + controllers)
+  controllers/  # All endpoint logic — DB access + response lives here
+  middlewares/  # auth, validate, error handling
+  validators/   # express-validator chain arrays
+  utils/        # ApiError, ApiResponse, jwt, email, ApiFeatures, emailTemplates/
+```
+
+⚠️ **There is no `services/` layer.** Controllers talk to models directly. Keep helper/pure functions near the top of the controller or in `utils/` when reusable.
+
+## Errors & Responses
+- **Controllers are always wrapped in `asyncHandler`** from `express-async-handler`. Never use `try/catch` in controllers except for rollback scenarios (e.g. email failure after DB write).
+- All predictable errors: `return next(new ApiError(message, statusCode))`. Never `throw new Error()` in controllers.
+- All successes: `sendResponse(res, { statusCode?, message, data?, pagination? })`. Never `res.json()` directly.
+- `globalError` in `src/middlewares/error.middleware.js` handles everything centrally.
+
+## Response Messages
+- Be specific and descriptive: `'Users retrieved successfully'`, not `'success'`.
+- Unify repeating phrasings: `No user found with id: <id>` (not a mix of "for this id" / "with id X").
+- For credential errors, use a single generic message to avoid user enumeration: `'Incorrect email or password'`.
+
+## Comments
+- Comments explain **why**, never **what**. Skip obvious narration.
+- Use `// TODO:` for unfinished work — never leave silent gaps.
+
+## Verbosity default: V1 (concise). Use V2/V3 only when explicitly requested.

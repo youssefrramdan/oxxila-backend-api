@@ -1,0 +1,58 @@
+---
+description: Auth, JWT, and transactional email conventions for Oxxila
+globs: src/controllers/auth.controller.js,src/middlewares/auth.middleware.js,src/utils/jwt.js,src/utils/cookie.js,src/utils/email.js,src/utils/emailTemplates/**/*.js,src/validators/auth.validator.js,src/models/RefreshToken.js
+alwaysApply: false
+---
+
+# Auth & Email Conventions
+
+## Token Strategy — Access + Refresh
+- **Access token** (short-lived, default `15m`) → response body, sent by clients as `Authorization: Bearer ...`. Secret: `JWT_ACCESS_SECRET`, TTL: `JWT_ACCESS_EXPIRES_IN`.
+- **Refresh token** (long-lived, default `30d`) → httpOnly cookie scoped to `/api/v1/auth`. Secret: `JWT_REFRESH_SECRET`, TTL: `JWT_REFRESH_EXPIRES_IN`.
+- Both JWTs carry only `{ userId, type }` — role and profile come from the DB in `protectedRoutes`.
+- `utils/jwt.js` exports `generateAccessToken`, `generateRefreshToken` (returns `{ token, expiresAt }`), `verifyAccessToken`, `verifyRefreshToken`.
+
+## Refresh Token Storage (`RefreshToken` model)
+- One document per active session: `{ user, tokenHash (SHA-256, unique), expiresAt (TTL index), userAgent, ip, revokedAt }`.
+- Never store the plain token. Hash with `crypto.createHash('sha256').update(token).digest('hex')`.
+- The TTL index on `expiresAt` lets Mongo purge expired rows automatically.
+
+## Rotation + Reuse Detection
+Every call to `POST /auth/refresh-token` must:
+1. Verify the JWT with `verifyRefreshToken`.
+2. Look up `{ tokenHash: sha256(token) }`. If **missing or revoked** → treat as reuse: revoke every non-revoked token for that user, clear the cookie, return 401.
+3. Otherwise: mark the current row `revokedAt: now`, issue a new access+refresh pair via `issueTokens`, set the new cookie.
+
+## Cookie Helper (`utils/cookie.js`)
+- `REFRESH_COOKIE_NAME = 'refreshToken'`, path `/api/v1/auth`.
+- Always `httpOnly: true`, `sameSite: 'lax'`, `secure: NODE_ENV === 'production'`.
+- Use `setRefreshCookie(res, token, expiresAt)` and `clearRefreshCookie(res)` — never set/clear the cookie by hand.
+
+## Auth Middleware (names matter)
+- `protectedRoutes` — access-JWT gate (`verifyAccessToken`), attaches the full Mongoose user doc to `req.user`, rejects if `!user.active` or `passwordChangedAt > iat`.
+- `allowTo(...roles)` — authorization gate.
+- Use `req.user._id`, not `req.user.id`.
+
+## Login
+Return the **same** error message for unknown email and wrong password (`'Incorrect email or password'`) to prevent user enumeration. Only after password verification should you surface account-state errors (deactivated, etc.).
+
+## Signup / Login / Reset Password
+Each returns `{ user: toPublicUser(user), accessToken }` and sets the refresh cookie via the shared `issueTokens(user, req, res)` helper. `resetPassword` additionally revokes every existing refresh session — changing a password must log the user out on all devices.
+
+## Logout
+`POST /auth/logout` is **unauthenticated**. Reads the refresh cookie, marks the matching DB row `revokedAt`, and clears the cookie. An expired access token must not prevent logout.
+
+## Password Reset (link-based)
+- `forgetPassword` → generate `crypto.randomBytes(32).toString('hex')`, store **SHA-256 hash** in `passwordResetToken`, set `passwordResetExpires` (60 min). Email `${CLIENT_URL}/reset-password/<plainToken>`.
+- `resetPassword` at `POST /reset-password/:token` → validate `newPassword === confirmPassword`, hash the URL token, look up user by hash + unexpired, save the new password (pre-save hook re-hashes), clear both reset fields, revoke all refresh sessions, issue a fresh token pair.
+- On email-send failure, **roll back** the reset fields so the user can retry immediately.
+
+## Email Utility
+- `utils/email.js` default export: `sendEmail({ email, subject, html, text? })`.
+- Transport: Gmail via `EMAIL_USER` + `EMAIL_PASS` (App Password).
+- HTML templates live in `src/utils/emailTemplates/`. Each file default-exports a function returning an HTML string. Use **inline CSS + tables** for Outlook/Gmail compatibility.
+
+## Controller Conventions
+- Always wrap handlers with `asyncHandler`.
+- Wrap external calls (mail send) in a narrow `try/catch` only when a **compensating DB action** is required.
+- Return a `toPublicUser` shape (`{ id, email, role, name }`) from any endpoint that returns a user — never the raw document.

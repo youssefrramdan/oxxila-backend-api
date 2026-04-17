@@ -1,0 +1,70 @@
+---
+description: MongoDB & Mongoose best practices for Oxxila models and list queries
+globs: src/models/**/*.js,src/config/db.js,src/utils/apiFeatures.js
+alwaysApply: false
+---
+
+# MongoDB / Mongoose Patterns
+
+## Connection
+- Single connection in `src/config/db.js`, exported as an async function and awaited in `server.js`.
+- Use the `MONGO_URI` env var.
+
+## Schemas
+- One file per model in `src/models/`, PascalCase (`User.js`, `Product.js`).
+- Always set `{ timestamps: true }`.
+- Mark sensitive fields with `select: false` (e.g. `password`, `passwordResetToken`).
+- Index fields used in frequent queries (`email`, `category`, foreign keys, `$text` search).
+- Strip sensitive fields in `toJSON` transform so they never leak through `res.json`.
+
+```javascript
+userSchema.set('toJSON', {
+  transform: (_doc, ret) => {
+    delete ret.password;
+    delete ret.passwordResetToken;
+    delete ret.passwordResetExpires;
+    delete ret.__v;
+    return ret;
+  },
+});
+```
+
+## Instance Methods
+Keep password logic on the schema, not in controllers:
+- `pre('save')` hook hashes `password` with `bcrypt` when modified.
+- `comparePassword(candidate)` for login.
+- `changedPasswordAfter(jwtIat)` so `protectedRoutes` can invalidate tokens issued before a password change.
+
+## Middleware (hooks)
+- Project runs Mongoose 9. **Async middleware does NOT receive a `next` callback** — the returned promise is the only signal. Use `return` to skip and `throw` to fail.
+
+```javascript
+// ✅ correct
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
+  this.password = await bcrypt.hash(this.password, 12);
+});
+
+// ❌ wrong in Mongoose 8+ — `next` is undefined, throws TypeError
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  // ...
+  next();
+});
+```
+
+## Query Rules
+- Prefer `findById` over `findOne({ _id })`.
+- Use `.lean()` on read-only queries for speed; don't lean if you need instance methods (`comparePassword`, etc.).
+- `findOneAndUpdate` must include `{ new: true, runValidators: true }`.
+- For list endpoints, pipe the query through `ApiFeatures`:
+
+```javascript
+import ApiFeatures from '../utils/apiFeatures.js';
+
+const features = new ApiFeatures(User.find(), req.query)
+  .filter().search(['name', 'email']).sort().limitFields();
+await features.paginate();
+const users = await features.mongooseQuery;
+const pagination = features.getPaginationResult();
+```
