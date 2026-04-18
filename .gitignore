@@ -6,5 +6,6 @@ src/config/.env
 src/logs
 logs/
 *.log
+.*-audit.json
 .DS_Store
 

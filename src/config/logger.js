@@ -1,27 +1,39 @@
 // src/config/logger.js
 import path from 'path';
 import { createLogger, format, transports } from 'winston';
+import DailyRotateFile from 'winston-daily-rotate-file';
 
 const { combine, timestamp, errors, json, colorize, printf } = format;
+const isProduction = process.env.NODE_ENV === 'production';
 const logsDir = path.join(process.cwd(), 'logs');
 
-const consoleFormat = printf(
+const devFormat = printf(
   ({ level, message, timestamp, stack }) => `${timestamp} [${level}]: ${stack ?? message}`
 );
 
 const logger = createLogger({
-  level: 'info',
+  level: isProduction ? 'info' : 'debug',
   format: combine(timestamp(), errors({ stack: true }), json()),
   transports: [
     new transports.Console({
-      format: combine(colorize({ all: true }), timestamp({ format: 'HH:mm:ss' }), consoleFormat),
+      format: isProduction
+        ? json()
+        : combine(colorize({ all: true }), timestamp({ format: 'HH:mm:ss' }), devFormat),
     }),
   ],
 });
 
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new transports.File({ filename: path.join(logsDir, 'error.log'), level: 'error' }));
-  logger.add(new transports.File({ filename: path.join(logsDir, 'combined.log') }));
+if (!isProduction) {
+  const rotateOptions = { datePattern: 'YYYY-MM-DD', maxSize: '20m', maxFiles: '14d' };
+  logger.add(new DailyRotateFile({
+    filename: path.join(logsDir, 'error-%DATE%.log'),
+    level: 'error',
+    ...rotateOptions,
+  }));
+  logger.add(new DailyRotateFile({
+    filename: path.join(logsDir, 'combined-%DATE%.log'),
+    ...rotateOptions,
+  }));
 }
 
 export default logger;
