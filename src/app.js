@@ -20,18 +20,21 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 const app = express();
 
-// Accept a comma-separated list of allowed origins; default covers Vite (5173)
-// and Angular CLI (4200) so local dev works before env is set on Heroku, etc.
-const allowedOrigins = (
-  process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:4200'
-)
+// Comma-separated allowlist; default is local Angular (`ng serve` → :4200).
+// On Heroku set CORS_ORIGIN to include this plus any deployed frontend URLs.
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:4200')
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
 
 app.use(
   cors({
-    origin: '*',
+    origin: (origin, cb) => {
+      // Browsers forbid Access-Control-Allow-Origin: * when credentials are sent.
+      // Reflect only whitelisted origins (see CORS_ORIGIN).
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(null, false);
+    },
     credentials: true,
   })
 );
