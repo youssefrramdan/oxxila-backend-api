@@ -20,9 +20,11 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 const app = express();
 
-// Accept a comma-separated list of allowed origins; fall back to the Vite dev
-// server so local OAuth round-trips work out of the box.
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+// Accept a comma-separated list of allowed origins; default covers Vite (5173)
+// and Angular CLI (4200) so local dev works before env is set on Heroku, etc.
+const allowedOrigins = (
+  process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:4200'
+)
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
@@ -31,9 +33,10 @@ app.use(
   cors({
     origin: (origin, cb) => {
       // Allow same-origin / curl / Postman (no Origin header) and any explicitly
-      // whitelisted client.
+      // whitelisted client. Use cb(null, false) for disallowed origins so the
+      // browser gets a normal CORS denial instead of a 500 without CORS headers.
       if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-      return cb(new Error(`Origin ${origin} not allowed by CORS`));
+      return cb(null, false);
     },
     credentials: true,
   })
