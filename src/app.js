@@ -31,13 +31,7 @@ const allowedOrigins = (
 
 app.use(
   cors({
-    origin: (origin, cb) => {
-      // Allow same-origin / curl / Postman (no Origin header) and any explicitly
-      // whitelisted client. Use cb(null, false) for disallowed origins so the
-      // browser gets a normal CORS denial instead of a 500 without CORS headers.
-      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-      return cb(null, false);
-    },
+    origin: '*',
     credentials: true,
   })
 );
