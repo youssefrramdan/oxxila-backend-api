@@ -22,4 +22,8 @@ router.post('/forgot-password', forgetPasswordValidator, auth.forgetPassword);
 router.get('/reset-password/:token', verifyResetTokenValidator, auth.verifyResetToken);
 router.post('/reset-password/:token', resetPasswordValidator, auth.resetPassword);
 
+// Google OAuth — no validators needed; Passport handles the handshake.
+router.get('/google', auth.googleRedirect);
+router.get('/google/callback', auth.googleCallback);
+
 export default router;

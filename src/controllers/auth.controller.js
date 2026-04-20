@@ -2,6 +2,7 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import asyncHandler from 'express-async-handler';
+import passport from 'passport';
 import User from '../models/User.js';
 import RefreshToken from '../models/RefreshToken.js';
 import ApiError from '../utils/apiError.js';
@@ -199,3 +200,38 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
 
   sendResponse(res, { message: 'Your password has been reset successfully' });
 });
+
+// --- Google OAuth ---
+
+// Step 1: redirect the browser to Google's consent screen.
+export const googleRedirect = passport.authenticate('google', {
+  session: false,
+  scope: ['profile', 'email'],
+});
+
+// Step 2: Google redirects back here. Passport has already resolved req.user
+// via the GoogleStrategy verify callback. We issue our own JWT pair and
+// redirect the browser to the Angular app with the access token in the hash
+// so it never travels through the server logs.
+export const googleCallback = [
+  passport.authenticate('google', {
+    session: false,
+    failureRedirect:
+      process.env.OAUTH_FAILURE_REDIRECT || 'http://localhost:4200/login?error=google_failed',
+  }),
+  asyncHandler(async (req, res) => {
+    const accessToken = generateAccessToken(req.user._id);
+    const refreshToken = generateRefreshToken(req.user._id);
+
+    await RefreshToken.create({
+      token: refreshToken,
+      userId: req.user._id,
+      expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
+    });
+
+    res.cookie('refreshToken', refreshToken, cookieOptions);
+
+    const successUrl = process.env.OAUTH_SUCCESS_REDIRECT || 'http://localhost:4200/oauth/success';
+    res.redirect(`${successUrl}#accessToken=${accessToken}`);
+  }),
+];

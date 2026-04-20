@@ -21,7 +21,6 @@ const userSchema = new Schema(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
       minlength: 8,
       select: false,
     },
@@ -30,6 +29,12 @@ const userSchema = new Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+    },
+    googleId: { type: String, unique: true, sparse: true, select: false },
     avatar: { type: String, default: '' },
     // Cloudinary public_id for the current avatar. Kept server-side only so
     // we can destroy the old asset when the user uploads a new one.
@@ -44,9 +49,9 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-// Hash the password whenever it changes.
+// Hash the password whenever it changes. Skip for OAuth-only accounts (no password set).
 userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
+  if (!this.isModified('password') || !this.password) return;
   this.password = await bcrypt.hash(this.password, 12);
   if (!this.isNew) this.passwordChangedAt = Date.now() - 1000;
 });

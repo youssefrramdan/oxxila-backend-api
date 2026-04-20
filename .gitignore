@@ -9,3 +9,6 @@ logs/
 .*-audit.json
 .DS_Store
 
+
+client/
+docs/
