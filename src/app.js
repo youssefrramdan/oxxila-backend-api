@@ -20,13 +20,9 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 const app = express();
 
-// Comma-separated allowlist; default is deployed client.
+// Comma-separated allowlist; default is local Angular (`ng serve` → :4200).
 // On Heroku set CORS_ORIGIN to include this plus any deployed frontend URLs.
-const allowedOrigins = (
-  process.env.CORS_ORIGIN ||
-  // Previous local fallback: http://localhost:4200
-  'https://oauthangular.onrender.com'
-)
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:4200')
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);

@@ -32,16 +32,13 @@ const cookieOptions = {
 /** When Facebook OAuth env vars are missing; reuse OAUTH_FAILURE_REDIRECT origin if set. */
 const redirectFacebookNotConfigured = (res) => {
   const raw =
-    process.env.OAUTH_FAILURE_REDIRECT ||
-    // Previous local fallback: http://localhost:4200/login?error=google_failed
-    'https://oauthangular.onrender.com/login?error=google_failed';
+    process.env.OAUTH_FAILURE_REDIRECT || 'http://localhost:4200/login?error=google_failed';
   try {
     const u = new URL(raw);
     u.searchParams.set('error', 'facebook_not_configured');
     return res.redirect(u.toString());
   } catch {
-    // Previous local fallback: http://localhost:4200/login?error=facebook_not_configured
-    return res.redirect('https://oauthangular.onrender.com/login?error=facebook_not_configured');
+    return res.redirect('http://localhost:4200/login?error=facebook_not_configured');
   }
 };
 
@@ -150,11 +147,7 @@ export const forgetPassword = asyncHandler(async (req, res) => {
   user.passwordResetExpires = Date.now() + RESET_TOKEN_TTL_MIN * 60 * 1000;
   await user.save({ validateBeforeSave: false });
 
-  const base = (
-    process.env.CLIENT_URL ||
-    // Previous local fallback: http://localhost:3000
-    'https://oauthangular.onrender.com'
-  ).replace(/\/$/, '');
+  const base = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
   const resetUrl = `${base}/reset-password/${plainToken}`;
 
   try {
@@ -238,9 +231,7 @@ export const googleCallback = [
   passport.authenticate('google', {
     session: false,
     failureRedirect:
-      process.env.OAUTH_FAILURE_REDIRECT ||
-      // Previous local fallback: http://localhost:4200/login?error=google_failed
-      'https://oauthangular.onrender.com/login?error=google_failed',
+      process.env.OAUTH_FAILURE_REDIRECT || 'http://localhost:4200/login?error=google_failed',
   }),
   asyncHandler(async (req, res) => {
     const accessToken = generateAccessToken(req.user._id);
@@ -254,10 +245,7 @@ export const googleCallback = [
 
     res.cookie('refreshToken', refreshToken, cookieOptions);
 
-    const successUrl =
-      process.env.OAUTH_SUCCESS_REDIRECT ||
-      // Previous local fallback: http://localhost:4200/oauth/success
-      'https://oauthangular.onrender.com/oauth/success';
+    const successUrl = process.env.OAUTH_SUCCESS_REDIRECT || 'http://localhost:4200/oauth/success';
     res.redirect(`${successUrl}#accessToken=${accessToken}`);
   }),
 ];
@@ -289,8 +277,7 @@ export const facebookCallback = [
     session: false,
     failureRedirect:
       process.env.FACEBOOK_OAUTH_FAILURE_REDIRECT ||
-      // Previous local fallback: http://localhost:4200/login?error=facebook_failed
-      'https://oauthangular.onrender.com/login?error=facebook_failed',
+      'http://localhost:4200/login?error=facebook_failed',
   }),
   asyncHandler(async (req, res) => {
     const accessToken = generateAccessToken(req.user._id);
@@ -304,10 +291,7 @@ export const facebookCallback = [
 
     res.cookie('refreshToken', refreshToken, cookieOptions);
 
-    const successUrl =
-      process.env.OAUTH_SUCCESS_REDIRECT ||
-      // Previous local fallback: http://localhost:4200/oauth/success
-      'https://oauthangular.onrender.com/oauth/success';
+    const successUrl = process.env.OAUTH_SUCCESS_REDIRECT || 'http://localhost:4200/oauth/success';
     res.redirect(`${successUrl}#accessToken=${accessToken}`);
   }),
 ];
