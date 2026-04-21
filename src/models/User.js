@@ -31,10 +31,11 @@ const userSchema = new Schema(
     },
     authProvider: {
       type: String,
-      enum: ['local', 'google'],
+      enum: ['local', 'google', 'facebook'],
       default: 'local',
     },
     googleId: { type: String, unique: true, sparse: true, select: false },
+    facebookId: { type: String, unique: true, sparse: true, select: false },
     avatar: { type: String, default: '' },
     // Cloudinary public_id for the current avatar. Kept server-side only so
     // we can destroy the old asset when the user uploads a new one.

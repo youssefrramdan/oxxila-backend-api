@@ -1,9 +1,22 @@
 // src/config/passport.js
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import FacebookStrategy from 'passport-facebook';
 import User from '../models/User.js';
 import dotenv from 'dotenv';
-dotenv.config()
+dotenv.config();
+
+/** User.name requires min length 2 — Google/Facebook profile name can be empty or one character. */
+function oauthDisplayName(profile, email) {
+  const fromProfile = profile.displayName?.trim();
+  const local = email.split('@')[0]?.trim() || '';
+  let name = fromProfile || local;
+  if (!name || name.length < 2) {
+    name = email.length >= 2 ? email : 'User';
+  }
+  return name.slice(0, 60);
+}
+
 // Stateless strategy: no sessions. The verify callback resolves a Mongo user
 // and hands it to the route, which issues our own JWT + refresh cookie.
 passport.use(
@@ -38,7 +51,7 @@ passport.use(
           }
         } else {
           user = await User.create({
-            name: profile.displayName || email.split('@')[0],
+            name: oauthDisplayName(profile, email),
             email,
             googleId: profile.id,
             avatar: profile.photos?.[0]?.value || '',
@@ -58,4 +71,61 @@ passport.use(
   )
 );
 
+const facebookOAuthEnabled =
+  Boolean(process.env.FACEBOOK_APP_ID) && Boolean(process.env.FACEBOOK_APP_SECRET);
+
+if (facebookOAuthEnabled) {
+  passport.use(
+    new FacebookStrategy(
+      {
+        clientID: process.env.FACEBOOK_APP_ID,
+        clientSecret: process.env.FACEBOOK_APP_SECRET,
+        callbackURL:
+          process.env.FACEBOOK_CALLBACK_URL || '/api/v1/auth/facebook/callback',
+        profileFields: ['id', 'displayName', 'photos', 'email'],
+      },
+      async (_accessToken, _refreshToken, profile, done) => {
+        try {
+          const rawEmail = profile.emails?.[0]?.value?.toLowerCase();
+          const email = rawEmail || `fb_${profile.id}@oauth.facebook`;
+
+          // Match on facebookId first, then email (real or synthetic) to link Facebook
+          // to an existing local/Google account without creating a duplicate.
+          let user = await User.findOne({
+            $or: [{ facebookId: profile.id }, { email }],
+          }).select('+googleId +facebookId');
+
+          if (user) {
+            if (!user.facebookId) {
+              user.facebookId = profile.id;
+              user.authProvider = 'facebook';
+              if (!user.avatar && profile.photos?.[0]?.value) {
+                user.avatar = profile.photos[0].value;
+              }
+              await user.save({ validateBeforeSave: false });
+            }
+          } else {
+            user = await User.create({
+              name: oauthDisplayName(profile, email),
+              email,
+              facebookId: profile.id,
+              avatar: profile.photos?.[0]?.value || '',
+              authProvider: 'facebook',
+            });
+          }
+
+          if (!user.active) {
+            return done(null, false, { message: 'This account has been deactivated' });
+          }
+
+          return done(null, user);
+        } catch (err) {
+          return done(err);
+        }
+      }
+    )
+  );
+}
+
 export default passport;
+export { facebookOAuthEnabled };

@@ -26,4 +26,7 @@ router.post('/reset-password/:token', resetPasswordValidator, auth.resetPassword
 router.get('/google', auth.googleRedirect);
 router.get('/google/callback', auth.googleCallback);
 
+router.get('/facebook', auth.facebookRedirect);
+router.get('/facebook/callback', auth.facebookCallback);
+
 export default router;

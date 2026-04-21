@@ -20,9 +20,13 @@ const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 const app = express();
 
-// Comma-separated allowlist; default is local Angular (`ng serve` → :4200).
+// Comma-separated allowlist; default is deployed client.
 // On Heroku set CORS_ORIGIN to include this plus any deployed frontend URLs.
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:4200')
+const allowedOrigins = (
+  process.env.CORS_ORIGIN ||
+  // Previous local fallback: http://localhost:4200
+  'https://oauthangular.onrender.com'
+)
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
@@ -41,7 +45,7 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
-// Stateless Passport — only used by Google OAuth routes to populate req.user.
+// Stateless Passport — only used by OAuth routes to populate req.user.
 app.use(passport.initialize());
 
 if (process.env.NODE_ENV === 'development') {

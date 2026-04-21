@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import asyncHandler from 'express-async-handler';
 import passport from 'passport';
+import { facebookOAuthEnabled } from '../config/passport.js';
 import User from '../models/User.js';
 import RefreshToken from '../models/RefreshToken.js';
 import ApiError from '../utils/apiError.js';
@@ -26,6 +27,22 @@ const cookieOptions = {
   sameSite: 'strict',
   path: '/api/v1/auth',
   maxAge: REFRESH_TTL_MS,
+};
+
+/** When Facebook OAuth env vars are missing; reuse OAUTH_FAILURE_REDIRECT origin if set. */
+const redirectFacebookNotConfigured = (res) => {
+  const raw =
+    process.env.OAUTH_FAILURE_REDIRECT ||
+    // Previous local fallback: http://localhost:4200/login?error=google_failed
+    'https://oauthangular.onrender.com/login?error=google_failed';
+  try {
+    const u = new URL(raw);
+    u.searchParams.set('error', 'facebook_not_configured');
+    return res.redirect(u.toString());
+  } catch {
+    // Previous local fallback: http://localhost:4200/login?error=facebook_not_configured
+    return res.redirect('https://oauthangular.onrender.com/login?error=facebook_not_configured');
+  }
 };
 
 const publicUser = (u) => ({ id: u._id, name: u.name, email: u.email, role: u.role });
@@ -133,7 +150,11 @@ export const forgetPassword = asyncHandler(async (req, res) => {
   user.passwordResetExpires = Date.now() + RESET_TOKEN_TTL_MIN * 60 * 1000;
   await user.save({ validateBeforeSave: false });
 
-  const base = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const base = (
+    process.env.CLIENT_URL ||
+    // Previous local fallback: http://localhost:3000
+    'https://oauthangular.onrender.com'
+  ).replace(/\/$/, '');
   const resetUrl = `${base}/reset-password/${plainToken}`;
 
   try {
@@ -217,7 +238,9 @@ export const googleCallback = [
   passport.authenticate('google', {
     session: false,
     failureRedirect:
-      process.env.OAUTH_FAILURE_REDIRECT || 'http://localhost:4200/login?error=google_failed',
+      process.env.OAUTH_FAILURE_REDIRECT ||
+      // Previous local fallback: http://localhost:4200/login?error=google_failed
+      'https://oauthangular.onrender.com/login?error=google_failed',
   }),
   asyncHandler(async (req, res) => {
     const accessToken = generateAccessToken(req.user._id);
@@ -231,7 +254,60 @@ export const googleCallback = [
 
     res.cookie('refreshToken', refreshToken, cookieOptions);
 
-    const successUrl = process.env.OAUTH_SUCCESS_REDIRECT || 'http://localhost:4200/oauth/success';
+    const successUrl =
+      process.env.OAUTH_SUCCESS_REDIRECT ||
+      // Previous local fallback: http://localhost:4200/oauth/success
+      'https://oauthangular.onrender.com/oauth/success';
+    res.redirect(`${successUrl}#accessToken=${accessToken}`);
+  }),
+];
+
+// --- Facebook OAuth ---
+
+export const facebookRedirect = (req, res, next) => {
+  if (!facebookOAuthEnabled) {
+    return redirectFacebookNotConfigured(res);
+  }
+  // Only request permissions enabled for this app in Meta → App settings → Use cases
+  // (e.g. "Authentication and account creation" → Permissions). Requesting `email`
+  // before it is added there causes: "Invalid Scopes: email".
+  // With `public_profile` only, Passport still creates users; missing email uses `fb_<id>@oauth.facebook`.
+  return passport.authenticate('facebook', {
+    session: false,
+    scope: ['public_profile'],
+  })(req, res, next);
+};
+
+export const facebookCallback = [
+  (req, res, next) => {
+    if (!facebookOAuthEnabled) {
+      return redirectFacebookNotConfigured(res);
+    }
+    next();
+  },
+  passport.authenticate('facebook', {
+    session: false,
+    failureRedirect:
+      process.env.FACEBOOK_OAUTH_FAILURE_REDIRECT ||
+      // Previous local fallback: http://localhost:4200/login?error=facebook_failed
+      'https://oauthangular.onrender.com/login?error=facebook_failed',
+  }),
+  asyncHandler(async (req, res) => {
+    const accessToken = generateAccessToken(req.user._id);
+    const refreshToken = generateRefreshToken(req.user._id);
+
+    await RefreshToken.create({
+      token: refreshToken,
+      userId: req.user._id,
+      expiresAt: new Date(Date.now() + REFRESH_TTL_MS),
+    });
+
+    res.cookie('refreshToken', refreshToken, cookieOptions);
+
+    const successUrl =
+      process.env.OAUTH_SUCCESS_REDIRECT ||
+      // Previous local fallback: http://localhost:4200/oauth/success
+      'https://oauthangular.onrender.com/oauth/success';
     res.redirect(`${successUrl}#accessToken=${accessToken}`);
   }),
 ];
