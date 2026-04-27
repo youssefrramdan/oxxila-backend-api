@@ -218,9 +218,12 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
 // --- Google OAuth ---
 
 // Step 1: redirect the browser to Google's consent screen.
+// `prompt: 'select_account'` forces the account chooser; otherwise an active
+// Google session skips straight through with the last-used account.
 export const googleRedirect = passport.authenticate('google', {
   session: false,
   scope: ['profile', 'email'],
+  prompt: 'select_account',
 });
 
 // Step 2: Google redirects back here. Passport has already resolved req.user
