@@ -2,6 +2,7 @@
 import { body, param } from 'express-validator';
 import mongoose from 'mongoose';
 import validate from '../middlewares/validate.middleware.js';
+import ApiError from '../utils/apiError.js';
 
 const objectId = (field, location = 'params') => {
   const runner = location === 'body' ? body(field) : param(field);
@@ -48,7 +49,8 @@ export const changeUserPasswordValidator = [
 
 export const updateMeValidator = [
   body('name').optional().trim().isLength({ min: 2, max: 60 }),
-  body('avatar').optional().isString(),
+  body('email').optional().trim().isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('phone').optional().trim().isLength({ max: 30 }).withMessage('Phone is too long'),
   validate,
 ];
 
@@ -57,3 +59,46 @@ export const updateMyPasswordValidator = [
   passwordRule('newPassword'),
   validate,
 ];
+
+const addressFields = {
+  city: (chain) => chain
+    .trim()
+    .notEmpty().withMessage('City is required')
+    .isLength({ max: 100 }).withMessage('City is too long'),
+  address: (chain) => chain
+    .trim()
+    .notEmpty().withMessage('Address is required')
+    .isLength({ max: 500 }).withMessage('Address is too long'),
+};
+
+export const addMyAddressValidator = [
+  addressFields.city(body('city')),
+  addressFields.address(body('address')),
+  validate,
+];
+
+export const updateMyAddressValidator = [
+  objectId('addressId'),
+  body('city')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('City cannot be empty')
+    .isLength({ max: 100 })
+    .withMessage('City is too long'),
+  body('address')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Address cannot be empty')
+    .isLength({ max: 500 })
+    .withMessage('Address is too long'),
+  validate,
+  (req, res, next) => {
+    const { city, address } = req.body;
+    if ([city, address].every((v) => v === undefined)) {
+      return next(new ApiError('Provide at least one field to update', 400));
+    }
+    next();
+  },
+];
+
+export const myAddressIdParamValidator = [objectId('addressId'), validate];

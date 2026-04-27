@@ -10,6 +10,9 @@ import {
   changeUserPasswordValidator,
   updateMeValidator,
   updateMyPasswordValidator,
+  addMyAddressValidator,
+  updateMyAddressValidator,
+  myAddressIdParamValidator,
 } from '../validators/user.validator.js';
 
 const router = Router();
@@ -24,6 +27,18 @@ router.use(protectedRoutes);
 
 // ─── Self-service (must come before /:id to avoid route collisions) ───────────
 router.get('/getMe', users.getMe);
+router.get('/profile/addresses', users.getMyAddresses);
+router.post('/profile/addresses', addMyAddressValidator, users.addMyAddress);
+router.patch(
+  '/profile/addresses/:addressId',
+  updateMyAddressValidator,
+  users.updateMyAddress
+);
+router.delete(
+  '/profile/addresses/:addressId',
+  myAddressIdParamValidator,
+  users.deleteMyAddress
+);
 router.patch('/updateMe', updateMeValidator, users.updateMe);
 router.patch('/updateMyAvatar', avatarUpload.single('avatar'), users.uploadMyAvatar);
 router.patch('/updateMyPassword', updateMyPasswordValidator, users.updateMyPassword);

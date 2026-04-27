@@ -42,6 +42,29 @@ const userSchema = new Schema(
     avatarPublicId: { type: String, default: '', select: false },
     active: { type: Boolean, default: true },
 
+    phone: { type: String, trim: true, maxlength: 30, default: '' },
+
+    // Each item gets its own _id (default) for order dropdowns.
+    addresses: {
+      type: [
+        {
+          city: {
+            type: String,
+            required: [true, 'City is required'],
+            trim: true,
+            maxlength: 100,
+          },
+          address: {
+            type: String,
+            required: [true, 'Address is required'],
+            trim: true,
+            maxlength: 500,
+          },
+        },
+      ],
+      default: [],
+    },
+
     // Password management
     passwordChangedAt: Date,
     passwordResetToken: { type: String, select: false },

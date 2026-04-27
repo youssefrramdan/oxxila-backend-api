@@ -6,8 +6,6 @@ import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
 import { deleteAsset } from '../middlewares/cloudnairyMiddleware.js';
 
-const SELF_SAFE_FIELDS = ['name', 'email', 'avatar'];
-
 /**
  * @desc    Get all users
  * @route   GET /api/v1/users
@@ -125,9 +123,89 @@ export const getMe = asyncHandler(async (req, res, next) => {
 });
 
 /**
- * @desc    Update currently logged-in user's own profile.
- *          Email/password updates are blocked — email change needs a
- *          verification flow, password updates go through updateMyPassword.
+ * @desc    List saved delivery addresses for the current user
+ * @route   GET /api/v1/users/profile/addresses
+ * @access  Private
+ */
+export const getMyAddresses = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user._id).select('addresses');
+  if (!user) return next(new ApiError('Your account no longer exists', 404));
+  sendResponse(res, { message: 'Addresses retrieved successfully', data: { addresses: user.addresses } });
+});
+
+/**
+ * @desc    Add a delivery address (many per user; use returned _id in orders)
+ * @route   POST /api/v1/users/profile/addresses
+ * @access  Private
+ */
+export const addMyAddress = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user._id);
+  if (!user) return next(new ApiError('Your account no longer exists', 404));
+
+  if (!user.phone?.trim()) {
+    return next(
+      new ApiError(
+        'Add your phone number in account settings before adding an address',
+        400
+      )
+    );
+  }
+
+  const { city, address } = req.body;
+  user.addresses.push({ city, address });
+  await user.save();
+
+  const created = user.addresses[user.addresses.length - 1];
+  sendResponse(res, {
+    statusCode: 201,
+    message: 'Address added successfully',
+    data: { address: created },
+  });
+});
+
+/**
+ * @desc    Update one of the current user’s addresses
+ * @route   PATCH /api/v1/users/profile/addresses/:addressId
+ * @access  Private
+ */
+export const updateMyAddress = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user._id);
+  if (!user) return next(new ApiError('Your account no longer exists', 404));
+
+  const sub = user.addresses.id(req.params.addressId);
+  if (!sub) {
+    return next(new ApiError(`No address found with id: ${req.params.addressId}`, 404));
+  }
+
+  const { city, address } = req.body;
+  if (city !== undefined) sub.city = city;
+  if (address !== undefined) sub.address = address;
+
+  await user.save();
+  sendResponse(res, { message: 'Address updated successfully', data: { address: sub } });
+});
+
+/**
+ * @desc    Delete a saved address
+ * @route   DELETE /api/v1/users/profile/addresses/:addressId
+ * @access  Private
+ */
+export const deleteMyAddress = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user._id);
+  if (!user) return next(new ApiError('Your account no longer exists', 404));
+
+  const sub = user.addresses.id(req.params.addressId);
+  if (!sub) {
+    return next(new ApiError(`No address found with id: ${req.params.addressId}`, 404));
+  }
+
+  sub.deleteOne();
+  await user.save();
+  sendResponse(res, { message: 'Address deleted successfully' });
+});
+
+/**
+ * @desc    Update name, email, and/or phone. Avatar: PATCH /updateMyAvatar. Password: PATCH /updateMyPassword
  * @route   PATCH /api/v1/users/updateMe
  * @access  Private
  */
@@ -139,11 +217,18 @@ export const updateMe = asyncHandler(async (req, res, next) => {
     return next(new ApiError('You are not allowed to change your own role', 403));
   }
 
-  // Whitelist which fields a user is allowed to update on themselves.
+  if (req.body.email !== undefined) {
+    const u = await User.findById(req.user._id).select('+googleId');
+    if (u?.googleId) {
+      return next(new ApiError('Google-linked accounts cannot change their email', 400));
+    }
+  }
+
+  const { name, email, phone } = req.body;
   const update = {};
-  SELF_SAFE_FIELDS.forEach((f) => {
-    if (req.body[f] !== undefined) update[f] = req.body[f];
-  });
+  if (name !== undefined) update.name = name;
+  if (email !== undefined) update.email = email;
+  if (phone !== undefined) update.phone = phone;
 
   const user = await User.findByIdAndUpdate(req.user._id, update, {
     new: true,
