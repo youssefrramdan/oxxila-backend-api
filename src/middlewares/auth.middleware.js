@@ -30,6 +30,30 @@ export const protectedRoutes = asyncHandler(async (req, res, next) => {
 });
 
 /**
+ * @desc    If a valid access token is present, attach `req.user` (same rules as protectedRoutes).
+ *          Missing or invalid tokens continue without authentication.
+ */
+export const optionalAuth = asyncHandler(async (req, res, next) => {
+  const token = req.headers.authorization?.startsWith('Bearer ')
+    ? req.headers.authorization.split(' ')[1]
+    : null;
+
+  if (!token) return next();
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+    const user = await User.findById(decoded.userId);
+    if (user?.active && !user.changedPasswordAfter?.(decoded.iat)) {
+      req.user = user;
+    }
+  } catch {
+    // Anonymous access
+  }
+
+  next();
+});
+
+/**
  * @desc    Allow only users whose role is in `roles`.
  */
 export const allowTo = (...roles) => (req, res, next) => {

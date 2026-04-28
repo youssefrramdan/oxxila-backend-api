@@ -25,6 +25,12 @@ const brandSchema = new mongoose.Schema(
       default: null,
     },
 
+    category: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
+      default: null,
+    },
+
     description: {
       type: String,
       maxlength: [500, 'Description must be at most 500 characters'],

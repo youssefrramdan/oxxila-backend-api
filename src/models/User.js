@@ -69,6 +69,18 @@ const userSchema = new Schema(
     passwordChangedAt: Date,
     passwordResetToken: { type: String, select: false },
     passwordResetExpires: { type: Date, select: false },
+
+    browsingHistory: {
+      type: [
+        {
+          product: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+          category: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
+          viewedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+      select: false,
+    },
   },
   { timestamps: true }
 );

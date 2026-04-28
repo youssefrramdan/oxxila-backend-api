@@ -1,6 +1,11 @@
 // src/routes/user.routes.js
 import { Router } from 'express';
 import * as users from '../controllers/user.controller.js';
+import {
+  clearBrowsingHistory,
+  getBrowsingHistory,
+  getRecommendations,
+} from '../controllers/browsingHistory.controller.js';
 import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
 import createUploader from '../middlewares/cloudnairyMiddleware.js';
 import {
@@ -44,6 +49,10 @@ router.patch('/updateMyAvatar', avatarUpload.single('avatar'), users.uploadMyAva
 router.patch('/updateMyPassword', updateMyPasswordValidator, users.updateMyPassword);
 router.patch('/deactivateMe', users.deactivateMe);
 router.patch('/activateMe', users.activateMe);
+
+router.get('/browsing-history', getBrowsingHistory);
+router.delete('/browsing-history', clearBrowsingHistory);
+router.get('/recommendations', getRecommendations);
 
 // ─── Admin-only ───────────────────────────────────────────────────────────────
 router.use(allowTo('admin'));

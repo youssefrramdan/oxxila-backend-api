@@ -15,6 +15,8 @@ import userRouter from './routes/user.routes.js';
 import categoryRouter from './routes/category.routes.js';
 import subCategoryRouter from './routes/subCategory.routes.js';
 import brandRouter from './routes/brand.routes.js';
+import productRouter from './routes/product.routes.js';
+import offerRouter from './routes/offer.routes.js';
 
 dotenv.config();
 
@@ -64,6 +66,8 @@ app.use('/api/v1/users', userRouter);
 app.use('/api/v1/categories', categoryRouter);
 app.use('/api/v1/subcategories', subCategoryRouter);
 app.use('/api/v1/brands', brandRouter);
+app.use('/api/v1/products', productRouter);
+app.use('/api/v1/offers', offerRouter);
 
 app.all(/(.*)/, (req, res, next) => {
   next(new ApiError(`Route ${req.originalUrl} not found`, 404));
