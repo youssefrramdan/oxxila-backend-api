@@ -63,7 +63,7 @@ export const register = asyncHandler(async (req, res, next) => {
 export const login = asyncHandler(async (req, res, next) => {
   const user = await User.findOne({ email: req.body.email }).select('+password');
   if (!user || !(await user.comparePassword(req.body.password))) {
-    return next(new ApiError('Invalid credentials', 401));
+    return next(new ApiError('Invalid email or password', 401));
   }
   if (!user.active) {
     return next(new ApiError('Your account has been deactivated', 403));

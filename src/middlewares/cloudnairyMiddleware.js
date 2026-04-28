@@ -31,7 +31,7 @@ const getBase = (name) => name.replace(/\.[^.]+$/, '');
 const createUploader = (folder, opts = {}) => {
   const {
     allowedFormats = DEFAULT_ALLOWED_FORMATS,
-    maxFileSizeMB = 5,
+    maxFileSizeMB = 15,
   } = opts;
 
   const storage = new CloudinaryStorage({

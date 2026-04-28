@@ -12,6 +12,8 @@ import sendResponse from './utils/apiResponse.js';
 import passport from './config/passport.js';
 import authRouter from './routes/auth.routes.js';
 import userRouter from './routes/user.routes.js';
+import categoryRouter from './routes/category.routes.js';
+import subCategoryRouter from './routes/subCategory.routes.js';
 
 dotenv.config();
 
@@ -56,9 +58,10 @@ app.get('/reset-password/:token', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'reset-password.html'));
 });
 
-// TODO: mount additional feature routers here (products, orders, …)
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/categories', categoryRouter);
+app.use('/api/v1/subcategories', subCategoryRouter);
 
 app.all(/(.*)/, (req, res, next) => {
   next(new ApiError(`Route ${req.originalUrl} not found`, 404));
