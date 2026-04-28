@@ -1,41 +1,260 @@
 {
   "info": {
-    "_postman_id": "1e24d623-738e-4745-ad67-af09c0aca44c",
+    "_postman_id": "4d2d51fa-958b-45e1-b2d2-325f35e45a01",
     "name": "Oxxila-backend-api",
-    "description": "Oxxila e-commerce REST API.\n\n## Structure\n- **Health Check** — liveness probe.\n- **Authentication** — signup/login, session management, password reset.\n- **Current User** — everything the logged-in user can do on their own account.\n- **Admin User Management** — admin-only user CRUD + moderation actions.\n\n## Tokens\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n\n## Typical flow\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
+    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, and **Profile addresses** (list/add/update/delete).\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — folder **Categories** (5) + **Sub-categories** (5) + **Category / Sub-categories** (2) + **Brands** (5). See `docs/CATEGORIES_API.md`.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "54107413",
-    "_collection_link": "https://go.postman.co/collection/54107413-1e24d623-738e-4745-ad67-af09c0aca44c?source=collection_link"
-  },
-  "auth": {
-    "type": "bearer",
-    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+    "_collection_link": "https://go.postman.co/collection/54107413-4d2d51fa-958b-45e1-b2d2-325f35e45a01?source=collection_link"
   },
   "item": [
     {
-      "name": "Health Check",
-      "description": "Liveness probe — no auth required.",
+      "name": "Admin User Management",
       "item": [
         {
-          "name": "Server Status",
+          "name": "Get All Users",
           "request": {
-            "auth": { "type": "noauth" },
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/", "host": ["{{baseUrl}}"], "path": [""] },
-            "description": "Returns a simple 'Oxxila API is up and running' message. Use to confirm the server is reachable."
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users?page=1&limit=10&sort=-createdAt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "description": "Comma-separated fields, prefix `-` for desc"
+                },
+                {
+                  "key": "fields",
+                  "value": "name,email,role",
+                  "disabled": true
+                },
+                {
+                  "key": "keyword",
+                  "value": "mohamed",
+                  "description": "Search in name + email (case-insensitive)",
+                  "disabled": true
+                },
+                {
+                  "key": "role",
+                  "value": "user",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Supports filter (`?role=user`), search (`?keyword=...`), sort (`?sort=-createdAt`), field selection (`?fields=name,email`), and pagination (`?page`, `?limit`)."
+          },
+          "response": []
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Admin Two\",\n  \"email\": \"admin2@example.com\",\n  \"password\": \"AdminPass123\",\n  \"role\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            },
+            "description": "Creates any user, including admins. Password is hashed by the User model's pre-save hook."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Specific User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{userId}}",
+                  "description": "Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "Fetches a single user by Mongo ObjectId. Returns 404 if not found."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Specific User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Name\",\n  \"active\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Updates arbitrary fields on a user. Password and role changes are stripped — use **Change Specific User Password** for passwords, and a future dedicated endpoint for role changes."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Specific User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Hard-deletes a user document. Prefer **Deactivate Current User** for user-initiated offboarding."
+          },
+          "response": []
+        },
+        {
+          "name": "Activate Specific User",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/activate/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "activate",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Reactivates a previously deactivated account. Useful when a user's `deactivateMe` call needs to be undone by support."
+          },
+          "response": []
+        },
+        {
+          "name": "Change Specific User Password",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"ResetByAdmin123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/changePassword/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "changePassword",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{userId}}"
+                }
+              ]
+            },
+            "description": "Force-sets a user's password (no old-password check). The user's existing sessions become invalid on next refresh because `passwordChangedAt` is bumped."
           },
           "response": []
         }
-      ]
+      ],
+      "description": "Admin-only operations on user accounts. Requires a Bearer token belonging to a user with role `admin`."
     },
     {
       "name": "Authentication",
-      "description": "Signup, login, session management, and password recovery.",
       "item": [
         {
           "name": "Signup & Login",
-          "description": "Create an account, sign in, refresh the access token, or end the session.",
           "item": [
             {
               "name": "Signup",
@@ -43,7 +262,6 @@
                 {
                   "listen": "test",
                   "script": {
-                    "type": "text/javascript",
                     "exec": [
                       "const res = pm.response.json();",
                       "if (res?.data?.accessToken) {",
@@ -51,22 +269,39 @@
                       "  if (res.data.user?.id) pm.environment.set('userId', res.data.user.id);",
                       "  console.log('Saved access token + userId (refresh cookie handled by Postman)');",
                       "}"
-                    ]
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
                   }
                 }
               ],
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Mohamed Emad\",\n  \"email\": \"mohamed@example.com\",\n  \"password\": \"StrongPass123\"\n}"
+                  "raw": "{\n  \"name\": \"youssef ramadan\",\n  \"email\": \"rmdanyoussef01@gmail.com\",\n  \"password\": \"StrongPass123\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/register",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "auth", "register"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "register"
+                  ]
                 },
                 "description": "Creates a new account. Response body carries the 15-min access token; the 7-day refresh token is set as an httpOnly cookie. Saves `token` + `userId` to the active environment."
               },
@@ -78,7 +313,6 @@
                 {
                   "listen": "test",
                   "script": {
-                    "type": "text/javascript",
                     "exec": [
                       "const res = pm.response.json();",
                       "if (res?.data?.accessToken) {",
@@ -86,22 +320,39 @@
                       "  if (res.data.user?.id) pm.environment.set('userId', res.data.user.id);",
                       "  console.log('Saved access token + userId (refresh cookie handled by Postman)');",
                       "}"
-                    ]
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
                   }
                 }
               ],
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"mohamed@example.com\",\n  \"password\": \"StrongPass123\"\n}"
+                  "raw": "{\n  \"email\": \"youssef@oxxila.local\",\n  \"password\": \"OxxilaDev1!\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/login",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "auth", "login"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "login"
+                  ]
                 },
                 "description": "Validates credentials. Returns a 15-min access token in the response body and sets a 7-day refresh token as an httpOnly cookie scoped to `/api/v1/auth`. Saves `token` + `userId` to the active environment."
               },
@@ -125,13 +376,22 @@
                 }
               ],
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "POST",
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/refresh",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "auth", "refresh"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "refresh"
+                  ]
                 },
                 "description": "Reads the refresh token from the httpOnly cookie (Postman attaches it automatically), verifies it against the DB, rotates it (old is revoked, new one issued), and returns a fresh access token. Using a revoked refresh token revokes every session for the user (reuse detection)."
               },
@@ -140,40 +400,126 @@
             {
               "name": "Logout",
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "POST",
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/logout",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "auth", "logout"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "logout"
+                  ]
                 },
                 "description": "Revokes the current refresh token in DB and clears the cookie. Intentionally unauthenticated so an expired access token can't block logout."
               },
               "response": []
+            },
+            {
+              "name": "Get current user (auth /me)",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "me"
+                  ]
+                },
+                "description": "`GET /api/v1/auth/me` — returns a minimal public user from the JWT (`publicUser` shape). For the full Mongo profile (`addresses`, `phone`, `avatar`, …) use **Current User → Get Current User** (`GET /api/v1/users/getMe`)."
+              },
+              "response": []
             }
-          ]
+          ],
+          "description": "Create an account, sign in, refresh the access token, or end the session."
         },
         {
           "name": "Password Reset",
-          "description": "Forgot-password flow. Both endpoints are unauthenticated.",
           "item": [
             {
               "name": "Forgot Password",
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"mohamed@example.com\"\n}"
+                  "raw": "{\n  \"email\": \"rmdanyoussef01@gmail.com\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "auth", "forgot-password"]
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "forgot-password"
+                  ]
                 },
                 "description": "Sends a password-reset link to the user's email. The link points to `${CLIENT_URL}/reset-password/<token>`. Always responds 200 to avoid leaking which emails are registered."
+              },
+              "response": []
+            },
+            {
+              "name": "Verify reset token (GET)",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/reset-password/:token",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "reset-password",
+                    ":token"
+                  ],
+                  "variable": [
+                    {
+                      "key": "token",
+                      "value": "",
+                      "description": "Plain token from the email (same as in POST reset-password path)"
+                    }
+                  ]
+                },
+                "description": "`GET /api/v1/auth/reset-password/:token` — call before showing the new-password form. `400` with `Reset link is invalid or has expired` if bad."
               },
               "response": []
             },
@@ -195,47 +541,873 @@
                 }
               ],
               "request": {
-                "auth": { "type": "noauth" },
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"newPassword\": \"NewStrongPass123\",\n  \"confirmPassword\": \"NewStrongPass123\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/reset-password/:token",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "auth", "reset-password", ":token"],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "reset-password",
+                    ":token"
+                  ],
                   "variable": [
-                    { "key": "token", "value": "", "description": "Plain reset token from the email link" }
+                    {
+                      "key": "token",
+                      "value": "",
+                      "description": "Plain reset token from the email link"
+                    }
                   ]
                 },
-                "description": "Validates the token from the email, checks that newPassword === confirmPassword, sets the new password, revokes every existing refresh session (logs out all devices), and returns a fresh access token + refresh cookie."
+                "description": "Validates the token, checks newPassword === confirmPassword, sets the new password, and revokes all refresh sessions. Response is success only — re-login to obtain tokens. (Postman test script is optional: issue tokens on login/refresh only.)"
               },
               "response": []
             }
-          ]
+          ],
+          "description": "Forgot-password flow. Both endpoints are unauthenticated."
+        }
+      ],
+      "description": "Signup, login, session management, and password recovery."
+    },
+    {
+      "name": "Categories & Sub-categories",
+      "item": [
+        {
+          "name": "Categories",
+          "item": [
+            {
+              "name": "Create Category",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "name",
+                      "value": "Baby Care",
+                      "type": "text"
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "type": "text",
+                      "description": "boolean"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "description": "Optional — jpg, png, webp",
+                      "src": "/C:/Users/rmdan/OneDrive/Desktop/oxxila categories/Baby Care.png"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories"
+                  ]
+                },
+                "description": "Admin. **multipart** (`form-data`) — `name` (required), optional `isActive`, optional `image` file. Slug is generated from `name`."
+              },
+              "response": []
+            },
+            {
+              "name": "Get All Categories",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories"
+                  ],
+                  "query": [
+                    {
+                      "key": "keyword",
+                      "value": "care",
+                      "description": "Search name (optional)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sort",
+                      "value": "name",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Public. Active categories with `subcategories` (active) populated. Optional `keyword`, `sort`, `fields`."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Category By ID",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{categoryId}}",
+                      "description": "MongoDB ObjectId"
+                    }
+                  ]
+                },
+                "description": "Public. One active category with subcategories. Set `{{categoryId}}` from Get All."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Category",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "name",
+                      "value": "Updated Name",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "description": "Optional replace",
+                      "value": null
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{categoryId}}"
+                    }
+                  ]
+                },
+                "description": "Admin. **multipart** — at least one of `name`, `isActive`, `image`."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Category",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{categoryId}}",
+                      "description": "Removes this category and all its sub-categories"
+                    }
+                  ]
+                },
+                "description": "Admin. Deletes category and every nested sub-category."
+              },
+              "response": []
+            }
+          ],
+          "description": "Top-level `Category` resource at `/api/v1/categories`."
         },
         {
-          "name": "Get Authenticated User",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/me",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "me"]
+          "name": "Sub-categories",
+          "item": [
+            {
+              "name": "Create Sub-category",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "name",
+                      "value": "Example Sub",
+                      "type": "text"
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "type": "text"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "description": "Optional",
+                      "value": null
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories/:categoryId/subcategories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories",
+                    ":categoryId",
+                    "subcategories"
+                  ],
+                  "variable": [
+                    {
+                      "key": "categoryId",
+                      "value": "{{categoryId}}",
+                      "description": "Parent category"
+                    }
+                  ]
+                },
+                "description": "Admin. `POST` is **only** nested (parent in URL). `category` in body is set from `:categoryId` by the server. Slug from `name`."
+              },
+              "response": []
             },
-            "description": "Returns the user decoded from the `Authorization: Bearer` access token. Useful right after Login/Refresh to confirm the session."
-          },
-          "response": []
+            {
+              "name": "Get All Sub-categories",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/subcategories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "subcategories"
+                  ],
+                  "query": [
+                    {
+                      "key": "keyword",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sort",
+                      "value": "name",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Public. Flat list of all active sub-categories. Optional `?category=<ObjectId>` to filter in query."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Sub-category By ID",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/subcategories/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "subcategories",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{subCategoryId}}",
+                      "description": "Sub-category ObjectId"
+                    }
+                  ]
+                },
+                "description": "Public. Single sub-category by id (not scoped to a parent in path)."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Sub-category",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "name",
+                      "value": "Updated Sub Name",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "description": "Optional",
+                      "value": null
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories/:categoryId/subcategories/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories",
+                    ":categoryId",
+                    "subcategories",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "categoryId",
+                      "value": "{{categoryId}}",
+                      "description": "Current parent"
+                    },
+                    {
+                      "key": "id",
+                      "value": "{{subCategoryId}}",
+                      "description": "Sub-category id"
+                    }
+                  ]
+                },
+                "description": "Admin. **Nested** only — `PUT` must match the parent. Optional move to another `category` in body (ObjectId)."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Sub-category",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories/:categoryId/subcategories/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories",
+                    ":categoryId",
+                    "subcategories",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "categoryId",
+                      "value": "{{categoryId}}",
+                      "description": "Parent"
+                    },
+                    {
+                      "key": "id",
+                      "value": "{{subCategoryId}}",
+                      "description": "Sub-category"
+                    }
+                  ]
+                },
+                "description": "Admin. **Nested** only. Deletes one sub-category under the given parent."
+              },
+              "response": []
+            }
+          ],
+          "description": "Sub-category CRUD. Create / Update / Delete use nested routes under a category. Reads also available flat."
+        },
+        {
+          "name": "Category / Sub-categories",
+          "item": [
+            {
+              "name": "Add Subcategory to Category",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "name",
+                      "value": "Exfoliator",
+                      "type": "text"
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "type": "text"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "description": "Optional",
+                      "value": null
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories/69f0d098ced0c590ea79c735/subcategories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories",
+                    "69f0d098ced0c590ea79c735",
+                    "subcategories"
+                  ]
+                },
+                "description": "Admin. Same as **Sub-categories / Create Sub-category** — add a sub-category under a given category."
+              },
+              "response": []
+            },
+            {
+              "name": "Get All Subcategories for Specific Category",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/categories/69ef910b718b7e51e4a41cd9/subcategories",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "categories",
+                    "69ef910b718b7e51e4a41cd9",
+                    "subcategories"
+                  ]
+                },
+                "description": "Public. List active sub-categories for one category (path-scoped, not the flat list)."
+              },
+              "response": []
+            }
+          ],
+          "description": "Nested relationship: `GET` and `POST` under `/api/v1/categories/:categoryId/subcategories`."
+        },
+        {
+          "name": "Brands",
+          "item": [
+            {
+              "name": "Create Brand",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "name",
+                      "value": "Acme Co",
+                      "type": "text"
+                    },
+                    {
+                      "key": "description",
+                      "value": "Optional short description.",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "type": "text",
+                      "description": "boolean"
+                    },
+                    {
+                      "key": "logo",
+                      "type": "file",
+                      "description": "Optional — jpg, png, webp (field name: logo)",
+                      "value": null
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/brands",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "brands"
+                  ]
+                },
+                "description": "Admin. **multipart** (`form-data`) — `name` (required 2–50 chars), optional `description`, optional `isActive`, optional `logo` file. **Slug** is generated from `name` (not accepted in body)."
+              },
+              "response": []
+            },
+            {
+              "name": "Get All Brands",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/brands",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "brands"
+                  ],
+                  "query": [
+                    {
+                      "key": "keyword",
+                      "value": "acme",
+                      "description": "Search name (optional)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sort",
+                      "value": "name",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Public. Active brands only. Optional `keyword`, `sort`."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Brand By ID",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/brands/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "brands",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{brandId}}",
+                      "description": "MongoDB ObjectId"
+                    }
+                  ]
+                },
+                "description": "Public. One active brand. Set `{{brandId}}` from **Get All Brands**."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Brand",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "name",
+                      "value": "Updated Brand Name",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "description",
+                      "value": "",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "logo",
+                      "type": "file",
+                      "description": "Optional replace",
+                      "value": null
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/brands/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "brands",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{brandId}}"
+                    }
+                  ]
+                },
+                "description": "Admin. **multipart** — optional `name`, `description`, `isActive`, `logo`. Slug follows `name` on save hooks where applicable."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Brand",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/brands/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "brands",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{brandId}}"
+                    }
+                  ]
+                },
+                "description": "Admin. Deletes one brand."
+              },
+              "response": []
+            }
+          ],
+          "description": "`Brand` resource at `/api/v1/brands`. Env: `{{brandId}}` (set from list response). Reads are public (`noauth`); writes use inherited Bearer."
         }
-      ]
+      ],
+      "description": "Catalog folder layout: **Categories** (root) → **Sub-categories** (full set with correct URL patterns) → **Category / Sub-categories** (parent-scoped) → **Brands**. Public reads: **noauth**; admin: inherit collection Bearer. Env: `{{categoryId}}`, `{{subCategoryId}}`, `{{brandId}}`."
     },
     {
       "name": "Current User",
-      "description": "Self-service endpoints. All require a valid Bearer token.",
       "item": [
+        {
+          "name": "Profile addresses",
+          "item": [
+            {
+              "name": "List my addresses",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/profile/addresses",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "profile",
+                    "addresses"
+                  ]
+                },
+                "description": "Returns `data.addresses` — use each entry’s `_id` in orders (e.g. dropdown). Phone for delivery is on the user (`GET getMe` / `phone` field), not on each address."
+              },
+              "response": []
+            },
+            {
+              "name": "Add address",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"city\": \"Cairo\",\n  \"address\": \"12 Tahrir St, floor 3\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/profile/addresses",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "profile",
+                    "addresses"
+                  ]
+                },
+                "description": "`POST` with `city` + `address` (required). **Requires** a non-empty `phone` on the user profile (`PATCH updateMe` first) — otherwise `400` with message about adding phone in account settings. Response includes the new subdocument in `data.address` (with `_id`)."
+              },
+              "response": []
+            },
+            {
+              "name": "Update address",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"city\": \"Giza\",\n  \"address\": \"Updated full address line\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/profile/addresses/:addressId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "profile",
+                    "addresses",
+                    ":addressId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "addressId",
+                      "value": "{{addressId}}",
+                      "description": "Subdocument _id from list or from add response"
+                    }
+                  ]
+                },
+                "description": "Send at least one of `city`, `address`. `404` if the id is not in your `addresses` array."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete address",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/profile/addresses/:addressId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "profile",
+                    "addresses",
+                    ":addressId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "addressId",
+                      "value": "{{addressId}}",
+                      "description": "Subdocument _id to remove"
+                    }
+                  ]
+                },
+                "description": "Removes one saved address by `_id`."
+              },
+              "response": []
+            }
+          ],
+          "description": "CRUD for embedded `user.addresses`. Requires Bearer token. Add flow depends on `phone` on the user; see **Update Current User**."
+        },
         {
           "name": "Get Current User",
           "request": {
@@ -243,10 +1415,17 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/getMe",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "getMe"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "getMe"
+              ]
             },
-            "description": "Returns the full profile document for the authenticated user."
+            "description": "Full Mongo user document: `name`, `email`, `phone`, `avatar`, `addresses`, … (vs **Authentication → Get current user (auth /me)**, which returns a minimal `publicUser` shape). Requires Bearer token."
           },
           "response": []
         },
@@ -254,17 +1433,29 @@
           "name": "Update Current User",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Mohamed E.\"\n}"
+              "raw": "{\n  \"name\": \"Mohamed E.\",\n  \"email\": \"mohamed@example.com\",\n  \"phone\": \"+201234567890\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/updateMe",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "updateMe"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "updateMe"
+              ]
             },
-            "description": "Whitelisted fields only: `name`, `email`, `avatar`. Password and role updates are rejected here. To change the avatar image, use **Upload Profile Image**."
+            "description": "Sends any subset: `name`, `email`, `phone` (omit keys you are not changing). **Avatar** is not updated here — use **Upload Profile Image**.\n\n- Google-linked users (`googleId` set) **cannot** change email: send `email` in the body with such an account → `400` `Google-linked accounts cannot change their email`.\n- Add **`phone` on the profile** before using **Add address** (API requires a profile phone to add an address)."
           },
           "response": []
         },
@@ -279,15 +1470,22 @@
                 {
                   "key": "avatar",
                   "type": "file",
-                  "src": [],
-                  "description": "Image file — jpeg, jpg, png, or webp. Max 2 MB."
+                  "description": "Image file — jpeg, jpg, png, or webp. Max 2 MB.",
+                  "src": "/C:/Users/rmdan/OneDrive/Pictures/Screenshots/Screenshot 2026-04-17 132628.png"
                 }
               ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/updateMyAvatar",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "updateMyAvatar"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "updateMyAvatar"
+              ]
             },
             "description": "Uploads a new avatar image to Cloudinary and replaces the previous one (old asset is destroyed). Send as `multipart/form-data` with a single `avatar` file field — do NOT set Content-Type manually, Postman adds the correct boundary.\n\nErrors:\n- `400` missing file, unsupported format, or larger than 2 MB\n- `401` no / invalid access token"
           },
@@ -297,15 +1495,27 @@
           "name": "Change Current User Password",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"oldPassword\": \"StrongPass123\",\n  \"newPassword\": \"EvenStrongerPass456\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/updateMyPassword",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "updateMyPassword"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "updateMyPassword"
+              ]
             },
             "description": "Verifies `oldPassword`, then updates to `newPassword`. On success, `passwordChangedAt` is bumped so other sessions fail on next refresh."
           },
@@ -318,8 +1528,15 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/deactivateMe",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "deactivateMe"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "deactivateMe"
+              ]
             },
             "description": "Sets `active=false` on the current user. Subsequent auth checks will reject the token with 403."
           },
@@ -332,145 +1549,32 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/activateMe",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "activateMe"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "activateMe"
+              ]
             },
             "description": "Sets `active=true` on the current user."
           },
           "response": []
         }
-      ]
-    },
-    {
-      "name": "Admin User Management",
-      "description": "Admin-only operations on user accounts. Requires a Bearer token belonging to a user with role `admin`.",
-      "item": [
-        {
-          "name": "Get All Users",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users?page=1&limit=10&sort=-createdAt",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users"],
-              "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
-                { "key": "sort", "value": "-createdAt", "description": "Comma-separated fields, prefix `-` for desc" },
-                { "key": "fields", "value": "name,email,role", "disabled": true },
-                { "key": "keyword", "value": "mohamed", "description": "Search in name + email (case-insensitive)", "disabled": true },
-                { "key": "role", "value": "user", "disabled": true }
-              ]
-            },
-            "description": "Supports filter (`?role=user`), search (`?keyword=...`), sort (`?sort=-createdAt`), field selection (`?fields=name,email`), and pagination (`?page`, `?limit`)."
-          },
-          "response": []
-        },
-        {
-          "name": "Create User",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Admin Two\",\n  \"email\": \"admin2@example.com\",\n  \"password\": \"AdminPass123\",\n  \"role\": \"admin\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users"]
-            },
-            "description": "Creates any user, including admins. Password is hashed by the User model's pre-save hook."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Specific User",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", ":id"],
-              "variable": [
-                { "key": "id", "value": "{{userId}}", "description": "Mongo ObjectId" }
-              ]
-            },
-            "description": "Fetches a single user by Mongo ObjectId. Returns 404 if not found."
-          },
-          "response": []
-        },
-        {
-          "name": "Update Specific User",
-          "request": {
-            "method": "PUT",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"New Name\",\n  \"active\": true\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", ":id"],
-              "variable": [{ "key": "id", "value": "{{userId}}" }]
-            },
-            "description": "Updates arbitrary fields on a user. Password and role changes are stripped — use **Change Specific User Password** for passwords, and a future dedicated endpoint for role changes."
-          },
-          "response": []
-        },
-        {
-          "name": "Delete Specific User",
-          "request": {
-            "method": "DELETE",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", ":id"],
-              "variable": [{ "key": "id", "value": "{{userId}}" }]
-            },
-            "description": "Hard-deletes a user document. Prefer **Deactivate Current User** for user-initiated offboarding."
-          },
-          "response": []
-        },
-        {
-          "name": "Activate Specific User",
-          "request": {
-            "method": "PATCH",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/activate/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "activate", ":id"],
-              "variable": [{ "key": "id", "value": "{{userId}}" }]
-            },
-            "description": "Reactivates a previously deactivated account. Useful when a user's `deactivateMe` call needs to be undone by support."
-          },
-          "response": []
-        },
-        {
-          "name": "Change Specific User Password",
-          "request": {
-            "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"password\": \"ResetByAdmin123\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/users/changePassword/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "users", "changePassword", ":id"],
-              "variable": [{ "key": "id", "value": "{{userId}}" }]
-            },
-            "description": "Force-sets a user's password (no old-password check). The user's existing sessions become invalid on next refresh because `passwordChangedAt` is bumped."
-          },
-          "response": []
-        }
-      ]
+      ],
+      "description": "Self-service endpoints. All require a valid Bearer token."
     }
-  ]
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  }
 }

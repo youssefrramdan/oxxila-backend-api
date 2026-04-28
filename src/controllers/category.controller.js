@@ -4,6 +4,9 @@ import SubCategory from '../models/SubCategory.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import ApiFeatures from '../utils/apiFeatures.js';
+
+const activeFilter = { isActive: true };
+
 const populateSubcategories = {
     path: 'subcategories',
     match: { isActive: true },
