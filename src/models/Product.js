@@ -51,6 +51,7 @@ const productSchema = new mongoose.Schema(
     ratingsQuantity: { type: Number, min: 0, default: 0 },
   },
   { timestamps: true }
+  
 );
 
 productSchema.pre('save', function () {
