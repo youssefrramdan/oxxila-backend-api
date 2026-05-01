@@ -16,7 +16,7 @@ const productPopulate = [
 ];
 
 const productSelect =
-  'name slug images price priceAfterDiscount offerEndsAt stock soldCount isBestSeller isBundle concerns isSensitiveSkin isCertified certificationImage isActive views ratingsAverage ratingsQuantity category subCategory brand createdAt updatedAt';
+  'name slug images price priceAfterDiscount offerEndsAt stock soldCount isBestSeller isBundle concerns isSensitiveSkin isCertified  advantages composition certificationImage isActive views ratingsAverage ratingsQuantity category subCategory brand createdAt updatedAt';
 
 const buildFilter = (query) => {
   const filter = { ...activeFilter };

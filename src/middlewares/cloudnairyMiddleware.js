@@ -20,6 +20,17 @@ const DEFAULT_ALLOWED_FORMATS = [
 const getExt = (name) => name.split('.').pop().toLowerCase();
 const getBase = (name) => name.replace(/\.[^.]+$/, '');
 
+/** Strip chars Cloudinary / URLs reject from uploaded filenames (e.g. `Logo & Typo.png`). */
+const sanitizePublicIdSegment = (filename) => {
+  const base = getBase(filename);
+  const cleaned = base
+    .normalize('NFKC')
+    .replace(/[\s&+#?%\\*:|"<>]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return (cleaned || 'upload').slice(0, 200);
+};
+
 /**
  * Build a multer instance that uploads to a Cloudinary folder.
  *
@@ -39,7 +50,7 @@ const createUploader = (folder, opts = {}) => {
     params: {
       folder,
       public_id: (req, file) =>
-        `${file.fieldname}-${Date.now()}-${getBase(file.originalname)}`,
+        `${file.fieldname}-${Date.now()}-${sanitizePublicIdSegment(file.originalname)}`,
       format: async (req, file) => {
         const ext = getExt(file.originalname);
         if (allowedFormats.includes(ext)) return ext;

@@ -47,6 +47,8 @@ const productSchema = new mongoose.Schema(
     isCertified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
     views: { type: Number, default: 0 },
+    ratingsAverage: { type: Number, min: 0, max: 5, default: null },
+    ratingsQuantity: { type: Number, min: 0, default: 0 },
   },
   { timestamps: true }
 );
