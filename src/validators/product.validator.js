@@ -35,14 +35,6 @@ export const createProductValidator = [
     .isFloat({ min: 0 })
     .withMessage('Price must be >= 0'),
 
-  check('priceAfterDiscount')
-    .optional({ values: 'null' })
-    .toFloat()
-    .isFloat({ min: 0 })
-    .withMessage('priceAfterDiscount must be >= 0')
-    .custom((val, { req }) => Number(val) < Number(req.body.price))
-    .withMessage('priceAfterDiscount must be less than price'),
-
   check('stock')
     .notEmpty()
     .withMessage('Stock is required')
@@ -68,6 +60,8 @@ export const createProductValidator = [
     .withMessage(`Each concern must be one of: ${CONCERNS.join(', ')}`),
 
   check('isSensitiveSkin').optional().isBoolean().withMessage('isSensitiveSkin must be a boolean'),
+  check('isBestSeller').optional().isBoolean().withMessage('isBestSeller must be a boolean'),
+  check('isBundle').optional().isBoolean().withMessage('isBundle must be a boolean'),
   check('description').optional().trim().isLength({ max: 2000 }).withMessage('description max 2000 characters'),
   check('advantages').optional().trim().isLength({ max: 2000 }).withMessage('advantages max 2000 characters'),
   check('composition').optional().trim().isLength({ max: 2000 }).withMessage('composition max 2000 characters'),
@@ -89,17 +83,6 @@ export const updateProductValidator = [
     .toFloat()
     .isFloat({ min: 0 })
     .withMessage('price must be >= 0'),
-
-  check('priceAfterDiscount')
-    .optional({ values: 'null' })
-    .toFloat()
-    .isFloat({ min: 0 })
-    .withMessage('priceAfterDiscount must be >= 0')
-    .custom((val, { req }) => {
-      if (req.body.price === undefined || req.body.price === null || req.body.price === '') return true;
-      return Number(val) < Number(req.body.price);
-    })
-    .withMessage('priceAfterDiscount must be less than price'),
 
   check('stock')
     .optional({ values: 'null' })
@@ -125,6 +108,8 @@ export const updateProductValidator = [
     .withMessage(`Each concern must be one of: ${CONCERNS.join(', ')}`),
 
   check('isSensitiveSkin').optional().isBoolean().withMessage('isSensitiveSkin must be a boolean'),
+  check('isBestSeller').optional().isBoolean().withMessage('isBestSeller must be a boolean'),
+  check('isBundle').optional().isBoolean().withMessage('isBundle must be a boolean'),
   check('description').optional().trim().isLength({ max: 2000 }).withMessage('description max 2000 characters'),
   check('advantages').optional().trim().isLength({ max: 2000 }).withMessage('advantages max 2000 characters'),
   check('composition').optional().trim().isLength({ max: 2000 }).withMessage('composition max 2000 characters'),

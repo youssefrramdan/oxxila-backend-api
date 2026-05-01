@@ -16,44 +16,67 @@ const productPopulate = [
 ];
 
 const productSelect =
-  'name slug images price priceAfterDiscount offerEndsAt stock concerns isSensitiveSkin isCertified certificationImage isActive views ratingsAverage ratingsQuantity category subCategory brand';
+  'name slug images price priceAfterDiscount offerEndsAt stock soldCount isBestSeller isBundle concerns isSensitiveSkin isCertified certificationImage isActive views ratingsAverage ratingsQuantity category subCategory brand createdAt updatedAt';
 
-  const buildFilter = (query) => {
-    const filter = { ...activeFilter };
+const buildFilter = (query) => {
+  const filter = { ...activeFilter };
 
-    if (query.category && mongoose.Types.ObjectId.isValid(query.category)) {
-      filter.category = query.category;
-    }
-    if (query.subCategory) {
-      const ids = query.subCategory.split(',').filter((id) => mongoose.Types.ObjectId.isValid(id));
-      if (ids.length) filter.subCategory = { $in: ids };
-    }
-    if (query.brand && mongoose.Types.ObjectId.isValid(query.brand)) {
-      filter.brand = query.brand;
-    }
-    if (query.concerns) {
-      filter.concerns = { $in: query.concerns.split(',') };
-    }
-    if (query.isSensitiveSkin !== undefined) {
-      filter.isSensitiveSkin = query.isSensitiveSkin === 'true';
-    }
-    if (query.isCertified !== undefined) {
-      filter.isCertified = query.isCertified === 'true';
-    }
-    if (query.priceMin || query.priceMax) {
-      filter.price = {};
-      if (query.priceMin) filter.price.$gte = Number(query.priceMin);
-      if (query.priceMax) filter.price.$lte = Number(query.priceMax);
-    }
+  if (query.category && mongoose.Types.ObjectId.isValid(query.category)) {
+    filter.category = query.category;
+  }
+  if (query.subCategory) {
+    const ids = query.subCategory.split(',').filter((id) => mongoose.Types.ObjectId.isValid(id));
+    if (ids.length) filter.subCategory = { $in: ids };
+  }
+  if (query.brand && mongoose.Types.ObjectId.isValid(query.brand)) {
+    filter.brand = query.brand;
+  }
+  if (query.concerns) {
+    filter.concerns = { $in: query.concerns.split(',') };
+  }
+  if (query.isSensitiveSkin !== undefined) {
+    filter.isSensitiveSkin = query.isSensitiveSkin === 'true';
+  }
+  if (query.isCertified !== undefined) {
+    filter.isCertified = query.isCertified === 'true';
+  }
+  if (query.isBestSeller !== undefined) {
+    filter.isBestSeller = query.isBestSeller === 'true';
+  }
+  if (query.isBundle !== undefined) {
+    filter.isBundle = query.isBundle === 'true';
+  }
+  if (query.priceMin || query.priceMax) {
+    filter.price = {};
+    if (query.priceMin) filter.price.$gte = Number(query.priceMin);
+    if (query.priceMax) filter.price.$lte = Number(query.priceMax);
+  }
 
-    if (query.rating) {
-      const rating = Number(query.rating);
-      if (rating >= 1 && rating <= 5) {
-        filter.ratingsAverage = { $gte: rating };
-      }
-    }
-    return filter;
-  };
+  const now = new Date();
+
+  if (query.allOffers === 'true') {
+    filter.priceAfterDiscount = { $ne: null };
+    filter.offerEndsAt = { $gt: now };
+  }
+
+  if (query.todayOffers === 'true') {
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    filter.priceAfterDiscount = { $ne: null };
+    filter.offerEndsAt = { $lte: endOfDay, $gt: now };
+  }
+
+  // inverse of active offer: no discount set, or offer window missing/expired
+  if (query.noOffers === 'true') {
+    filter.$or = [
+      { priceAfterDiscount: null },
+      { offerEndsAt: null },
+      { offerEndsAt: { $lte: now } },
+    ];
+  }
+
+  return filter;
+};
 /**
  * @desc    List products
  * @route   GET /api/v1/products
@@ -64,7 +87,8 @@ export const getAllProducts = asyncHandler(async (req, res) => {
 
   const safeQuery = { ...req.query };
   ['category', 'subCategory', 'brand', 'concerns', 'isSensitiveSkin',
-    'isCertified', 'priceMin', 'priceMax', 'isActive', 'rating']
+    'isCertified', 'isBestSeller', 'isBundle', 'priceMin', 'priceMax', 'isActive',
+    'allOffers', 'todayOffers', 'noOffers']
      .forEach((k) => delete safeQuery[k]);
 
   const features = new ApiFeatures(
@@ -175,4 +199,22 @@ export const deleteProduct = asyncHandler(async (req, res, next) => {
 
   await product.deleteOne();
   sendResponse(res, { message: 'Product deleted successfully' });
+});
+
+/**
+ * @desc    Toggle best seller status
+ * @route   PATCH /api/v1/products/:id/best-seller
+ * @access  Private (admin)
+ */
+export const toggleBestSeller = asyncHandler(async (req, res, next) => {
+  const product = await Product.findById(req.params.id);
+  if (!product) return next(new ApiError(`No product found with id: ${req.params.id}`, 404));
+
+  product.isBestSeller = !product.isBestSeller;
+  await product.save();
+
+  sendResponse(res, {
+    message: `Product ${product.isBestSeller ? 'marked as' : 'removed from'} best seller`,
+    data: { isBestSeller: product.isBestSeller },
+  });
 });

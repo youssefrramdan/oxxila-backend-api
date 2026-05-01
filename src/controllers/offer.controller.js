@@ -5,31 +5,75 @@ import Product from '../models/Product.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 
-const offerPopulate = { path: 'product', select: 'name slug price priceAfterDiscount images' };
+const PRODUCT_ON_CARD = 'name slug price images isBundle';
+const PRODUCT_MINIMAL = 'name slug price images';
+
+const popProduct = (fields) => ({ path: 'product', select: fields });
+
+const productIdOf = (ref) => String(ref?._id ?? ref ?? '');
+
+/** Another non-expired active offer on this product (optional `excludeOfferId` for updates). */
+const findBlockingOffer = (productId, excludeOfferId) => {
+  const filter = { product: productId, isActive: true, endDate: { $gt: new Date() } };
+  if (excludeOfferId) filter._id = { $ne: excludeOfferId };
+  return Offer.findOne(filter);
+};
+
+const syncProductOffer = async (productRef, offer = null) => {
+  const id = productRef?._id ?? productRef;
+  if (!id) return;
+
+  if (!offer) {
+    await Product.findByIdAndUpdate(id, { $set: { priceAfterDiscount: null, offerEndsAt: null } });
+    return;
+  }
+
+  const product = await Product.findById(id);
+  if (!product) return;
+
+  const discount =
+    offer.discountPercent != null ? (product.price * offer.discountPercent) / 100 : offer.discountAmount;
+
+  await Product.findByIdAndUpdate(id, {
+    $set: {
+      priceAfterDiscount: +Math.max(product.price - discount, 0).toFixed(2),
+      offerEndsAt: offer.endDate,
+    },
+  });
+};
 
 /**
- * @desc    Get all offers
+ * @desc    List current offers (optionally ending today)
  * @route   GET /api/v1/offers
  * @access  Public
  */
 export const getAllOffers = asyncHandler(async (req, res) => {
   const now = new Date();
-  const filter = { isActive: true, endDate: { $gt: now } };
+  const filter = { isActive: true, startDate: { $lte: now }, endDate: { $gt: now } };
 
-  // Today offers
   if (req.query.todayOffers === 'true') {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-    filter.endDate = { $gte: startOfDay, $lte: endOfDay };
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    filter.endDate = { $lte: endOfToday, $gt: now };
   }
 
-  const offers = await Offer.find(filter)
-    .populate(offerPopulate)
-    .sort({ createdAt: -1 });
+  const data = await Offer.find(filter).populate(popProduct(PRODUCT_ON_CARD)).sort({ endDate: 1 }).lean();
+  sendResponse(res, { message: 'Offers retrieved successfully', data });
+});
 
-  sendResponse(res, { message: 'Offers retrieved successfully', data: offers });
+/**
+ * @desc    Nearest upcoming offer
+ * @route   GET /api/v1/offers/upcoming
+ * @access  Public
+ */
+export const getUpcomingOffer = asyncHandler(async (req, res) => {
+  const now = new Date();
+  const data = await Offer.findOne({ isActive: true, startDate: { $gt: now } })
+    .populate(popProduct(PRODUCT_MINIMAL))
+    .sort({ startDate: 1 })
+    .lean();
+
+  sendResponse(res, { message: 'Upcoming offer retrieved successfully', data });
 });
 
 /**
@@ -38,9 +82,10 @@ export const getAllOffers = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const getOffer = asyncHandler(async (req, res, next) => {
-  const offer = await Offer.findById(req.params.id).populate(offerPopulate);
-  if (!offer) return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
-  sendResponse(res, { message: 'Offer retrieved successfully', data: offer });
+  const data = await Offer.findById(req.params.id).populate(popProduct(PRODUCT_ON_CARD));
+  if (!data) return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
+
+  sendResponse(res, { message: 'Offer retrieved successfully', data });
 });
 
 /**
@@ -49,28 +94,20 @@ export const getOffer = asyncHandler(async (req, res, next) => {
  * @access  Private (admin)
  */
 export const createOffer = asyncHandler(async (req, res, next) => {
-  const { product, discountPercent, discountAmount, startDate, endDate, productCount } = req.body;
+  const { product: productId } = req.body;
 
-  const existingProduct = await Product.findById(product);
-  if (!existingProduct) return next(new ApiError(`No product found with id: ${product}`, 404));
-
-  const existingOffer = await Offer.findOne({ product, isActive: true, endDate: { $gt: new Date() } });
-  if (existingOffer) return next(new ApiError('This product already has an active offer', 400));
-
-  if (!discountPercent && !discountAmount) {
-    return next(new ApiError('Either discountPercent or discountAmount is required', 400));
+  if (!(await Product.findById(productId))) {
+    return next(new ApiError(`No product found with id: ${productId}`, 404));
+  }
+  if (await findBlockingOffer(productId)) {
+    return next(new ApiError('This product already has an active offer', 400));
   }
 
-  const offer = await Offer.create({
-    product,
-    discountPercent: discountPercent || null,
-    discountAmount: discountAmount || null,
-    productCount: productCount || null,
-    startDate,
-    endDate,
-  });
+  const data = await Offer.create(req.body);
+  await syncProductOffer(data.product, data);
+  await data.populate(popProduct(PRODUCT_ON_CARD));
 
-  sendResponse(res, { statusCode: 201, message: 'Offer created successfully', data: offer });
+  sendResponse(res, { statusCode: 201, message: 'Offer created successfully', data });
 });
 
 /**
@@ -79,14 +116,26 @@ export const createOffer = asyncHandler(async (req, res, next) => {
  * @access  Private (admin)
  */
 export const updateOffer = asyncHandler(async (req, res, next) => {
-  const offer = await Offer.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  }).populate(offerPopulate);
+  const doc = await Offer.findById(req.params.id);
+  if (!doc) return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
 
-  if (!offer) return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
+  const prevProductId = doc.product.toString();
+  const nextProductId = req.body.product ?? prevProductId;
 
-  sendResponse(res, { message: 'Offer updated successfully', data: offer });
+  if (nextProductId !== prevProductId && (await findBlockingOffer(nextProductId, doc._id))) {
+    return next(new ApiError('This product already has an active offer', 400));
+  }
+
+  Object.assign(doc, req.body);
+  await doc.save();
+  await doc.populate(popProduct(PRODUCT_ON_CARD));
+
+  if (prevProductId !== productIdOf(doc.product)) {
+    await syncProductOffer(prevProductId, null);
+  }
+  await syncProductOffer(doc.product, doc);
+
+  sendResponse(res, { message: 'Offer updated successfully', data: doc });
 });
 
 /**
@@ -95,26 +144,26 @@ export const updateOffer = asyncHandler(async (req, res, next) => {
  * @access  Private (admin)
  */
 export const deleteOffer = asyncHandler(async (req, res, next) => {
-  const offer = await Offer.findOneAndDelete({ _id: req.params.id });
-  if (!offer) return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
+  const removed = await Offer.findOneAndDelete({ _id: req.params.id });
+  if (!removed) return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
+
+  await syncProductOffer(removed.product, null);
   sendResponse(res, { message: 'Offer deleted successfully' });
 });
 
-
 /**
- * @desc    Get upcoming offers (startDate in the future)
- * @route   GET /api/v1/offers/upcoming
- * @access  Public
+ * @desc    Delete every offer and clear synced prices on affected products
+ * @route   DELETE /api/v1/offers
+ * @access  Private (admin)
  */
-export const getUpcomingOffers = asyncHandler(async (req, res) => {
-  const now = new Date();
+export const deleteAllOffers = asyncHandler(async (req, res) => {
+  const productIds = await Offer.distinct('product');
+  const { deletedCount } = await Offer.deleteMany({});
 
-  const offers = await Offer.find({
-    isActive: true,
-    startDate: { $gt: now },
-  })
-    .populate(offerPopulate)
-    .sort({ startDate: 1 });
+  await Promise.all(productIds.map((id) => syncProductOffer(id, null)));
 
-  sendResponse(res, { message: 'Upcoming offers retrieved successfully', data: offers });
+  sendResponse(res, {
+    message: 'All offers deleted successfully',
+    data: { deletedCount },
+  });
 });

@@ -1,13 +1,6 @@
 // src/routes/offer.routes.js
 import { Router } from 'express';
-import {
-  getAllOffers,
-  getUpcomingOffers,
-  getOffer,
-  createOffer,
-  updateOffer,
-  deleteOffer,
-} from '../controllers/offer.controller.js';
+import * as offers from '../controllers/offer.controller.js';
 import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
 import {
   createOfferValidator,
@@ -17,13 +10,14 @@ import {
 
 const router = Router();
 
-router.get('/upcoming', getUpcomingOffers);
-router.get('/', getAllOffers);
-router.get('/:id', offerIdParamValidator, getOffer);
+router.get('/upcoming', offers.getUpcomingOffer);
+router.get('/', offers.getAllOffers);
+router.get('/:id', offerIdParamValidator, offers.getOffer);
 
 router.use(protectedRoutes, allowTo('admin'));
-router.post('/', createOfferValidator, createOffer);
-router.put('/:id', updateOfferValidator, updateOffer);
-router.delete('/:id', offerIdParamValidator, deleteOffer);
+router.post('/', createOfferValidator, offers.createOffer);
+router.put('/:id', updateOfferValidator, offers.updateOffer);
+router.delete('/', offers.deleteAllOffers);
+router.delete('/:id', offerIdParamValidator, offers.deleteOffer);
 
 export default router;

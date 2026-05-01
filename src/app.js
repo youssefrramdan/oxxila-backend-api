@@ -17,8 +17,12 @@ import subCategoryRouter from './routes/subCategory.routes.js';
 import brandRouter from './routes/brand.routes.js';
 import productRouter from './routes/product.routes.js';
 import offerRouter from './routes/offer.routes.js';
+import bannerRouter from './routes/banner.routes.js';
+import { startOfferCron } from './utils/offerCron.js';
 
 dotenv.config();
+
+startOfferCron();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -68,6 +72,7 @@ app.use('/api/v1/subcategories', subCategoryRouter);
 app.use('/api/v1/brands', brandRouter);
 app.use('/api/v1/products', productRouter);
 app.use('/api/v1/offers', offerRouter);
+app.use('/api/v1/banners', bannerRouter);
 
 app.all(/(.*)/, (req, res, next) => {
   next(new ApiError(`Route ${req.originalUrl} not found`, 404));

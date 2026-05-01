@@ -6,56 +6,47 @@ const offerSchema = new mongoose.Schema(
     product: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
-      required: true,
-      unique: true,
+      required: [true, 'Product is required'],
     },
     discountPercent: {
       type: Number,
-      min: 0,
-      max: 100,
-      default: null,
+      min: [0, 'discountPercent must be >= 0'],
+      max: [100, 'discountPercent must be <= 100'],
+      required: [true, 'discountPercent is required'],
     },
     discountAmount: {
       type: Number,
-      min: 0,
+      min: [0, 'discountAmount must be >= 0'],
       default: null,
+      required: [true, 'discountAmount is required'],
     },
     productCount: {
       type: Number,
-      min: 1,
+      min: [1, 'productCount must be >= 1'],
       default: null,
     },
-    startDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
+    startDate: {
+      type: Date,
+      required: [true, 'startDate is required'],
+    },
+    endDate: {
+      type: Date,
+      required: [true, 'endDate is required'],
+    },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
 
-// بعد الـ save → حدّث الـ Product
-offerSchema.post('save', async function () {
-  const Product = mongoose.model('Product');
-  const product = await Product.findById(this.product);
-  if (!product) return;
+offerSchema.pre('validate', function () {
 
-  const discountAmount = this.discountPercent
-    ? (product.price * this.discountPercent) / 100
-    : this.discountAmount;
-
-  await Product.findByIdAndUpdate(this.product, {
-    priceAfterDiscount: Math.max(product.price - discountAmount, 0).toFixed(2),
-    offerEndsAt: this.endDate,
-  });
+  if (this.startDate && this.endDate && this.endDate <= this.startDate) {
+    this.invalidate('endDate', 'endDate must be after startDate');
+  }
 });
 
-// لو الـ offer اتمسحت → شيل الـ priceAfterDiscount من الـ Product
-offerSchema.post('findOneAndDelete', async function (doc) {
-  if (!doc) return;
-  const Product = mongoose.model('Product');
-  await Product.findByIdAndUpdate(doc.product, {
-    $set: { priceAfterDiscount: null, offerEndsAt: null },
-  });
-});
+offerSchema.index({ product: 1 });
+offerSchema.index({ isActive: 1, startDate: 1, endDate: 1 });
 
 const Offer = mongoose.model('Offer', offerSchema);
 export default Offer;

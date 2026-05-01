@@ -14,22 +14,14 @@ const productSchema = new mongoose.Schema(
     slug: { type: String, unique: true, lowercase: true, index: true },
     images: [{ type: String }],
     price: { type: Number, required: [true, 'Price is required'], min: 0 },
-    priceAfterDiscount: {
-      type: Number,
-      min: 0,
-      validate: {
-        validator: function (val) {
-          if (val == null || val === '') return true;
-          return val < this.price;
-        },
-        message: 'priceAfterDiscount must be less than price',
-      },
-    },
+    priceAfterDiscount: { type: Number, min: 0, default: null },
     offerEndsAt: { type: Date, default: null },
     description: { type: String, maxlength: 2000 },
     advantages: { type: String, maxlength: 2000 },
     composition: { type: String, maxlength: 2000 },
     stock: { type: Number, required: true, min: 0, default: 0 },
+    // sold count
+    soldCount: { type: Number, default: 0 },
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
     subCategory: {
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory' }],
@@ -48,13 +40,13 @@ const productSchema = new mongoose.Schema(
       },
     ],
     isSensitiveSkin: { type: Boolean, default: false },
+    isBestSeller: { type: Boolean, default: false },
+    isBundle: { type: Boolean, default: false },
     catalog: { type: String, default: null },
     certificationImage: { type: String, default: null },
     isCertified: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
     views: { type: Number, default: 0 },
-    ratingsAverage: { type: Number, default: 0, min: 0, max: 5 },
-    ratingsQuantity: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
@@ -74,6 +66,8 @@ productSchema.index({ concerns: 1 });
 productSchema.index({ isSensitiveSkin: 1 });
 productSchema.index({ price: 1 });
 productSchema.index({ views: -1 });
+productSchema.index({ offerEndsAt: 1 });
+productSchema.index({ priceAfterDiscount: 1 });
 
 const Product = mongoose.model('Product', productSchema);
 export default Product;

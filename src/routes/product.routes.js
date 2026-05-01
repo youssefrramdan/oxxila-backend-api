@@ -28,6 +28,7 @@ router.get('/:id', productIdParamValidator, optionalAuth, products.getProduct);
 router.use(protectedRoutes, allowTo('admin'));
 router.post('/', productUploadFields, createProductValidator, products.createProduct);
 router.put('/:id', productUploadFields, updateProductValidator, products.updateProduct);
+router.patch('/:id/best-seller', productIdParamValidator, products.toggleBestSeller);
 router.delete('/:id', productIdParamValidator, products.deleteProduct);
 
 export default router;

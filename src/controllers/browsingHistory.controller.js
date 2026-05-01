@@ -5,8 +5,7 @@ import Product from '../models/Product.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 
-const productSelect =
-  'name slug images price priceAfterDiscount ratingsAverage views isCertified category';
+const productSelect = 'name slug images price views isCertified category';
 
 /**
  * @desc    Get browsing history
@@ -64,7 +63,7 @@ export const getRecommendations = asyncHandler(async (req, res, next) => {
   })
     .select(productSelect)
     .populate({ path: 'category', select: 'name slug' })
-    .sort({ views: -1, ratingsAverage: -1 })
+    .sort({ views: -1 })
     .limit(20);
 
   sendResponse(res, { message: 'Recommendations retrieved successfully', data: products });

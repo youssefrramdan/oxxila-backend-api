@@ -2,10 +2,8 @@
 import app from './app.js';
 import logger from './config/logger.js';
 import databaseConnection from './config/db.js';
-import { startOfferCron } from './utils/offerCron.js';
 
 await databaseConnection();
-startOfferCron();
 
 const PORT = process.env.PORT || 3000;
 
