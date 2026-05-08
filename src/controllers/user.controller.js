@@ -219,7 +219,10 @@ export const updateMe = asyncHandler(async (req, res, next) => {
 
   if (req.body.email !== undefined) {
     const u = await User.findById(req.user._id).select('+googleId');
-    if (u?.googleId) {
+    const normalizedRequestedEmail = String(req.body.email).trim().toLowerCase();
+    const normalizedCurrentEmail = String(u?.email ?? '').trim().toLowerCase();
+
+    if (u?.googleId && normalizedRequestedEmail !== normalizedCurrentEmail) {
       return next(new ApiError('Google-linked accounts cannot change their email', 400));
     }
   }
