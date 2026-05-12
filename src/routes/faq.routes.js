@@ -28,8 +28,6 @@ export const productFaqRouter = Router({ mergeParams: true });
 productFaqRouter.get('/', getProductFaqsValidator, getProductFaqs);
 productFaqRouter.post(
   '/ask',
-  protectedRoutes,
-  allowTo('user', 'admin'),
   askSpecialistValidator,
   askSpecialist
 );

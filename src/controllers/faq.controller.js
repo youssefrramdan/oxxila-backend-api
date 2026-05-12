@@ -86,24 +86,40 @@ export const askSpecialist = asyncHandler(async (req, res, next) => {
   const { productId } = req.params;
   const { question } = req.body;
 
-  const adminEmail = process.env.ADMIN_EMAIL?.trim();
+  const adminEmail = process.env.SEED_ADMIN_EMAIL;
   if (!adminEmail) {
     return next(new ApiError('Specialist inquiries are not configured on the server', 503));
   }
 
-  const product = await Product.findById(productId).select('name isActive');
+  const product = await Product.findById(productId)
+    .select('name slug images price priceAfterDiscount stock description isActive brand category')
+    .populate('brand', 'name')
+    .populate('category', 'name');
+
   if (!product) return next(new ApiError(`No product found with id: ${productId}`, 404));
   if (!product.isActive) return next(new ApiError('Product is not available', 400));
 
-  const userName = req.user.name;
-  const userEmail = req.user.email;
+  const images = product.images ?? [];
+  const imageUrl = typeof images[0] === 'string' && /^https?:\/\//i.test(images[0]) ? images[0] : null;
+
+  const descriptionPlain = String(product.description ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const descriptionExcerpt =
+    descriptionPlain.length > 220 ? `${descriptionPlain.slice(0, 220)}…` : descriptionPlain;
 
   const { subject, html } = askSpecialistTemplate({
     productName: product.name,
-    productId: product._id,
+    productSlug: product.slug,
+    imageUrl,
+    price: product.price,
+    priceAfterDiscount: product.priceAfterDiscount,
+    stock: product.stock,
+    descriptionExcerpt: descriptionExcerpt || null,
+    brandName: product.brand?.name ?? null,
+    categoryName: product.category?.name ?? null,
     userQuestion: question,
-    userName,
-    userEmail,
   });
 
   try {
