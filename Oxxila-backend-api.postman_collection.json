@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "123a1cfe-2324-4edb-82f2-570f624641e7",
     "name": "Oxxila-backend-api",
-    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
+    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n- **FAQs** — public list per product; user **ask specialist** (email to `ADMIN_EMAIL`); admin CRUD on `/faqs` + create under product.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "54107413",
     "_collection_link": "https://go.postman.co/collection/54107413-123a1cfe-2324-4edb-82f2-570f624641e7?source=collection_link"
@@ -1908,6 +1908,186 @@
         }
       ],
       "description": "Nested: `GET|POST /api/v1/products/:productId/reviews` (+ `.../stats`). Flat: `GET|PUT|DELETE /api/v1/reviews/:id`, `POST .../like`. Set env `{{reviewId}}` from create/list responses; `{{productId}}` from products."
+    },
+    {
+      "name": "FAQs",
+      "item": [
+        {
+          "name": "Get Product FAQs",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/:productId/faqs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":productId",
+                "faqs"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "{{productId}}",
+                  "description": "Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "Public. Active FAQs only (`isActive: true`), newest `createdAt` first."
+          },
+          "response": []
+        },
+        {
+          "name": "Ask Specialist (email admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Can I use this with Vitamin C?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/:productId/faqs/ask",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":productId",
+                "faqs",
+                "ask"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "{{productId}}",
+                  "description": "Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "**User or admin** Bearer. Sends HTML email to `ADMIN_EMAIL` (requires Gmail `EMAIL_USER` / `EMAIL_PASS` on the server). Active product only; 503 if `ADMIN_EMAIL` is unset."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Product FAQ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Is this suitable for sensitive skin?\",\n  \"answer\": \"Yes — patch test first for 24 hours.\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/:productId/faqs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":productId",
+                "faqs"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "{{productId}}",
+                  "description": "Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "**Admin** Bearer. `question` + `answer` required; optional `isActive` (default true)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update FAQ",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Is this suitable for sensitive skin? (updated)\",\n  \"answer\": \"Yes — we recommend a patch test first.\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/faqs/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "faqs",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{faqId}}",
+                  "description": "FAQ Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "**Admin** Bearer. At least one of `question`, `answer`, `isActive`."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete FAQ",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/faqs/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "faqs",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{faqId}}",
+                  "description": "FAQ Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "**Admin** Bearer."
+          },
+          "response": []
+        }
+      ],
+      "description": "Nested: `GET /api/v1/products/:productId/faqs`, `POST .../faqs/ask`, `POST .../faqs` (admin). Flat: `PUT|DELETE /api/v1/faqs/:id`. Env: `{{productId}}`, `{{faqId}}` (from create response)."
     },
     {
       "name": "Browsing & recommendations",
