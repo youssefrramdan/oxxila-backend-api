@@ -1,11 +1,11 @@
 {
   "info": {
-    "_postman_id": "4d2d51fa-958b-45e1-b2d2-325f35e45a01",
+    "_postman_id": "123a1cfe-2324-4edb-82f2-570f624641e7",
     "name": "Oxxila-backend-api",
-    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
+    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "54107413",
-    "_collection_link": "https://go.postman.co/collection/54107413-4d2d51fa-958b-45e1-b2d2-325f35e45a01?source=collection_link"
+    "_collection_link": "https://go.postman.co/collection/54107413-123a1cfe-2324-4edb-82f2-570f624641e7?source=collection_link"
   },
   "item": [
     {
@@ -147,7 +147,7 @@
               "variable": [
                 {
                   "key": "id",
-                  "value": "{{userId}}"
+                  "value": ""
                 }
               ]
             },
@@ -340,7 +340,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"youssef@oxxila.local\",\n  \"password\": \"OxxilaDev1!\"\n}"
+                  "raw": "{\n  \"email\": \"admin@oxxila.local\",\n  \"password\": \"OxxilaDev1!\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/login",
@@ -1069,213 +1069,207 @@
             }
           ],
           "description": "Nested relationship: `GET` and `POST` under `/api/v1/categories/:categoryId/subcategories`."
-        },
-        {
-          "name": "Brands",
-          "item": [
-            {
-              "name": "Create Brand",
-              "request": {
-                "method": "POST",
-                "header": [],
-                "body": {
-                  "mode": "formdata",
-                  "formdata": [
-                    {
-                      "key": "name",
-                      "value": "Acme Co",
-                      "type": "text"
-                    },
-                    {
-                      "key": "description",
-                      "value": "Optional short description.",
-                      "type": "text",
-                      "disabled": true
-                    },
-                    {
-                      "key": "isActive",
-                      "value": "true",
-                      "type": "text",
-                      "description": "boolean"
-                    },
-                    {
-                      "key": "logo",
-                      "type": "file",
-                      "description": "Optional — jpg, png, webp (field name: logo)",
-                      "value": null
-                    }
-                  ]
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/brands",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "brands"
-                  ]
-                },
-                "description": "Admin. **multipart** (`form-data`) — `name` (required 2–50 chars), optional `description`, optional `isActive`, optional `logo` file. **Slug** is generated from `name` (not accepted in body)."
-              },
-              "response": []
-            },
-            {
-              "name": "Get All Brands",
-              "request": {
-                "auth": {
-                  "type": "noauth"
-                },
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/brands",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "brands"
-                  ],
-                  "query": [
-                    {
-                      "key": "keyword",
-                      "value": "acme",
-                      "description": "Search name (optional)",
-                      "disabled": true
-                    },
-                    {
-                      "key": "sort",
-                      "value": "name",
-                      "disabled": true
-                    }
-                  ]
-                },
-                "description": "Public. Active brands only. Optional `keyword`, `sort`."
-              },
-              "response": []
-            },
-            {
-              "name": "Get Brand By ID",
-              "request": {
-                "auth": {
-                  "type": "noauth"
-                },
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/brands/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "brands",
-                    ":id"
-                  ],
-                  "variable": [
-                    {
-                      "key": "id",
-                      "value": "{{brandId}}",
-                      "description": "MongoDB ObjectId"
-                    }
-                  ]
-                },
-                "description": "Public. One active brand. Set `{{brandId}}` from **Get All Brands**."
-              },
-              "response": []
-            },
-            {
-              "name": "Update Brand",
-              "request": {
-                "method": "PUT",
-                "header": [],
-                "body": {
-                  "mode": "formdata",
-                  "formdata": [
-                    {
-                      "key": "name",
-                      "value": "Updated Brand Name",
-                      "type": "text",
-                      "disabled": true
-                    },
-                    {
-                      "key": "description",
-                      "value": "",
-                      "type": "text",
-                      "disabled": true
-                    },
-                    {
-                      "key": "isActive",
-                      "value": "true",
-                      "type": "text",
-                      "disabled": true
-                    },
-                    {
-                      "key": "logo",
-                      "type": "file",
-                      "description": "Optional replace",
-                      "value": null
-                    }
-                  ]
-                },
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/brands/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "brands",
-                    ":id"
-                  ],
-                  "variable": [
-                    {
-                      "key": "id",
-                      "value": "{{brandId}}"
-                    }
-                  ]
-                },
-                "description": "Admin. **multipart** — optional `name`, `description`, `isActive`, `logo`. Slug follows `name` on save hooks where applicable."
-              },
-              "response": []
-            },
-            {
-              "name": "Delete Brand",
-              "request": {
-                "method": "DELETE",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/brands/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "brands",
-                    ":id"
-                  ],
-                  "variable": [
-                    {
-                      "key": "id",
-                      "value": "{{brandId}}"
-                    }
-                  ]
-                },
-                "description": "Admin. Deletes one brand."
-              },
-              "response": []
-            }
-          ],
-          "description": "`Brand` resource at `/api/v1/brands`. Env: `{{brandId}}` (set from list response). Reads are public (`noauth`); writes use inherited Bearer."
         }
       ],
       "description": "Catalog folder layout: **Categories** (root) → **Sub-categories** (full set with correct URL patterns) → **Category / Sub-categories** (parent-scoped) → **Brands**. Public reads: **noauth**; admin: inherit collection Bearer. Env: `{{categoryId}}`, `{{subCategoryId}}`, `{{brandId}}`."
+    },
+    {
+      "name": "Brands",
+      "item": [
+        {
+          "name": "Create Brand",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Acme Co",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Optional short description.",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "type": "text",
+                  "description": "boolean"
+                },
+                {
+                  "key": "logo",
+                  "type": "file",
+                  "description": "Optional — jpg, png, webp (field name: logo)",
+                  "value": null
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands"
+              ]
+            },
+            "description": "Admin. **multipart** (`form-data`) — `name` (required 2–50 chars), optional `description`, optional `isActive`, optional `logo` file. **Slug** is generated from `name` (not accepted in body)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Brands",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "acme",
+                  "description": "Search name (optional)",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "name",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Public. Active brands only. Optional `keyword`, `sort`."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Brand By ID",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{brandId}}",
+                  "description": "MongoDB ObjectId"
+                }
+              ]
+            },
+            "description": "Public. One active brand. Set `{{brandId}}` from **Get All Brands**."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Brand",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Updated Brand Name",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "description",
+                  "value": "",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "logo",
+                  "type": "file",
+                  "description": "Optional replace",
+                  "src": "/C:/Users/rmdan/OneDrive/Desktop/oxxila categories/test.png"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands/69f3ca12780a969d8b9c05a1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands",
+                "69f3ca12780a969d8b9c05a1"
+              ]
+            },
+            "description": "Admin. **multipart** — optional `name`, `description`, `isActive`, `logo`. Slug follows `name` on save hooks where applicable."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Brand",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/brands/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "brands",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{brandId}}"
+                }
+              ]
+            },
+            "description": "Admin. Deletes one brand."
+          },
+          "response": []
+        }
+      ],
+      "description": "`Brand` resource at `/api/v1/brands`. Env: `{{brandId}}` (set from list response). Reads are public (`noauth`); writes use inherited Bearer."
     },
     {
       "name": "Products",
@@ -1290,27 +1284,109 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/products?page=1&limit=10&sort=-createdAt",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "products"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ],
               "query": [
-                { "key": "page", "value": "1" },
-                { "key": "limit", "value": "10" },
-                { "key": "sort", "value": "-createdAt", "description": "e.g. price, -soldCount" },
-                { "key": "keyword", "value": "", "disabled": true, "description": "Search product name" },
-                { "key": "category", "value": "{{categoryId}}", "disabled": true },
-                { "key": "subCategory", "value": "{{subCategoryId}}", "disabled": true, "description": "Comma-separated Mongo ids" },
-                { "key": "brand", "value": "{{brandId}}", "disabled": true },
-                { "key": "concerns", "value": "acne,pigmentation", "disabled": true, "description": "Comma-separated concern slugs" },
-                { "key": "isSensitiveSkin", "value": "true", "disabled": true },
-                { "key": "isCertified", "value": "true", "disabled": true },
-                { "key": "isBestSeller", "value": "true", "disabled": true },
-                { "key": "isBundle", "value": "true", "disabled": true },
-                { "key": "priceMin", "value": "10", "disabled": true },
-                { "key": "priceMax", "value": "500", "disabled": true },
-                { "key": "allOffers", "value": "true", "disabled": true, "description": "Products with active discounted price" },
-                { "key": "todayOffers", "value": "true", "disabled": true, "description": "Offers ending today (by offerEndsAt)" },
-                { "key": "noOffers", "value": "true", "disabled": true, "description": "Products with no active discount (no priceAfterDiscount or offer ended)" },
-                { "key": "fields", "value": "", "disabled": true }
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "description": "e.g. price, -soldCount"
+                },
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "Search product name",
+                  "disabled": true
+                },
+                {
+                  "key": "category",
+                  "value": "{{categoryId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "subCategory",
+                  "value": "{{subCategoryId}}",
+                  "description": "Comma-separated Mongo ids",
+                  "disabled": true
+                },
+                {
+                  "key": "brand",
+                  "value": "{{brandId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "concerns",
+                  "value": "acne,pigmentation",
+                  "description": "Comma-separated concern slugs",
+                  "disabled": true
+                },
+                {
+                  "key": "isSensitiveSkin",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "isCertified",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "isBestSeller",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "isBundle",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "priceMin",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "priceMax",
+                  "value": "500",
+                  "disabled": true
+                },
+                {
+                  "key": "allOffers",
+                  "value": "true",
+                  "description": "Products with active discounted price",
+                  "disabled": true
+                },
+                {
+                  "key": "todayOffers",
+                  "value": "true",
+                  "description": "Offers ending today (by offerEndsAt)",
+                  "disabled": true
+                },
+                {
+                  "key": "noOffers",
+                  "value": "true",
+                  "description": "Products with no active discount (no priceAfterDiscount or offer ended)",
+                  "disabled": true
+                },
+                {
+                  "key": "fields",
+                  "value": "",
+                  "disabled": true
+                }
               ]
             },
             "description": "Public listing with ApiFeatures pagination/sort/keyword. Filters: category, subCategory (comma ids), brand, concerns (comma), `isSensitiveSkin`, `isCertified`, `isBestSeller`, `isBundle`, price range, `allOffers`, `todayOffers`, `noOffers`."
@@ -1321,15 +1397,28 @@
           "name": "Get Product By ID",
           "request": {
             "auth": {
-              "type": "noauth"
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/products/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "products", ":id"],
-              "variable": [{ "key": "id", "value": "{{productId}}", "description": "Mongo ObjectId" }]
+              "raw": "{{baseUrl}}/api/v1/products/69f3c9a3f63a475a71bc3278",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                "69f3c9a3f63a475a71bc3278"
+              ]
             },
             "description": "Public. If you send **Bearer** (logged-in user), the server appends this product to **Browsing history**."
           },
@@ -1343,25 +1432,99 @@
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "name", "value": "Sample serum", "type": "text" },
-                { "key": "price", "value": "120", "type": "text" },
-                { "key": "stock", "value": "50", "type": "text" },
-                { "key": "category", "value": "{{categoryId}}", "type": "text" },
-                { "key": "subCategory", "value": "{{subCategoryId}}", "type": "text", "description": "Repeat field or JSON array per client; at least one id" },
-                { "key": "brand", "value": "{{brandId}}", "type": "text" },
-                { "key": "description", "value": "Short description", "type": "text" },
-                { "key": "isActive", "value": "true", "type": "text" },
-                { "key": "isBestSeller", "value": "false", "type": "text", "description": "Optional; can also use PATCH .../best-seller" },
-                { "key": "isBundle", "value": "false", "type": "text", "description": "Product is a bundle" },
-                { "key": "images", "type": "file", "src": [] },
-                { "key": "certificationImage", "type": "file", "src": [] },
-                { "key": "catalog", "type": "file", "src": [], "description": "PDF/image; stored URL on product.catalog" }
+                {
+                  "key": "name",
+                  "value": "Sample serum",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "120",
+                  "type": "text"
+                },
+                {
+                  "key": "stock",
+                  "value": "50",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "{{categoryId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "subCategory",
+                  "value": "{{subCategoryId}}",
+                  "type": "text",
+                  "description": "Repeat field or JSON array per client; at least one id"
+                },
+                {
+                  "key": "brand",
+                  "value": "{{brandId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Short description",
+                  "type": "text"
+                },
+                {
+                  "key": "advantages",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "ec6bba11-cbd9-400d-84a2-b6e6f3d8f546"
+                },
+                {
+                  "key": "composition",
+                  "value": "",
+                  "type": "text",
+                  "uuid": "f7a99d12-2136-4745-bc14-e0f329b3d13f"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "type": "text"
+                },
+                {
+                  "key": "isBestSeller",
+                  "value": "false",
+                  "type": "text",
+                  "description": "Optional; can also use PATCH .../best-seller"
+                },
+                {
+                  "key": "isBundle",
+                  "value": "false",
+                  "type": "text",
+                  "description": "Product is a bundle"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "value": null
+                },
+                {
+                  "key": "certificationImage",
+                  "type": "file",
+                  "value": null
+                },
+                {
+                  "key": "catalog",
+                  "type": "file",
+                  "description": "PDF/image; stored URL on product.catalog",
+                  "value": null
+                }
               ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/products",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "products"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products"
+              ]
             },
             "description": "**Admin** Bearer. Multipart: required `name`, `price`, `stock`, `category`, `subCategory` (array rules). Optional: `isBestSeller`, `isBundle`, images (max 5), `certificationImage`, `catalog` file (URL saved on `catalog`)."
           },
@@ -1375,21 +1538,65 @@
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "name", "value": "Updated name", "type": "text" },
-                { "key": "price", "value": "110", "type": "text" },
-                { "key": "stock", "value": "40", "type": "text" },
-                { "key": "isBestSeller", "value": "false", "type": "text" },
-                { "key": "isBundle", "value": "false", "type": "text" },
-                { "key": "images", "type": "file", "src": [] },
-                { "key": "certificationImage", "type": "file", "src": [] },
-                { "key": "catalog", "type": "file", "src": [] }
+                {
+                  "key": "name",
+                  "value": "Updated name",
+                  "type": "text"
+                },
+                {
+                  "key": "price",
+                  "value": "110",
+                  "type": "text"
+                },
+                {
+                  "key": "stock",
+                  "value": "40",
+                  "type": "text"
+                },
+                {
+                  "key": "isBestSeller",
+                  "value": "false",
+                  "type": "text"
+                },
+                {
+                  "key": "isBundle",
+                  "value": "false",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "value": null
+                },
+                {
+                  "key": "certificationImage",
+                  "type": "file",
+                  "value": null
+                },
+                {
+                  "key": "catalog",
+                  "type": "file",
+                  "value": null
+                }
               ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/products/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "products", ":id"],
-              "variable": [{ "key": "id", "value": "{{productId}}" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{productId}}"
+                }
+              ]
             },
             "description": "**Admin** Bearer. Partial updates via multipart; new files replace/add per controller logic. Optional booleans: `isBestSeller`, `isBundle`."
           },
@@ -1402,9 +1609,22 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/products/:id/best-seller",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "products", ":id", "best-seller"],
-              "variable": [{ "key": "id", "value": "{{productId}}" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":id",
+                "best-seller"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{productId}}"
+                }
+              ]
             },
             "description": "**Admin** Bearer. Flips `isBestSeller`."
           },
@@ -1417,9 +1637,21 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/products/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "products", ":id"],
-              "variable": [{ "key": "id", "value": "{{productId}}" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{productId}}"
+                }
+              ]
             },
             "description": "**Admin** Bearer."
           },
@@ -1429,18 +1661,345 @@
       "description": "`/api/v1/products`. Env: `{{productId}}`. Public reads use **noauth**; writes need **admin** Bearer."
     },
     {
+      "name": "Reviews",
+      "item": [
+        {
+          "name": "Get Product Rating Stats",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/:productId/reviews/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":productId",
+                "reviews",
+                "stats"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "{{productId}}",
+                  "description": "Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "Public. Rating histogram (5→1), counts, percentages, plus `ratingsAverage` and `ratingsQuantity` from the product document."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product Reviews",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/:productId/reviews?page=1&limit=10&sort=-createdAt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":productId",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt",
+                  "description": "e.g. -createdAt, rating"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "{{productId}}",
+                  "description": "Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "Public paginated list. Populates `user` (name, avatar). One review per user per product (unique index)."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Product Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Great product, fast delivery.\",\n  \"title\": \"Love it\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/:productId/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":productId",
+                "reviews"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "{{productId}}",
+                  "description": "Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "**User or admin** Bearer. `rating` 1–5, `comment` required, `title` optional. Active product only; 400 if you already reviewed this product. Updates product `ratingsAverage` / `ratingsQuantity` via model hook."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Review By ID",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{reviewId}}",
+                  "description": "Review Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "Public single review with populated `user` (name, avatar)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"comment\": \"Updated: still very good.\",\n  \"title\": \"Solid\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{reviewId}}",
+                  "description": "Review Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "**Owner** Bearer only. Partial body allowed (`title`, `comment`, `rating`). Re-runs product rating aggregation on save."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Review",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{reviewId}}",
+                  "description": "Review Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "**Owner** or **admin** Bearer. Removes review and recalculates product ratings."
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle Review Like",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reviews/:id/like",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reviews",
+                ":id",
+                "like"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{reviewId}}",
+                  "description": "Review Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "**User** Bearer. Like or unlike; response includes `likesCount` and `liked` boolean."
+          },
+          "response": []
+        }
+      ],
+      "description": "Nested: `GET|POST /api/v1/products/:productId/reviews` (+ `.../stats`). Flat: `GET|PUT|DELETE /api/v1/reviews/:id`, `POST .../like`. Set env `{{reviewId}}` from create/list responses; `{{productId}}` from products."
+    },
+    {
+      "name": "Browsing & recommendations",
+      "item": [
+        {
+          "name": "Get Browsing History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/browsing-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "browsing-history"
+              ]
+            },
+            "description": "Last 10 viewed products (populated). History is filled when a logged-in user calls **GET /api/v1/products/:id**."
+          },
+          "response": []
+        },
+        {
+          "name": "Clear Browsing History",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/browsing-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "browsing-history"
+              ]
+            },
+            "description": "Empties `browsingHistory` for the current user."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Recommendations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/recommendations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "recommendations"
+              ]
+            },
+            "description": "Products from top categories in your history, excluding already-viewed ids; capped at 20."
+          },
+          "response": []
+        }
+      ],
+      "description": "Requires Bearer. Uses history populated via authenticated product detail views."
+    },
+    {
       "name": "Offers",
       "item": [
         {
           "name": "Get Upcoming Offer",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers/upcoming",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "offers", "upcoming"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "offers",
+                "upcoming"
+              ]
             },
             "description": "Nearest future active offer (`startDate` > now). Must be registered **before** `GET /:id` in the router."
           },
@@ -1449,15 +2008,28 @@
         {
           "name": "Get Active Offers",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "offers"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "offers"
+              ],
               "query": [
-                { "key": "todayOffers", "value": "true", "disabled": true, "description": "Only offers ending today (before midnight)" }
+                {
+                  "key": "todayOffers",
+                  "value": "true",
+                  "description": "Only offers ending today (before midnight)",
+                  "disabled": true
+                }
               ]
             },
             "description": "Active offers where now is between `startDate` and `endDate`. Optional `?todayOffers=true`."
@@ -1467,14 +2039,29 @@
         {
           "name": "Get Offer By ID",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "offers", ":id"],
-              "variable": [{ "key": "id", "value": "{{offerId}}", "description": "Mongo ObjectId" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "offers",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{offerId}}",
+                  "description": "Mongo ObjectId"
+                }
+              ]
             },
             "description": "Single offer with populated product card fields."
           },
@@ -1485,7 +2072,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1493,8 +2083,14 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "offers"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "offers"
+              ]
             },
             "description": "**Admin** Bearer. ISO8601 dates; `endDate` after `startDate`. Only one active non-expired offer per product. Syncs product `priceAfterDiscount` / `offerEndsAt`."
           },
@@ -1505,7 +2101,10 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1513,9 +2112,21 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "offers", ":id"],
-              "variable": [{ "key": "id", "value": "{{offerId}}" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "offers",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{offerId}}"
+                }
+              ]
             },
             "description": "**Admin** Bearer. Re-syncs affected products when product or discount window changes."
           },
@@ -1528,9 +2139,21 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "offers", ":id"],
-              "variable": [{ "key": "id", "value": "{{offerId}}" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "offers",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{offerId}}"
+                }
+              ]
             },
             "description": "**Admin** Bearer. Clears synced pricing on the linked product."
           },
@@ -1543,8 +2166,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "offers"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "offers"
+              ]
             },
             "description": "**Admin** Bearer. `DELETE /` with no body — removes every offer and clears `priceAfterDiscount` / `offerEndsAt` on all affected products."
           },
@@ -1559,13 +2188,21 @@
         {
           "name": "Get Active Banners",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/banners",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "banners"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "banners"
+              ]
             },
             "description": "Public list of `isActive` banners, newest `createdAt` first."
           },
@@ -1579,18 +2216,50 @@
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "image", "type": "file", "src": [] },
-                { "key": "title", "value": "Summer sale", "type": "text" },
-                { "key": "linkType", "value": "product", "type": "text", "description": "none | product | category | url" },
-                { "key": "linkId", "value": "{{productId}}", "type": "text" },
-                { "key": "externalUrl", "value": "", "type": "text", "disabled": true },
-                { "key": "isActive", "value": "true", "type": "text" }
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "/C:/Users/rmdan/OneDrive/Desktop/oxxila categories/slider-1.png"
+                },
+                {
+                  "key": "title",
+                  "value": "rawAfrican website",
+                  "type": "text"
+                },
+                {
+                  "key": "linkType",
+                  "value": "url",
+                  "type": "text",
+                  "description": "none | product | category | url"
+                },
+                {
+                  "key": "linkId",
+                  "value": "{{productId}}",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "externalUrl",
+                  "value": "https://rawafrican.net/",
+                  "type": "text"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "type": "text"
+                }
               ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/banners",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "banners"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "banners"
+              ]
             },
             "description": "**Admin** Bearer. `image` file required. For `linkType` url use `externalUrl`; for product/category use `linkId`."
           },
@@ -1604,17 +2273,46 @@
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "title", "value": "Updated title", "type": "text" },
-                { "key": "linkType", "value": "none", "type": "text" },
-                { "key": "isActive", "value": "true", "type": "text" },
-                { "key": "image", "type": "file", "src": [] }
+                {
+                  "key": "title",
+                  "value": "Updated title",
+                  "type": "text"
+                },
+                {
+                  "key": "linkType",
+                  "value": "none",
+                  "type": "text"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "value": null
+                }
               ]
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/banners/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "banners", ":id"],
-              "variable": [{ "key": "id", "value": "{{bannerId}}", "description": "Mongo ObjectId" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "banners",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{bannerId}}",
+                  "description": "Mongo ObjectId"
+                }
+              ]
             },
             "description": "**Admin** Bearer. Optional new `image`; other fields merged."
           },
@@ -1627,9 +2325,21 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/banners/:id",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "banners", ":id"],
-              "variable": [{ "key": "id", "value": "{{bannerId}}" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "banners",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{bannerId}}"
+                }
+              ]
             },
             "description": "**Admin** Bearer."
           },
@@ -1641,54 +2351,6 @@
     {
       "name": "Current User",
       "item": [
-        {
-          "name": "Browsing & recommendations",
-          "item": [
-            {
-              "name": "Get Browsing History",
-              "request": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/users/browsing-history",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "users", "browsing-history"]
-                },
-                "description": "Last 10 viewed products (populated). History is filled when a logged-in user calls **GET /api/v1/products/:id**."
-              },
-              "response": []
-            },
-            {
-              "name": "Clear Browsing History",
-              "request": {
-                "method": "DELETE",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/users/browsing-history",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "users", "browsing-history"]
-                },
-                "description": "Empties `browsingHistory` for the current user."
-              },
-              "response": []
-            },
-            {
-              "name": "Get Recommendations",
-              "request": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{baseUrl}}/api/v1/users/recommendations",
-                  "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "users", "recommendations"]
-                },
-                "description": "Products from top categories in your history, excluding already-viewed ids; capped at 20."
-              },
-              "response": []
-            }
-          ],
-          "description": "Requires Bearer. Uses history populated via authenticated product detail views."
-        },
         {
           "name": "Profile addresses",
           "item": [
