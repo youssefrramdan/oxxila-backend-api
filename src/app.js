@@ -20,6 +20,7 @@ import reviewRouter, { productReviewRouter } from './routes/review.routes.js';
 import faqRouter, { productFaqRouter } from './routes/faq.routes.js';
 import offerRouter from './routes/offer.routes.js';
 import bannerRouter from './routes/banner.routes.js';
+import couponRouter from './routes/coupon.routes.js';
 import { startOfferCron } from './utils/offerCron.js';
 
 dotenv.config();
@@ -79,6 +80,7 @@ app.use('/api/v1/reviews', reviewRouter);
 app.use('/api/v1/faqs', faqRouter);
 app.use('/api/v1/offers', offerRouter);
 app.use('/api/v1/banners', bannerRouter);
+app.use('/api/v1/coupons', couponRouter);
 
 app.all(/(.*)/, (req, res, next) => {
   next(new ApiError(`Route ${req.originalUrl} not found`, 404));
