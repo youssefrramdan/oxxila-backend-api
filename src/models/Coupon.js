@@ -58,7 +58,6 @@ couponSchema.pre('validate', function () {
   }
 });
 
-couponSchema.index({ code: 1 });
 couponSchema.index({ expiresAt: 1 });
 
 const Coupon = mongoose.model('Coupon', couponSchema);

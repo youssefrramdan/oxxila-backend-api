@@ -10,6 +10,8 @@
     "seed:admins": "node src/scripts/seedAdmins.js",
     "seed:products": "node src/scripts/seedProducts.js",
     "seed:catalog": "npm run seed:products",
+    "seed:carriers": "node src/scripts/seedCarriers.js",
+    "seed:shipping": "node src/scripts/seedShippingZones.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "engines": {

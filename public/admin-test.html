@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oxxila - Admin Test</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0c0c10;--panel:#16161f;--card:#1c1c28;--border:#252535;--border2:#2e2e42;
+  --accent:#7c6dff;--accent-dim:rgba(124,109,255,.15);--accent-border:rgba(124,109,255,.35);
+  --text:#e2e2ee;--muted:#6a6a88;--muted2:#3e3e56;
+  --green:#34d399;--green-bg:rgba(52,211,153,.1);--green-border:rgba(52,211,153,.22);
+  --red:#f87171;--red-bg:rgba(248,113,113,.1);
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;display:flex;min-height:100vh;}
+.sidebar{width:220px;background:var(--panel);border-right:1px solid var(--border);padding:20px 12px;display:flex;flex-direction:column;gap:4px;flex-shrink:0;}
+.brand{font-size:16px;font-weight:700;color:var(--accent);padding:8px 10px 20px;}
+.nav-item{padding:8px 12px;border-radius:8px;cursor:pointer;color:var(--muted);font-size:13px;transition:all .15s;}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.04);}
+.nav-item.active{color:var(--text);background:var(--accent-dim);border:1px solid var(--accent-border);}
+.nav-sep{font-size:10px;letter-spacing:.1em;color:var(--muted2);text-transform:uppercase;padding:12px 12px 4px;margin-top:8px;}
+.main{flex:1;display:flex;flex-direction:column;}
+.topbar{padding:16px 24px;border-bottom:1px solid var(--border);background:var(--panel);display:flex;align-items:center;justify-content:space-between;}
+.topbar h2{font-size:16px;font-weight:600;}
+.token-display{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--card);padding:4px 10px;border-radius:6px;border:1px solid var(--border2);}
+.content{flex:1;padding:20px 24px;overflow-y:auto;}
+.page{display:none;flex-direction:column;gap:16px;}
+.page.active{display:flex;}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-header h3{font-size:13px;font-weight:600;}
+.card-body{padding:18px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.form-group{margin-bottom:12px;}
+label{font-size:10px;font-weight:500;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em;}
+input,select{width:100%;background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);outline:none;font-family:var(--font);}
+input:focus,select:focus{border-color:var(--accent);}
+input::placeholder{color:var(--muted2);}
+select option{background:var(--card);}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:var(--font);transition:all .15s;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{opacity:.85;}
+.btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border2);}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,.3);}
+.btn-sm{padding:5px 10px;font-size:11px;}
+.res-box{background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:14px;font-family:var(--mono);font-size:11px;color:var(--muted);white-space:pre-wrap;max-height:300px;overflow-y:auto;margin-top:12px;}
+.res-box.ok{border-color:var(--green-border);color:var(--green);}
+.res-box.err{border-color:rgba(248,113,113,.3);color:var(--red);}
+table{width:100%;border-collapse:collapse;}
+th{padding:8px 14px;text-align:left;font-size:10px;font-weight:500;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);}
+td{padding:10px 14px;font-size:12px;border-bottom:1px solid var(--border);}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:rgba(255,255,255,.015);}
+.badge{font-size:10px;padding:2px 8px;border-radius:12px;font-weight:500;}
+.badge-api{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border);}
+.badge-known{background:rgba(96,165,250,.1);color:#60a5fa;border:1px solid rgba(96,165,250,.22);}
+.badge-internal{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+.badge-active{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+.badge-inactive{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border2);}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.chip{padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:var(--card);border:1px solid var(--border2);color:var(--muted);transition:all .15s;}
+.chip.sel{background:var(--accent-dim);border-color:var(--accent-border);color:var(--accent);}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;margin-bottom:10px;}
+.toggle-row span{font-size:13px;}
+.tog{width:38px;height:21px;border-radius:11px;background:var(--muted2);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
+.tog.on{background:var(--accent);}
+.tog::after{content:'';position:absolute;width:15px;height:15px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .2s;}
+.tog.on::after{transform:translateX(17px);}
+.info{font-size:11px;color:var(--muted);padding:6px 0;}
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="brand">✦ Oxxila Test</div>
+  <div class="nav-sep">Auth</div>
+  <div class="nav-item active" data-page="login" onclick="showPage('login')">🔐 Login</div>
+  <div class="nav-sep">Zones</div>
+  <div class="nav-item" data-page="countries" onclick="showPage('countries')">🌍 Countries</div>
+  <div class="nav-item" data-page="governorates" onclick="showPage('governorates')">🗺 Governorates</div>
+  <div class="nav-item" data-page="districts" onclick="showPage('districts')">📍 Districts</div>
+  <div class="nav-item" data-page="zones-client" onclick="showPage('zones-client')">🛒 Zones (Client)</div>
+  <div class="nav-sep">Carriers</div>
+  <div class="nav-item" data-page="carriers" onclick="showPage('carriers')">🚚 Carriers</div>
+  <div class="nav-item" data-page="coverage" onclick="showPage('coverage')">📌 Coverage</div>
+  <div class="nav-item" data-page="settings" onclick="showPage('settings')">⚙️ Settings</div>
+  <div class="nav-item" data-page="carriers-client" onclick="showPage('carriers-client')">🛒 Carriers (Client)</div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <h2 id="page-title">Login</h2>
+    <div class="token-display" id="token-display">Not logged in</div>
+  </div>
+  <div class="content">
+
+    <div class="page active" id="page-login">
+      <div class="card">
+        <div class="card-header"><h3>Admin Login</h3></div>
+        <div class="card-body">
+          <div class="form-group"><label>Base URL</label><input id="base-url" value="http://localhost:3000/api/v1"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Email</label><input id="login-email" value="admin@oxxila.local"></div>
+            <div class="form-group"><label>Password</label><input id="login-pass" type="password" value="OxxilaDev1!"></div>
+          </div>
+          <button class="btn btn-primary" onclick="doLogin()">Login</button>
+          <div class="res-box" id="login-res">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-countries">
+      <div class="card">
+        <div class="card-header"><h3>Add Country</h3></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group"><label>Name</label><input id="c-name" placeholder="Egypt"></div>
+            <div class="form-group"><label>Code (2 chars)</label><input id="c-code" placeholder="EG" maxlength="2"></div>
+          </div>
+          <div class="form-group"><label>Flag emoji</label><input id="c-flag" placeholder="🇪🇬"></div>
+          <button class="btn btn-primary" onclick="addCountry()">Add Country</button>
+          <div class="res-box" id="country-res">-</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3>All Countries</h3>
+          <button class="btn btn-secondary btn-sm" onclick="loadCountries()">Refresh</button>
+        </div>
+        <div class="card-body">
+          <table><thead><tr><th>Flag</th><th>Name</th><th>Code</th><th>ID</th><th>Action</th></tr></thead>
+          <tbody id="countries-tbl"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-governorates">
+      <div class="card">
+        <div class="card-header"><h3>Add Governorate</h3></div>
+        <div class="card-body">
+          <div class="form-group"><label>Country ID</label><input id="g-country" placeholder="paste country _id"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Name</label><input id="g-name" placeholder="Cairo"></div>
+            <div class="form-group"><label>Shipping Price (EGP)</label><input id="g-price" type="number" placeholder="35"></div>
+          </div>
+          <button class="btn btn-primary" onclick="addGov()">Add Governorate</button>
+          <div class="res-box" id="gov-res">-</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Governorates by Country</h3></div>
+        <div class="card-body">
+          <div class="form-group"><label>Country ID</label><input id="g-load-country" placeholder="paste country _id"></div>
+          <button class="btn btn-secondary btn-sm" onclick="loadGovs()">Load</button>
+          <table style="margin-top:12px"><thead><tr><th>Name</th><th>Price</th><th>ID</th><th>Action</th></tr></thead>
+          <tbody id="govs-tbl"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-districts">
+      <div class="card">
+        <div class="card-header"><h3>Add District</h3></div>
+        <div class="card-body">
+          <div class="form-group"><label>Governorate ID</label><input id="d-gov" placeholder="paste governorate _id"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Name</label><input id="d-name" placeholder="Nasr City"></div>
+            <div class="form-group"><label>Shipping Price (EGP)</label><input id="d-price" type="number" placeholder="35"></div>
+          </div>
+          <button class="btn btn-primary" onclick="addDistrict()">Add District</button>
+          <div class="res-box" id="dist-res">-</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Districts by Governorate</h3></div>
+        <div class="card-body">
+          <div class="form-group"><label>Governorate ID</label><input id="d-load-gov" placeholder="paste governorate _id"></div>
+          <button class="btn btn-secondary btn-sm" onclick="loadDistricts()">Load</button>
+          <table style="margin-top:12px"><thead><tr><th>Name</th><th>Price</th><th>Covered</th><th>ID</th></tr></thead>
+          <tbody id="dists-tbl"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-zones-client">
+      <div class="card">
+        <div class="card-header"><h3>Client Checkout Flow</h3></div>
+        <div class="card-body">
+          <p class="info">Simulates what the frontend does at checkout</p>
+          <button class="btn btn-secondary" onclick="clientGetCountries()">1. Get Countries</button>
+          <div class="res-box" id="zc-countries">-</div>
+          <div class="form-group" style="margin-top:12px"><label>Country ID</label><input id="zc-country-id" placeholder="paste _id from above"></div>
+          <button class="btn btn-secondary" onclick="clientGetGovs()">2. Get Governorates</button>
+          <div class="res-box" id="zc-govs">-</div>
+          <div class="form-group" style="margin-top:12px"><label>Governorate ID</label><input id="zc-gov-id" placeholder="paste _id from above"></div>
+          <button class="btn btn-secondary" onclick="clientGetZones()">3. Get Zones</button>
+          <div class="res-box" id="zc-zones">-</div>
+          <div class="form-group" style="margin-top:12px">
+            <label>District ID (or leave empty for Other)</label>
+            <input id="zc-dist-id" placeholder="optional">
+          </div>
+          <button class="btn btn-primary" onclick="clientResolve()">4. Resolve Price</button>
+          <div class="res-box" id="zc-resolve">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-carriers">
+      <div class="card">
+        <div class="card-header"><h3>Add Carrier (known / internal only)</h3></div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group"><label>Name</label><input id="car-name" placeholder="Cairo Courier"></div>
+            <div class="form-group"><label>Code</label><input id="car-code" placeholder="CC"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Type</label>
+              <select id="car-type">
+                <option value="known">known</option>
+                <option value="internal">internal</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Delivery Days</label><input id="car-days" placeholder="1-2"></div>
+          </div>
+          <button class="btn btn-primary" onclick="addCarrier()">Add Carrier</button>
+          <div class="res-box" id="carrier-res">-</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3>All Carriers</h3>
+          <button class="btn btn-secondary btn-sm" onclick="loadCarriers()">Refresh</button>
+        </div>
+        <div class="card-body">
+          <table><thead><tr><th>Name</th><th>Type</th><th>Days</th><th>Coverage</th><th>Status</th><th>ID</th></tr></thead>
+          <tbody id="carriers-tbl"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-coverage">
+      <div class="card">
+        <div class="card-header"><h3>Update Carrier Coverage</h3></div>
+        <div class="card-body">
+          <p class="info">Select governorates for a carrier. This replaces all existing coverage.</p>
+          <div class="form-group"><label>Carrier ID</label><input id="cov-carrier-id" placeholder="paste carrier _id"></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Country</label>
+              <select id="cov-country-sel" onchange="loadCovGovs()">
+                <option value="">- select country -</option>
+              </select>
+            </div>
+          </div>
+          <div id="cov-govs-wrap" style="display:none">
+            <label>Select Governorates</label>
+            <div class="chips" id="cov-chips"></div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:14px" onclick="saveCoverage()">Save Coverage</button>
+          <div class="res-box" id="cov-res">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-settings">
+      <div class="card">
+        <div class="card-header">
+          <h3>Shipping Method Settings</h3>
+          <button class="btn btn-secondary btn-sm" onclick="loadSettings()">Load</button>
+        </div>
+        <div class="card-body">
+          <div class="toggle-row"><span>API Carriers</span><div class="tog" id="tog-api" onclick="this.classList.toggle('on')"></div></div>
+          <div class="toggle-row"><span>Known Carriers</span><div class="tog" id="tog-known" onclick="this.classList.toggle('on')"></div></div>
+          <div class="toggle-row"><span>Internal Delivery</span><div class="tog" id="tog-internal" onclick="this.classList.toggle('on')"></div></div>
+          <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+          <div class="res-box" id="settings-res">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-carriers-client">
+      <div class="card">
+        <div class="card-header"><h3>Available Carriers for Governorate</h3></div>
+        <div class="card-body">
+          <p class="info">Simulates what the frontend calls at checkout to show available carriers</p>
+          <div class="form-group"><label>Governorate ID</label><input id="cc-gov-id" placeholder="paste governorate _id"></div>
+          <button class="btn btn-primary" onclick="clientGetCarriers()">Get Carriers</button>
+          <div class="res-box" id="cc-res">-</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let token = ''
+let BASE = 'http://localhost:3000/api/v1'
+
+function base() { return document.getElementById('base-url').value || BASE }
+
+async function api(method, path, body, isPublic = false) {
+  const headers = { 'Content-Type': 'application/json' }
+  if (!isPublic && token) headers['Authorization'] = 'Bearer ' + token
+  const res = await fetch(base() + path, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  return res.json()
+}
+
+function show(elId, data, isErr = false) {
+  const el = document.getElementById(elId)
+  el.textContent = JSON.stringify(data, null, 2)
+  el.className = 'res-box ' + (isErr || data.success === false ? 'err' : 'ok')
+}
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'))
+  document.getElementById('page-' + name).classList.add('active')
+  const nav = document.querySelector(`.nav-item[data-page="${name}"]`)
+  if (nav) nav.classList.add('active')
+  document.getElementById('page-title').textContent = name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+}
+
+async function doLogin() {
+  const data = await api('POST', '/auth/login', {
+    email: document.getElementById('login-email').value,
+    password: document.getElementById('login-pass').value,
+  }, true)
+  if (data.data?.accessToken) {
+    token = data.data.accessToken
+    document.getElementById('token-display').textContent = '✓ Logged in'
+    show('login-res', data)
+  } else {
+    show('login-res', data, true)
+  }
+}
+
+async function addCountry() {
+  const data = await api('POST', '/admin/countries', {
+    name: document.getElementById('c-name').value,
+    code: document.getElementById('c-code').value,
+    flag: document.getElementById('c-flag').value,
+  })
+  show('country-res', data, data.success === false)
+  loadCountries()
+}
+
+async function loadCountries() {
+  const data = await api('GET', '/admin/countries')
+  const tbody = document.getElementById('countries-tbl')
+  tbody.innerHTML = (data.data || []).map(c => `
+    <tr>
+      <td>${c.flag}</td><td>${c.name}</td><td>${c.code}</td>
+      <td style="font-family:var(--mono);font-size:10px">${c._id}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteCountry('${c._id}')">Delete</button></td>
+    </tr>`).join('')
+}
+
+async function deleteCountry(id) {
+  const data = await api('DELETE', '/admin/countries/' + id)
+  show('country-res', data, data.success === false)
+  loadCountries()
+}
+
+async function addGov() {
+  const data = await api('POST', '/admin/governorates', {
+    country: document.getElementById('g-country').value,
+    name: document.getElementById('g-name').value,
+    shippingPrice: +document.getElementById('g-price').value,
+  })
+  show('gov-res', data, data.success === false)
+}
+
+async function loadGovs() {
+  const id = document.getElementById('g-load-country').value
+  const data = await api('GET', '/admin/countries/' + id + '/governorates')
+  const tbody = document.getElementById('govs-tbl')
+  tbody.innerHTML = (data.data || []).map(g => `
+    <tr>
+      <td>${g.name}</td><td>${g.shippingPrice} EGP</td>
+      <td style="font-family:var(--mono);font-size:10px">${g._id}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteGov('${g._id}')">Delete</button></td>
+    </tr>`).join('')
+}
+
+async function deleteGov(id) {
+  await api('DELETE', '/admin/governorates/' + id)
+  loadGovs()
+}
+
+async function addDistrict() {
+  const data = await api('POST', '/admin/districts', {
+    governorate: document.getElementById('d-gov').value,
+    name: document.getElementById('d-name').value,
+    shippingPrice: +document.getElementById('d-price').value,
+  })
+  show('dist-res', data, data.success === false)
+}
+
+async function loadDistricts() {
+  const id = document.getElementById('d-load-gov').value
+  const data = await api('GET', '/admin/governorates/' + id + '/districts')
+  const tbody = document.getElementById('dists-tbl')
+  tbody.innerHTML = (data.data || []).map(d => `
+    <tr>
+      <td>${d.name}</td><td>${d.shippingPrice} EGP</td>
+      <td><span class="badge ${d.isCovered ? 'badge-active' : 'badge-inactive'}">${d.isCovered ? 'covered' : 'closed'}</span></td>
+      <td style="font-family:var(--mono);font-size:10px">${d._id}</td>
+    </tr>`).join('')
+}
+
+async function clientGetCountries() {
+  const data = await api('GET', '/shipping/countries', null, true)
+  show('zc-countries', data, data.success === false)
+}
+async function clientGetGovs() {
+  const id = document.getElementById('zc-country-id').value
+  const data = await api('GET', '/shipping/countries/' + id + '/governorates', null, true)
+  show('zc-govs', data, data.success === false)
+}
+async function clientGetZones() {
+  const id = document.getElementById('zc-gov-id').value
+  const data = await api('GET', '/shipping/governorates/' + id + '/zones', null, true)
+  show('zc-zones', data, data.success === false)
+}
+async function clientResolve() {
+  const govId = document.getElementById('zc-gov-id').value
+  const distId = document.getElementById('zc-dist-id').value
+  const q = distId ? `?governorateId=${govId}&districtId=${distId}` : `?governorateId=${govId}`
+  const data = await api('GET', '/shipping/resolve' + q, null, true)
+  show('zc-resolve', data, data.success === false)
+}
+
+async function addCarrier() {
+  const data = await api('POST', '/admin/carriers', {
+    name: document.getElementById('car-name').value,
+    code: document.getElementById('car-code').value,
+    type: document.getElementById('car-type').value,
+    deliveryDays: document.getElementById('car-days').value,
+  })
+  show('carrier-res', data, data.success === false)
+  loadCarriers()
+}
+
+async function loadCarriers() {
+  const data = await api('GET', '/admin/carriers')
+  const tbody = document.getElementById('carriers-tbl')
+  tbody.innerHTML = (data.data || []).map(c => `
+    <tr>
+      <td>${c.name}</td>
+      <td><span class="badge badge-${c.type}">${c.type}</span></td>
+      <td>${c.deliveryDays || '-'}</td>
+      <td style="font-size:11px;color:var(--muted)">${(c.coverage || []).join(', ') || '-'}</td>
+      <td><span class="badge ${c.isActive ? 'badge-active' : 'badge-inactive'}">${c.isActive ? 'active' : 'inactive'}</span></td>
+      <td style="font-family:var(--mono);font-size:10px">${c._id}</td>
+    </tr>`).join('')
+
+  const countriesData = await api('GET', '/admin/countries')
+  const sel = document.getElementById('cov-country-sel')
+  sel.innerHTML = '<option value="">- select country -</option>' +
+    (countriesData.data || []).map(c => `<option value="${c._id}">${c.flag} ${c.name}</option>`).join('')
+}
+
+async function loadCovGovs() {
+  const countryId = document.getElementById('cov-country-sel').value
+  if (!countryId) { document.getElementById('cov-govs-wrap').style.display = 'none'; return }
+  const data = await api('GET', '/admin/countries/' + countryId + '/governorates')
+  const wrap = document.getElementById('cov-govs-wrap')
+  const chips = document.getElementById('cov-chips')
+  chips.innerHTML = (data.data || []).map(g =>
+    `<div class="chip" data-id="${g._id}" onclick="this.classList.toggle('sel')">${g.name}</div>`
+  ).join('')
+  wrap.style.display = (data.data || []).length ? '' : 'none'
+}
+
+async function saveCoverage() {
+  const carrierId = document.getElementById('cov-carrier-id').value
+  const selectedIds = [...document.querySelectorAll('#cov-chips .chip.sel')].map(c => c.dataset.id)
+  const data = await api('PUT', '/admin/carriers/' + carrierId + '/coverage', {
+    governorateIds: selectedIds
+  })
+  show('cov-res', data, data.success === false)
+  loadCarriers()
+}
+
+async function loadSettings() {
+  const data = await api('GET', '/admin/shipping-settings')
+  if (data.data) {
+    document.getElementById('tog-api').classList.toggle('on', data.data.api)
+    document.getElementById('tog-known').classList.toggle('on', data.data.known)
+    document.getElementById('tog-internal').classList.toggle('on', data.data.internal)
+  }
+  show('settings-res', data, data.success === false)
+}
+
+async function saveSettings() {
+  const data = await api('PUT', '/admin/shipping-settings', {
+    api:      document.getElementById('tog-api').classList.contains('on'),
+    known:    document.getElementById('tog-known').classList.contains('on'),
+    internal: document.getElementById('tog-internal').classList.contains('on'),
+  })
+  show('settings-res', data, data.success === false)
+}
+
+async function clientGetCarriers() {
+  const govId = document.getElementById('cc-gov-id').value
+  const data = await api('GET', '/shipping/carriers?governorateId=' + govId, null, true)
+  show('cc-res', data, data.success === false)
+}
+</script>
+</body>
+</html>

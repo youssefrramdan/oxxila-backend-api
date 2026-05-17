@@ -1,0 +1,583 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oxxila - Shipping</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0c0c10;
+  --sidebar:#11111a;
+  --panel:#16161f;
+  --card:#1c1c28;
+  --card2:#21212f;
+  --border:#252535;
+  --border2:#2e2e42;
+  --accent:#7c6dff;
+  --accent-dim:rgba(124,109,255,.15);
+  --accent-border:rgba(124,109,255,.35);
+  --text:#e2e2ee;
+  --muted:#6a6a88;
+  --muted2:#3e3e56;
+  --green:#34d399;
+  --green-bg:rgba(52,211,153,.1);
+  --green-border:rgba(52,211,153,.22);
+  --red:#f87171;
+  --red-bg:rgba(248,113,113,.1);
+  --amber:#fbbf24;
+  --amber-bg:rgba(251,191,36,.1);
+  --blue:#60a5fa;
+  --blue-bg:rgba(96,165,250,.1);
+  --font:'DM Sans',system-ui,sans-serif;
+  --mono:'DM Mono',monospace;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;display:flex;font-size:14px;}
+
+/* SIDEBAR */
+.sidebar{width:210px;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;}
+.brand{padding:20px 18px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.brand-icon{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;}
+.brand h1{font-size:14px;font-weight:600;letter-spacing:-.01em;}
+.brand p{font-size:10px;color:var(--muted);margin-top:1px;}
+.nav-section{padding:14px 10px 4px;font-size:9px;letter-spacing:.1em;color:var(--muted2);text-transform:uppercase;font-weight:500;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;margin:1px 8px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .15s;}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,.04);}
+.nav-item.active{color:var(--text);background:var(--accent-dim);border:1px solid var(--accent-border);}
+.nav-item i{font-size:16px;}
+.nav-badge{margin-left:auto;background:var(--accent);color:#fff;font-size:9px;padding:2px 6px;border-radius:10px;font-weight:600;}
+.sidebar-bottom{margin-top:auto;padding:14px 12px;border-top:1px solid var(--border);}
+.user-card{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .15s;}
+.user-card:hover{background:rgba(255,255,255,.04);}
+.avatar{width:30px;height:30px;border-radius:8px;background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--accent);}
+.user-info p{font-size:12px;font-weight:500;}
+.user-info span{font-size:10px;color:var(--muted);}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);background:var(--sidebar);position:sticky;top:0;z-index:10;}
+.topbar-left h2{font-size:18px;font-weight:600;letter-spacing:-.02em;}
+.topbar-left p{font-size:12px;color:var(--muted);margin-top:2px;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.search-box{display:flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--muted);cursor:text;width:200px;transition:border .15s;}
+.search-box:hover{border-color:var(--border2);}
+.search-box i{font-size:15px;}
+.notif-btn{width:34px;height:34px;border-radius:8px;background:var(--card);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);transition:all .15s;position:relative;}
+.notif-btn:hover{color:var(--text);}
+.notif-dot{width:7px;height:7px;background:var(--accent);border-radius:50%;position:absolute;top:7px;right:7px;border:1.5px solid var(--sidebar);}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:16px;}
+
+/* TABS */
+.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:4px;width:fit-content;}
+.tab{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted);transition:all .15s;}
+.tab.active{background:var(--accent);color:#fff;}
+.tab:not(.active):hover{color:var(--text);background:rgba(255,255,255,.05);}
+
+/* SECTION CARD */
+.section{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.section-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);}
+.section-header h3{font-size:13px;font-weight:600;}
+.section-header p{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* SHIPPING METHOD TOGGLES */
+.method-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px 18px;}
+.method-card{background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;transition:border .2s;}
+.method-card.on{border-color:var(--accent-border);}
+.method-card-left{display:flex;align-items:center;gap:10px;}
+.method-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.method-icon.courier{background:var(--accent-dim);color:var(--accent);}
+.method-icon.known{background:var(--blue-bg);color:var(--blue);}
+.method-icon.internal{background:var(--green-bg);color:var(--green);}
+.method-title{font-size:13px;font-weight:500;}
+.method-sub{font-size:10px;color:var(--muted);margin-top:2px;}
+.toggle{width:38px;height:21px;border-radius:11px;background:var(--muted2);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;}
+.toggle.on{background:var(--accent);}
+.toggle::after{content:'';position:absolute;width:15px;height:15px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.toggle.on::after{transform:translateX(17px);}
+
+/* CARRIERS TABLE */
+.carriers-toolbar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;}
+.filter-tabs{display:flex;gap:4px;}
+.filter-tab{padding:5px 11px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;color:var(--muted);border:1px solid transparent;transition:all .15s;}
+.filter-tab.active{color:var(--text);background:var(--card);border-color:var(--border2);}
+.filter-tab:hover:not(.active){color:var(--text);}
+.btn{display:flex;align-items:center;gap:6px;padding:7px 13px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;border:none;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{opacity:.88;}
+.btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border2);}
+.btn-secondary:hover{background:var(--card2);}
+
+table{width:100%;border-collapse:collapse;}
+thead tr{border-bottom:1px solid var(--border);}
+th{padding:9px 18px;text-align:left;font-size:10px;font-weight:500;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;}
+td{padding:12px 18px;font-size:13px;border-bottom:1px solid var(--border);}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:rgba(255,255,255,.015);}
+
+.carrier-name-cell{display:flex;align-items:center;gap:10px;}
+.carrier-logo{width:32px;height:32px;border-radius:7px;background:var(--card2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent);font-family:var(--mono);}
+.type-badge{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:500;}
+.type-api{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border);}
+.type-known{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(96,165,250,.22);}
+.type-internal{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+.status-badge{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:500;}
+.status-active{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+.status-inactive{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border2);}
+.coverage-tags{display:flex;gap:4px;flex-wrap:wrap;}
+.coverage-tag{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--card2);color:var(--muted);border:1px solid var(--border);}
+.action-btns{display:flex;gap:6px;}
+.icon-btn{width:28px;height:28px;border-radius:6px;background:var(--card2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:14px;transition:all .15s;}
+.icon-btn:hover{color:var(--text);border-color:var(--border2);}
+.icon-btn.danger:hover{color:var(--red);border-color:rgba(248,113,113,.3);background:var(--red-bg);}
+.icon-btn.primary:hover{color:var(--accent);border-color:var(--accent-border);background:var(--accent-dim);}
+
+/* ORDERS TABLE */
+.order-filter{display:flex;gap:6px;}
+.order-filter-btn{padding:5px 13px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;color:var(--muted);background:var(--card);border:1px solid var(--border2);transition:all .15s;}
+.order-filter-btn.active{color:var(--text);border-color:var(--text);}
+.order-filter-btn:hover:not(.active){color:var(--text);}
+.order-status{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:500;}
+.os-shipped{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(96,165,250,.22);}
+.os-pending{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(251,191,36,.22);}
+.os-delivered{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+.os-assigned{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border);}
+.tracking-code{font-family:var(--mono);font-size:11px;color:var(--muted);}
+.method-cell{font-size:11px;color:var(--muted);text-transform:uppercase;font-family:var(--mono);letter-spacing:.04em;}
+.update-btn{font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;padding:4px 8px;border-radius:5px;transition:background .15s;}
+.update-btn:hover{background:var(--accent-dim);}
+.order-id{font-family:var(--mono);font-size:12px;font-weight:500;}
+
+/* ZONES PANEL */
+.zones-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;height:360px;}
+.zones-col{display:flex;flex-direction:column;border-right:1px solid var(--border);}
+.zones-col:last-child{border-right:none;}
+.zones-col-header{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.zones-col-header span{font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+.zones-col-body{flex:1;overflow-y:auto;padding:6px;}
+.zone-row{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:7px;cursor:pointer;transition:background .12s;border:1px solid transparent;}
+.zone-row:hover{background:var(--card);}
+.zone-row.sel{background:var(--accent-dim);border-color:var(--accent-border);}
+.zone-flag{font-size:16px;flex-shrink:0;}
+.zone-name{font-size:13px;font-weight:500;flex:1;}
+.zone-sub{font-size:10px;color:var(--muted);}
+.zone-price{font-size:12px;font-family:var(--mono);color:var(--muted);flex-shrink:0;}
+.zone-del{color:var(--muted2);font-size:14px;cursor:pointer;padding:2px;border-radius:4px;transition:color .12s;flex-shrink:0;}
+.zone-del:hover{color:var(--red);}
+.district-row{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:7px;background:var(--card);border:1px solid var(--border);margin-bottom:4px;}
+.cov-badge{font-size:9px;padding:2px 7px;border-radius:12px;font-weight:500;cursor:pointer;flex-shrink:0;}
+.cov-yes{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+.cov-no{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,.2);}
+.price-inp{width:58px;background:var(--card2);border:1px solid var(--border2);border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--mono);color:var(--text);text-align:center;outline:none;}
+.price-inp:focus{border-color:var(--accent);}
+.other-row{display:flex;align-items:center;gap:8px;margin:6px;padding:9px 11px;border-radius:8px;background:rgba(52,211,153,.05);border:1px solid var(--green-border);}
+.other-label{font-size:12px;font-weight:500;color:var(--green);flex:1;}
+.other-sub{font-size:10px;color:var(--muted);}
+.add-zone-btn{display:flex;align-items:center;justify-content:center;gap:5px;padding:7px;margin:4px 6px;border-radius:7px;font-size:11px;color:var(--accent);cursor:pointer;border:1px dashed var(--accent-border);transition:background .15s;}
+.add-zone-btn:hover{background:var(--accent-dim);}
+.empty-zone{display:flex;align-items:center;justify-content:center;height:100%;font-size:12px;color:var(--muted2);}
+
+/* DRAWER */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(2px);}
+.overlay.open{opacity:1;pointer-events:all;}
+.drawer{position:fixed;top:0;right:0;height:100vh;width:380px;background:var(--panel);border-left:1px solid var(--border);z-index:51;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden;}
+.drawer.open{transform:translateX(0);}
+.drawer-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.drawer-header h3{font-size:15px;font-weight:600;}
+.close-btn{width:28px;height:28px;border-radius:6px;background:var(--card);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:15px;transition:all .15s;}
+.close-btn:hover{color:var(--text);}
+.drawer-body{flex:1;overflow-y:auto;padding:20px;}
+.drawer-footer{padding:16px 20px;border-top:1px solid var(--border);flex-shrink:0;}
+.save-btn{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:opacity .15s;}
+.save-btn:hover{opacity:.88;}
+
+/* form */
+.form-group{margin-bottom:16px;}
+.form-label{font-size:11px;font-weight:500;color:var(--muted);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;}
+.form-input{width:100%;background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);outline:none;font-family:var(--font);transition:border .15s;}
+.form-input:focus{border-color:var(--accent);}
+.form-input::placeholder{color:var(--muted2);}
+.form-select{width:100%;background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);outline:none;font-family:var(--font);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236a6a88' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+.form-select:focus{border-color:var(--accent);}
+.form-select option{background:var(--card2);}
+.day-chips{display:flex;gap:6px;}
+.day-chip{padding:6px 12px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;background:var(--card);border:1px solid var(--border2);color:var(--muted);transition:all .15s;}
+.day-chip.sel{background:var(--accent-dim);border-color:var(--accent-border);color:var(--accent);}
+.logo-upload{border:1px dashed var(--border2);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:16px;}
+.logo-upload:hover{border-color:var(--accent);background:var(--accent-dim);}
+.logo-upload i{font-size:24px;color:var(--muted);display:block;margin-bottom:8px;}
+.logo-upload p{font-size:11px;color:var(--muted);}
+.form-divider{font-size:10px;font-weight:500;letter-spacing:.08em;color:var(--muted2);text-transform:uppercase;padding:8px 0 12px;border-top:1px solid var(--border);margin-bottom:4px;}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--card);border:1px solid var(--border2);border-radius:8px;}
+.toggle-row p{font-size:13px;font-weight:500;}
+.toggle-row span{font-size:11px;color:var(--muted);}
+.coverage-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.cov-chip{padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;background:var(--card);border:1px solid var(--border2);color:var(--muted);transition:all .15s;}
+.cov-chip.sel{background:var(--accent-dim);border-color:var(--accent-border);color:var(--accent);}
+.api-box{background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:12px;margin-top:8px;}
+.api-box p{font-size:11px;color:var(--muted);line-height:1.5;}
+
+/* ASSIGN DRAWER */
+.assign-order-info{background:var(--card);border:1px solid var(--border2);border-radius:9px;padding:12px 14px;margin-bottom:16px;}
+.assign-order-info p{font-size:12px;color:var(--muted);margin-bottom:4px;}
+.assign-order-info strong{font-size:13px;}
+.carrier-option{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid var(--border2);cursor:pointer;transition:all .15s;margin-bottom:6px;}
+.carrier-option:hover{border-color:var(--accent-border);background:var(--accent-dim);}
+.carrier-option.sel{border-color:var(--accent);background:var(--accent-dim);}
+.carrier-opt-logo{width:30px;height:30px;border-radius:7px;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--accent);font-family:var(--mono);}
+.carrier-opt-info{flex:1;}
+.carrier-opt-name{font-size:13px;font-weight:500;}
+.carrier-opt-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+.carrier-opt-price{font-size:12px;font-family:var(--mono);color:var(--muted);}
+.tracking-section{margin-top:14px;}
+.tracking-section label{font-size:11px;color:var(--muted);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;}
+.tracking-auto{background:var(--green-bg);border:1px solid var(--green-border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--green);display:flex;align-items:center;gap:7px;}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+
+/* animations */
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.section{animation:fadeIn .25s ease both;}
+.section:nth-child(2){animation-delay:.06s;}
+.section:nth-child(3){animation-delay:.12s;}
+.login-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.login-overlay.hidden{display:none;}
+.login-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:28px;width:360px;}
+.login-card h3{font-size:16px;font-weight:600;margin-bottom:4px;}
+.login-card>p{font-size:12px;color:var(--muted);margin-bottom:18px;}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:8px;font-size:12px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none;}
+.toast.show{opacity:1;}
+.toast.err{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,.3);}
+.toast.ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+</style>
+</head>
+<body>
+
+<div class="login-overlay" id="login-overlay">
+  <div class="login-card">
+    <h3>Admin Login</h3>
+    <p>Sign in to manage shipping</p>
+    <div class="form-group"><label class="form-label">API Base URL</label><input class="form-input" id="api-base" value="http://localhost:3000/api/v1"></div>
+    <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="login-email" value="admin@oxxila.local"></div>
+    <div class="form-group"><label class="form-label">Password</label><input class="form-input" id="login-pass" type="password" value="OxxilaDev1!"></div>
+    <button class="save-btn" onclick="doLogin()">Login</button>
+    <p id="login-err" style="font-size:11px;color:var(--red);margin-top:10px;display:none"></p>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!--  SIDEBAR  -->
+<nav class="sidebar">
+  <div class="brand">
+    <div class="brand-icon">OX</div>
+    <div>
+      <h1>Oxxila</h1>
+      <p>Cosmetics Store</p>
+    </div>
+  </div>
+  <div class="nav-section">Main</div>
+  <div class="nav-item"><i class="ti ti-layout-dashboard"></i> Dashboard</div>
+  <div class="nav-item"><i class="ti ti-package"></i> Products</div>
+  <div class="nav-item"><i class="ti ti-shopping-cart"></i> Orders <span class="nav-badge">12</span></div>
+  <div class="nav-item"><i class="ti ti-users"></i> Customers</div>
+  <div class="nav-item"><i class="ti ti-star"></i> Reviews</div>
+  <div class="nav-section">Logistics</div>
+  <div class="nav-item active"><i class="ti ti-truck"></i> Shipping</div>
+  <div class="nav-item"><i class="ti ti-tag"></i> Free Shipping</div>
+  <div class="nav-item"><i class="ti ti-settings"></i> Settings</div>
+  <div class="sidebar-bottom">
+    <div class="user-card">
+      <div class="avatar">OX</div>
+      <div class="user-info">
+        <p>Oxxila Admin</p>
+        <span>admin@oxxila.local</span>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!--  MAIN  -->
+<div class="main">
+
+  <!-- topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <h2>Shipping</h2>
+      <p>Manage carriers, zones, and order fulfillment</p>
+    </div>
+    <div class="topbar-right">
+      <div class="search-box"><i class="ti ti-search"></i> Filter orders...</div>
+      <div class="notif-btn"><i class="ti ti-bell"></i><div class="notif-dot"></div></div>
+    </div>
+  </div>
+
+  <!-- content -->
+  <div class="content">
+
+    <!-- SHIPPING METHODS -->
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <h3>Shipping Methods</h3>
+          <p>Enable or disable delivery types globally</p>
+        </div>
+      </div>
+      <div class="method-cards">
+        <div class="method-card on" data-setting="api" id="method-api" onclick="toggleMethodSetting(this)">
+          <div class="method-card-left">
+            <div class="method-icon courier"><i class="ti ti-building-store"></i></div>
+            <div>
+              <div class="method-title">API Carrier</div>
+              <div class="method-sub">Bosta, Mylerz - automated booking</div>
+            </div>
+          </div>
+          <div class="toggle on" onclick="event.stopPropagation();toggleMethodSetting(this.closest('.method-card'))"></div>
+        </div>
+        <div class="method-card on" data-setting="known" id="method-known" onclick="toggleMethodSetting(this)">
+          <div class="method-card-left">
+            <div class="method-icon known"><i class="ti ti-truck-delivery"></i></div>
+            <div>
+              <div class="method-title">Known Carrier</div>
+              <div class="method-sub">External companies, manual tracking</div>
+            </div>
+          </div>
+          <div class="toggle on" onclick="event.stopPropagation();toggleMethodSetting(this.closest('.method-card'))"></div>
+        </div>
+        <div class="method-card" data-setting="internal" id="method-internal" onclick="toggleMethodSetting(this)">
+          <div class="method-card-left">
+            <div class="method-icon internal"><i class="ti ti-user-check"></i></div>
+            <div>
+              <div class="method-title">Internal Delivery</div>
+              <div class="method-sub">Your own drivers, in-house staff</div>
+            </div>
+          </div>
+          <div class="toggle" onclick="event.stopPropagation();toggleMethodSetting(this.closest('.method-card'))"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CARRIERS -->
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <h3>Carriers</h3>
+          <p>Companies and drivers handling your shipments</p>
+        </div>
+        <button class="btn btn-primary" onclick="openAddCarrier()"><i class="ti ti-plus"></i> Add Carrier</button>
+      </div>
+      <div class="carriers-toolbar">
+        <div class="filter-tabs">
+          <div class="filter-tab active" onclick="filterCarriers('all',this)">All</div>
+          <div class="filter-tab" onclick="filterCarriers('api',this)">API</div>
+          <div class="filter-tab" onclick="filterCarriers('known',this)">Known</div>
+          <div class="filter-tab" onclick="filterCarriers('internal',this)">Internal</div>
+        </div>
+      </div>
+      <table id="carriers-table">
+        <thead>
+          <tr>
+            <th>Company</th>
+            <th>Type</th>
+            <th>Delivery Time</th>
+            <th>Coverage</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="carriers-body"></tbody>
+      </table>
+    </div>
+
+    <!-- ZONE MANAGER -->
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <h3>Zone Manager</h3>
+          <p>Countries ’ Governorates ’ Districts with pricing</p>
+        </div>
+        <button class="btn btn-secondary" onclick="openAddCountry()"><i class="ti ti-plus"></i> Add Country</button>
+      </div>
+      <div class="zones-grid">
+        <!-- Countries -->
+        <div class="zones-col">
+          <div class="zones-col-header">
+            <span>Countries</span>
+          </div>
+          <div class="zones-col-body" id="countries-col"></div>
+        </div>
+        <!-- Governorates -->
+        <div class="zones-col">
+          <div class="zones-col-header">
+            <span id="gov-col-label">Governorates</span>
+            <button class="btn btn-secondary" id="add-gov-btn" style="display:none;font-size:11px;padding:4px 9px;" onclick="openAddGov()"><i class="ti ti-plus"></i></button>
+          </div>
+          <div class="zones-col-body" id="govs-col"><div class="empty-zone"> Select a country</div></div>
+        </div>
+        <!-- Districts -->
+        <div class="zones-col">
+          <div class="zones-col-header">
+            <span id="dist-col-label">Districts</span>
+            <button class="btn btn-primary" id="add-dist-btn" style="display:none;font-size:11px;padding:4px 10px;" onclick="openAddDistrict()"><i class="ti ti-plus"></i> Add</button>
+          </div>
+          <div class="zones-col-body" id="dists-col"><div class="empty-zone"> Select a governorate</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDERS SHIPPING -->
+    <div class="section">
+      <div class="section-header">
+        <div>
+          <h3>Orders Shipping</h3>
+          <p>Assign carriers and track fulfillment</p>
+        </div>
+        <div class="order-filter">
+          <div class="order-filter-btn active" onclick="filterOrders('all',this)">All</div>
+          <div class="order-filter-btn" onclick="filterOrders('pending',this)">Pending</div>
+          <div class="order-filter-btn" onclick="filterOrders('shipped',this)">Shipped</div>
+          <div class="order-filter-btn" onclick="filterOrders('delivered',this)">Delivered</div>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Customer</th>
+            <th>Zone</th>
+            <th>Carrier</th>
+            <th>Status</th>
+            <th>Tracking / Driver</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="orders-body"></tbody>
+      </table>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!--  OVERLAY  -->
+<div class="overlay" id="overlay" onclick="closeAll()"></div>
+
+<!--  DRAWER: Add Carrier  -->
+<div class="drawer" id="carrier-drawer">
+  <div class="drawer-header">
+    <h3 id="carrier-drawer-title">Add Carrier</h3>
+    <div class="close-btn" onclick="closeAll()"><i class="ti ti-x"></i></div>
+  </div>
+  <div class="drawer-body">
+    <div class="logo-upload">
+      <i class="ti ti-photo-up"></i>
+      <p>Upload company logo</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Official name</label>
+      <input class="form-input" id="carrier-name" placeholder="e.g. Cairo Courier">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Carrier code</label>
+      <input class="form-input" id="carrier-code" placeholder="CC" maxlength="10">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Carrier type</label>
+      <select class="form-select" id="carrier-type-sel" onchange="onCarrierTypeChange()">
+        <option value="known">Known Carrier (manual)</option>
+        <option value="internal">Internal Delivery (your staff)</option>
+      </select>
+    </div>
+
+    <!-- API section -->
+    <div id="api-section" style="display:none">
+      <div class="form-divider">API Configuration</div>
+      <div class="form-group">
+        <label class="form-label">API Provider</label>
+        <select class="form-select">
+          <option>Bosta</option>
+          <option>Mylerz</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">API Key</label>
+        <input class="form-input" type="password" placeholder="sk-...">
+      </div>
+      <div class="api-box"><p> Coverage and pricing are fetched automatically from the provider's API. No manual zone selection needed.</p></div>
+    </div>
+
+    <!-- Known / Internal section -->
+    <div id="manual-section">
+      <div class="form-divider">Delivery Configuration</div>
+      <div class="form-group">
+        <label class="form-label">Expected delivery (business days)</label>
+        <div class="day-chips">
+          <div class="day-chip sel" onclick="selectDays(this)">1-2</div>
+          <div class="day-chip" onclick="selectDays(this)">2-3</div>
+          <div class="day-chip" onclick="selectDays(this)">3-5</div>
+          <div class="day-chip" onclick="selectDays(this)">5-7</div>
+        </div>
+      </div>
+      <div class="form-divider">Coverage - Governorates</div>
+      <div class="form-group">
+        <label class="form-label">Country</label>
+        <select class="form-select" id="coverage-country-sel" onchange="onCoverageCountryChange()">
+          <option value="">Select a country</option>
+        </select>
+      </div>
+      <div id="coverage-govs-wrap" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">Select covered governorates</label>
+          <div class="coverage-chips" id="coverage-chips"></div>
+        </div>
+      </div>
+      <div id="coverage-empty-msg" style="display:none;font-size:11px;color:var(--muted);padding:6px 0 12px;">No governorates found for this country.</div>
+    </div>
+
+    <div class="form-group" style="margin-top:8px;">
+      <div class="toggle-row">
+        <div>
+          <p>Active</p>
+          <span>Carrier is available for order assignment</span>
+        </div>
+        <div class="toggle on" id="carrier-active-toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+    </div>
+  </div>
+  <div class="drawer-footer">
+    <button class="save-btn" onclick="saveCarrier()">Save Carrier</button>
+  </div>
+</div>
+
+<!--  DRAWER: Assign Order  -->
+<div class="drawer" id="assign-drawer">
+  <div class="drawer-header">
+    <h3>Assign Carrier</h3>
+    <div class="close-btn" onclick="closeAll()"><i class="ti ti-x"></i></div>
+  </div>
+  <div class="drawer-body" id="assign-body"></div>
+  <div class="drawer-footer">
+    <button class="save-btn" onclick="closeAll()">Confirm Assignment</button>
+  </div>
+</div>
+
+<!--  DRAWER: Add Zone  -->
+<div class="drawer" id="zone-drawer">
+  <div class="drawer-header">
+    <h3 id="zone-drawer-title">Add</h3>
+    <div class="close-btn" onclick="closeAll()"><i class="ti ti-x"></i></div>
+  </div>
+  <div class="drawer-body" id="zone-drawer-body"></div>
+  <div class="drawer-footer">
+    <button class="save-btn" onclick="saveZoneForm()">Save</button>
+  </div>
+</div>
+
+<script src="js/shipping-admin.app.js"></script>
+</body>
+</html>

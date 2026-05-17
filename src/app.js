@@ -21,6 +21,8 @@ import faqRouter, { productFaqRouter } from './routes/faq.routes.js';
 import offerRouter from './routes/offer.routes.js';
 import bannerRouter from './routes/banner.routes.js';
 import couponRouter from './routes/coupon.routes.js';
+import shippingAdminRouter from './routes/shipping.admin.routes.js';
+import shippingRouter from './routes/shipping.routes.js';
 import { startOfferCron } from './utils/offerCron.js';
 
 dotenv.config();
@@ -68,6 +70,16 @@ app.get('/reset-password/:token', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'reset-password.html'));
 });
 
+app.get('/admin-test.html', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'admin-test.html'));
+});
+
+app.get('/shipping-admin.html', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'shipping-admin.html'));
+});
+
+app.use(express.static(PUBLIC_DIR));
+
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/categories', categoryRouter);
@@ -81,6 +93,8 @@ app.use('/api/v1/faqs', faqRouter);
 app.use('/api/v1/offers', offerRouter);
 app.use('/api/v1/banners', bannerRouter);
 app.use('/api/v1/coupons', couponRouter);
+app.use('/api/v1/admin', shippingAdminRouter);
+app.use('/api/v1/shipping', shippingRouter);
 
 app.all(/(.*)/, (req, res, next) => {
   next(new ApiError(`Route ${req.originalUrl} not found`, 404));
