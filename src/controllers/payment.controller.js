@@ -3,7 +3,7 @@ import asyncHandler from 'express-async-handler';
 import PaymentSession from '../models/PaymentSession.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
-import { prepareCheckoutFromCart } from '../utils/checkoutHelpers.js';
+import { prepareCheckoutFromCart, toMinorUnits } from '../utils/checkoutHelpers.js';
 import { constructStripeEvent, resolveCheckoutPaymentReference } from '../utils/stripeClient.js';
 import { syncOrderRefundedFromStripe } from '../utils/orderRefundHelpers.js';
 import {
@@ -54,7 +54,13 @@ export const createPaymentSession = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Invalid payment provider', 400));
   }
 
-  const providerData = await startProvider({ paymentSession, checkout, user: req.user });
+  let providerData;
+  try {
+    providerData = await startProvider({ paymentSession, checkout, user: req.user });
+  } catch (err) {
+    await PaymentSession.deleteOne({ _id: paymentSession._id });
+    throw err;
+  }
 
   sendResponse(res, {
     statusCode: 201,
@@ -108,20 +114,42 @@ const handlePaymobTransaction = async (obj, hmac, next) => {
     return false;
   }
 
+  const paymentSessionId = obj.order?.merchant_order_id;
+
   if (!obj.success) {
-    if (obj.order?.merchant_order_id) {
+    if (paymentSessionId) {
       await PaymentSession.updateOne(
-        { _id: obj.order.merchant_order_id, status: 'pending' },
+        { _id: paymentSessionId, status: { $in: ['pending', 'processing'] } },
         { status: 'failed' }
       );
     }
     return true;
   }
 
-  const paymentSessionId = obj.order?.merchant_order_id;
-  if (paymentSessionId) {
-    await fulfillPaymentSession(paymentSessionId, String(obj.id));
+  if (!paymentSessionId) {
+    next(new ApiError('Paymob callback missing merchant_order_id', 400));
+    return false;
   }
+
+  const session = await PaymentSession.findById(paymentSessionId);
+  if (!session) {
+    next(new ApiError(`No payment session found with id: ${paymentSessionId}`, 404));
+    return false;
+  }
+
+  if (session.provider !== 'paymob') {
+    next(new ApiError('Payment session provider mismatch', 400));
+    return false;
+  }
+
+  const paidCents = Number(obj.amount_cents);
+  const expectedCents = toMinorUnits(session.totalPrice);
+  if (!Number.isFinite(paidCents) || paidCents !== expectedCents) {
+    next(new ApiError('Paymob payment amount does not match session total', 400));
+    return false;
+  }
+
+  await fulfillPaymentSession(paymentSessionId, String(obj.id));
   return true;
 };
 

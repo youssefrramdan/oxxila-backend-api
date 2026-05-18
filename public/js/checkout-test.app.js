@@ -432,9 +432,26 @@ async function loadMyOrders() {
     .join('');
 }
 
-function checkStripeReturn() {
-  const psId = sessionStorage.getItem('oxxila_payment_session');
+function checkPaymentReturn() {
   const params = new URLSearchParams(location.search);
+  const paymobSessionId = params.get('paymentSessionId');
+  const paymobStatus = params.get('payment');
+
+  if (paymobSessionId && paymobStatus) {
+    sessionStorage.setItem('oxxila_payment_session', paymobSessionId);
+    document.getElementById('return-alert').style.display = '';
+    if (paymobStatus === 'completed') {
+      document.getElementById('return-msg').textContent = 'Back from Paymob — verifying…';
+      pollPaymentSession(paymobSessionId);
+    } else {
+      document.getElementById('return-msg').textContent = 'Paymob payment failed';
+      showToast('Payment failed', 'err');
+    }
+    history.replaceState({}, '', location.pathname);
+    return;
+  }
+
+  const psId = sessionStorage.getItem('oxxila_payment_session');
   if (psId && (params.get('session_id') || params.get('paid') === '1')) {
     document.getElementById('return-alert').style.display = '';
     document.getElementById('return-msg').textContent = 'Back from Stripe — verifying…';
@@ -462,4 +479,4 @@ if (token) {
   loadCountries();
   loadMyOrders();
 }
-checkStripeReturn();
+checkPaymentReturn();
