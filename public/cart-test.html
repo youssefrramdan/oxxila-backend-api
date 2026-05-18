@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oxxila — Shop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0c0c10;
+  --surface:#13131c;
+  --card:#18181f;
+  --card2:#1e1e2a;
+  --border:#23232f;
+  --border2:#2c2c3a;
+  --accent:#7c6dff;
+  --accent-dim:rgba(124,109,255,.13);
+  --accent-border:rgba(124,109,255,.3);
+  --text:#e4e4f0;
+  --muted:#5e5e7a;
+  --muted2:#3a3a52;
+  --green:#34d399;
+  --green-bg:rgba(52,211,153,.08);
+  --green-border:rgba(52,211,153,.2);
+  --red:#f87171;
+  --red-bg:rgba(248,113,113,.08);
+  --amber:#fbbf24;
+  --font:'DM Sans',system-ui,sans-serif;
+  --mono:'DM Mono',monospace;
+}
+
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+
+/* ── TOP BAR ── */
+.topbar{
+  position:sticky;top:0;z-index:40;
+  background:rgba(13,13,16,.85);backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;height:60px;
+}
+.brand{font-size:18px;font-weight:600;letter-spacing:-.03em;color:var(--text);}
+.brand span{color:var(--accent);}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.login-pill{display:flex;align-items:center;gap:7px;padding:6px 14px;border-radius:20px;background:var(--card);border:1px solid var(--border2);font-size:12px;font-weight:500;cursor:pointer;color:var(--muted);transition:all .15s;}
+.login-pill:hover{color:var(--text);border-color:var(--accent-border);}
+.login-pill.logged{color:var(--green);border-color:var(--green-border);background:var(--green-bg);}
+.cart-btn{
+  position:relative;width:40px;height:40px;border-radius:12px;
+  background:var(--card);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--muted);font-size:18px;transition:all .15s;
+}
+.cart-btn:hover{color:var(--text);border-color:var(--accent-border);background:var(--accent-dim);}
+.cart-count{
+  position:absolute;top:-6px;right:-6px;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--accent);color:#fff;
+  font-size:10px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--bg);
+  opacity:0;transform:scale(0);transition:all .2s cubic-bezier(.34,1.56,.64,1);
+}
+.cart-count.show{opacity:1;transform:scale(1);}
+
+/* ── LOGIN MODAL ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:60;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;backdrop-filter:blur(4px);
+}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal{
+  background:var(--surface);border:1px solid var(--border2);border-radius:16px;
+  padding:28px;width:340px;
+  transform:translateY(12px);transition:transform .25s;
+}
+.modal-overlay.open .modal{transform:translateY(0);}
+.modal h3{font-size:16px;font-weight:600;margin-bottom:6px;}
+.modal p{font-size:12px;color:var(--muted);margin-bottom:20px;}
+.modal-close{float:right;cursor:pointer;color:var(--muted);font-size:18px;margin-top:-2px;}
+.form-group{margin-bottom:12px;}
+.form-label{font-size:10px;font-weight:500;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em;}
+.form-input{width:100%;background:var(--card);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);outline:none;font-family:var(--font);transition:border .15s;}
+.form-input:focus{border-color:var(--accent);}
+.form-input::placeholder{color:var(--muted2);}
+.btn-full{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);transition:opacity .15s;margin-top:4px;}
+.btn-full:hover{opacity:.85;}
+.modal-err{font-size:11px;color:var(--red);margin-top:8px;display:none;}
+.modal-err.show{display:block;}
+.base-row{margin-bottom:16px;}
+
+/* ── MAIN ── */
+.main{padding:32px;max-width:1280px;margin:0 auto;}
+.section-title{font-size:22px;font-weight:600;letter-spacing:-.02em;margin-bottom:6px;}
+.section-sub{font-size:13px;color:var(--muted);margin-bottom:24px;}
+
+/* ── PRODUCTS GRID ── */
+.products-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:14px;
+}
+.product-card{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;
+  overflow:hidden;transition:all .2s;cursor:pointer;
+}
+.product-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.3);}
+.product-img{
+  height:180px;background:var(--card2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:40px;position:relative;overflow:hidden;
+}
+.product-img img{width:100%;height:100%;object-fit:cover;}
+.offer-badge{
+  position:absolute;top:10px;left:10px;
+  background:var(--accent);color:#fff;
+  font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;
+}
+.out-of-stock-overlay{
+  position:absolute;inset:0;background:rgba(12,12,16,.7);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;
+}
+.product-body{padding:12px 14px 14px;}
+.product-name{font-size:13px;font-weight:500;margin-bottom:4px;line-height:1.4;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.product-brand{font-size:11px;color:var(--muted);margin-bottom:10px;}
+.product-footer{display:flex;align-items:center;justify-content:space-between;}
+.price-wrap{}
+.price-now{font-size:15px;font-weight:600;font-family:var(--mono);}
+.price-was{font-size:11px;color:var(--muted);text-decoration:line-through;font-family:var(--mono);margin-left:5px;}
+.add-btn{
+  width:32px;height:32px;border-radius:9px;
+  background:var(--accent-dim);border:1px solid var(--accent-border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--accent);font-size:16px;
+  transition:all .15s;flex-shrink:0;
+}
+.add-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
+.add-btn:active{transform:scale(.9);}
+.add-btn.added{background:var(--green-bg);border-color:var(--green-border);color:var(--green);}
+
+/* ── LOADING / EMPTY ── */
+.skeleton{animation:pulse 1.4s ease infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.skel-img{height:180px;background:var(--card2);border-radius:8px;}
+.skel-line{height:12px;background:var(--card2);border-radius:4px;margin-bottom:8px;}
+.skel-line.w60{width:60%;}
+.skel-line.w40{width:40%;}
+.empty-state{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-state i{font-size:36px;display:block;margin-bottom:12px;color:var(--muted2);}
+
+/* ── CART DRAWER ── */
+.cart-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;
+  opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(2px);
+}
+.cart-overlay.open{opacity:1;pointer-events:all;}
+.cart-drawer{
+  position:fixed;top:0;right:0;height:100vh;width:380px;
+  background:var(--surface);border-left:1px solid var(--border);
+  z-index:51;display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);
+}
+.cart-drawer.open{transform:translateX(0);}
+.cart-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 20px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.cart-header h3{font-size:15px;font-weight:600;}
+.cart-header-right{display:flex;align-items:center;gap:8px;}
+.clear-btn{font-size:11px;color:var(--muted);cursor:pointer;padding:4px 8px;border-radius:5px;transition:all .15s;}
+.clear-btn:hover{color:var(--red);background:var(--red-bg);}
+.close-btn{
+  width:28px;height:28px;border-radius:7px;
+  background:var(--card);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--muted);font-size:15px;transition:all .15s;
+}
+.close-btn:hover{color:var(--text);}
+.cart-body{flex:1;overflow-y:auto;padding:16px;}
+.cart-empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;color:var(--muted);gap:10px;
+}
+.cart-empty i{font-size:40px;color:var(--muted2);}
+.cart-empty p{font-size:13px;}
+
+/* CART ITEM */
+.cart-item{
+  display:flex;gap:12px;padding:12px 0;
+  border-bottom:1px solid var(--border);
+}
+.cart-item:last-child{border-bottom:none;}
+.cart-item-img{
+  width:56px;height:56px;border-radius:9px;
+  background:var(--card2);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;overflow:hidden;
+}
+.cart-item-img img{width:100%;height:100%;object-fit:cover;}
+.cart-item-info{flex:1;min-width:0;}
+.cart-item-name{font-size:12px;font-weight:500;margin-bottom:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cart-item-price{font-size:12px;font-family:var(--mono);color:var(--accent);}
+.cart-item-actions{display:flex;align-items:center;gap:6px;margin-top:8px;}
+.qty-btn{
+  width:24px;height:24px;border-radius:6px;
+  background:var(--card2);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--muted);font-size:14px;transition:all .15s;
+}
+.qty-btn:hover{color:var(--text);border-color:var(--border2);}
+.qty-num{font-size:12px;font-family:var(--mono);min-width:20px;text-align:center;}
+.remove-btn{
+  margin-left:auto;width:24px;height:24px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--muted);font-size:14px;transition:all .15s;
+}
+.remove-btn:hover{color:var(--red);}
+.item-total{font-size:11px;font-family:var(--mono);color:var(--muted);margin-top:2px;}
+
+/* CART FOOTER */
+.cart-footer{
+  padding:16px 20px;border-top:1px solid var(--border);flex-shrink:0;
+}
+.cart-summary{margin-bottom:14px;}
+.summary-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;}
+.summary-row.total{font-size:14px;font-weight:600;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.summary-row span:last-child{font-family:var(--mono);}
+.checkout-btn{
+  width:100%;padding:12px;background:var(--accent);color:#fff;
+  border:none;border-radius:10px;font-size:13px;font-weight:600;
+  cursor:pointer;font-family:var(--font);transition:opacity .15s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.checkout-btn:hover{opacity:.85;}
+.checkout-btn:disabled{opacity:.4;cursor:not-allowed;}
+.login-note{font-size:11px;color:var(--muted);text-align:center;margin-top:8px;}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:var(--card2);border:1px solid var(--border2);border-radius:10px;
+  padding:10px 18px;font-size:12px;font-weight:500;
+  opacity:0;pointer-events:none;transition:all .25s;z-index:100;
+  white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:var(--green-border);color:var(--green);}
+.toast.err{border-color:rgba(248,113,113,.3);color:var(--red);}
+
+/* LOADING SPINNER */
+.spinner{
+  width:18px;height:18px;border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;
+  animation:spin .6s linear infinite;display:inline-block;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+</style>
+</head>
+<body>
+
+<!-- ── TOPBAR ── -->
+<div class="topbar">
+  <div class="brand">Oxx<span>i</span>la</div>
+  <div class="topbar-right">
+    <div class="login-pill" id="login-pill" onclick="openLogin()">
+      <i class="ti ti-user"></i>
+      <span id="login-label">Login</span>
+    </div>
+    <div class="cart-btn" onclick="openCart()">
+      <i class="ti ti-shopping-cart"></i>
+      <div class="cart-count" id="cart-count">0</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN ── -->
+<div class="main">
+  <div class="section-title">Shop</div>
+  <div class="section-sub">Skincare & cosmetics — add to cart and checkout</div>
+  <div class="products-grid" id="products-grid">
+    <!-- skeletons -->
+    ${Array(8).fill(0).map(()=>`
+    <div class="product-card skeleton">
+      <div class="skel-img"></div>
+      <div class="product-body">
+        <div class="skel-line"></div>
+        <div class="skel-line w60"></div>
+        <div class="skel-line w40"></div>
+      </div>
+    </div>`).join('')}
+  </div>
+</div>
+
+<!-- ── LOGIN MODAL ── -->
+<div class="modal-overlay" id="login-modal" onclick="e=>e.target===this&&closeLogin()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <span class="modal-close" onclick="closeLogin()"><i class="ti ti-x"></i></span>
+    <h3>Sign in</h3>
+    <p>Login to manage your cart and orders</p>
+    <div class="base-row">
+      <label class="form-label">API Base URL</label>
+      <input class="form-input" id="base-url" value="http://localhost:3000/api/v1">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="login-email" value="user@oxxila.com" type="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="login-pass" type="password" value="User@1234">
+    </div>
+    <button class="btn-full" id="login-btn" onclick="doLogin()">Sign in</button>
+    <div class="modal-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ── CART OVERLAY + DRAWER ── -->
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+<div class="cart-drawer" id="cart-drawer">
+  <div class="cart-header">
+    <h3>Cart <span id="cart-items-count" style="color:var(--muted);font-weight:400;font-size:13px"></span></h3>
+    <div class="cart-header-right">
+      <span class="clear-btn" onclick="clearCart()">Clear all</span>
+      <div class="close-btn" onclick="closeCart()"><i class="ti ti-x"></i></div>
+    </div>
+  </div>
+  <div class="cart-body" id="cart-body">
+    <div class="cart-empty"><i class="ti ti-shopping-cart-off"></i><p>Your cart is empty</p></div>
+  </div>
+  <div class="cart-footer">
+    <!-- COUPON -->
+    <div id="coupon-section" style="margin-bottom:14px;display:none">
+      <div id="coupon-applied" style="display:none;
+        background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);
+        border-radius:8px;padding:10px 12px;
+        display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:#34d399" id="coupon-code-display"></div>
+          <div style="font-size:10px;color:var(--muted)" id="coupon-discount-display"></div>
+        </div>
+        <div onclick="doRemoveCoupon()" style="cursor:pointer;color:var(--muted);font-size:18px">
+          <i class="ti ti-x"></i>
+        </div>
+      </div>
+      <div id="coupon-input-row" style="display:flex;gap:8px">
+        <input class="form-input" id="coupon-input" placeholder="Enter coupon code"
+          style="text-transform:uppercase;font-family:var(--mono);font-size:12px"
+          onkeydown="if(event.key==='Enter')doApplyCoupon()">
+        <button onclick="doApplyCoupon()" style="
+          padding:0 14px;background:var(--accent);color:#fff;border:none;
+          border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
+          font-family:var(--font);white-space:nowrap;transition:opacity .15s"
+          onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'"
+          id="coupon-apply-btn">Apply</button>
+      </div>
+    </div>
+    <div class="cart-summary" id="cart-summary" style="display:none">
+      <div class="summary-row"><span>Subtotal</span><span id="cart-subtotal">0 EGP</span></div>
+      <div class="summary-row"><span>Shipping</span><span style="color:var(--muted)">Calculated at checkout</span></div>
+      <div class="summary-row" id="discount-row" style="display:none;color:#34d399">
+        <span>Discount</span>
+        <span id="cart-discount">-0 EGP</span>
+      </div>
+      <div class="summary-row total"><span>Total</span><span id="cart-total">0 EGP</span></div>
+    </div>
+    <button class="checkout-btn" id="checkout-btn" disabled>
+      <i class="ti ti-credit-card"></i> Proceed to Checkout
+    </button>
+    <p class="login-note" id="login-note" style="display:none">
+      <i class="ti ti-info-circle"></i> Login to checkout
+    </p>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──
+let token = ''
+let cartData = null
+let productsData = []
+
+const BASE = () => document.getElementById('base-url')?.value || 'http://localhost:3000/api/v1'
+
+// ── API HELPER ──
+async function api(method, path, body, pub = false) {
+  const headers = { 'Content-Type': 'application/json' }
+  if (!pub && token) headers['Authorization'] = 'Bearer ' + token
+  try {
+    const res = await fetch(BASE() + path, {
+      method, headers,
+      body: body ? JSON.stringify(body) : undefined,
+    })
+    return await res.json()
+  } catch (e) {
+    return { error: true, message: 'Network error — is the server running?' }
+  }
+}
+
+// ── TOAST ──
+let toastTimer
+function showToast(msg, type = 'ok') {
+  const el = document.getElementById('toast')
+  el.textContent = msg
+  el.className = 'toast show ' + type
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2800)
+}
+
+// ── LOGIN ──
+function openLogin() {
+  if (token) { doLogout(); return; }
+  document.getElementById('login-modal').classList.add('open')
+}
+function closeLogin() {
+  document.getElementById('login-modal').classList.remove('open')
+}
+
+async function doLogin() {
+  const btn = document.getElementById('login-btn')
+  const err = document.getElementById('login-err')
+  btn.innerHTML = '<div class="spinner"></div>'
+  btn.disabled = true
+  err.classList.remove('show')
+
+  const data = await api('POST', '/auth/login', {
+    email: document.getElementById('login-email').value,
+    password: document.getElementById('login-pass').value,
+  }, true)
+
+  btn.innerHTML = 'Sign in'
+  btn.disabled = false
+
+  if (data?.data?.accessToken || data?.token) {
+    token = data.data?.accessToken || data.token
+    const pill = document.getElementById('login-pill')
+    pill.classList.add('logged')
+    document.getElementById('login-label').textContent = 'Logged in'
+    closeLogin()
+    showToast('Logged in successfully')
+    loadCart()
+  } else {
+    err.textContent = data?.message || 'Login failed'
+    err.classList.add('show')
+  }
+}
+
+function doLogout() {
+  token = ''
+  cartData = null
+  document.getElementById('login-pill').classList.remove('logged')
+  document.getElementById('login-label').textContent = 'Login'
+  updateCartUI()
+  showToast('Logged out', 'err')
+}
+
+// ── PRODUCTS ──
+async function loadProducts() {
+  const data = await api('GET', '/products?limit=12', null, true)
+  const grid = document.getElementById('products-grid')
+
+  if (!data?.data?.length) {
+    grid.innerHTML = `<div class="empty-state"><i class="ti ti-package-off"></i><p>No products found — make sure the server is running</p></div>`
+    return
+  }
+
+  productsData = data.data
+  grid.innerHTML = productsData.map(p => renderProductCard(p)).join('')
+}
+
+function renderProductCard(p) {
+  const price = p.priceAfterDiscount ?? p.price
+  const hasOffer = p.priceAfterDiscount && p.priceAfterDiscount < p.price
+  const outOfStock = p.stock === 0
+  const img = p.images?.[0] ? `<img src="${p.images[0]}" alt="${p.name}" onerror="this.parentNode.innerHTML='🧴'">` : '🧴'
+  const discount = hasOffer ? Math.round((1 - p.priceAfterDiscount / p.price) * 100) : 0
+
+  return `
+    <div class="product-card" id="pc-${p._id}">
+      <div class="product-img">
+        ${img}
+        ${hasOffer ? `<div class="offer-badge">-${discount}%</div>` : ''}
+        ${outOfStock ? `<div class="out-of-stock-overlay">Out of Stock</div>` : ''}
+      </div>
+      <div class="product-body">
+        <div class="product-name" title="${p.name}">${p.name}</div>
+        <div class="product-brand">${p.brand?.name || p.category?.name || ''}</div>
+        <div class="product-footer">
+          <div class="price-wrap">
+            <span class="price-now">${price} EGP</span>
+            ${hasOffer ? `<span class="price-was">${p.price}</span>` : ''}
+          </div>
+          <div class="add-btn ${outOfStock ? 'disabled' : ''}" id="add-${p._id}"
+            onclick="${outOfStock ? '' : `addToCart('${p._id}', this)`}"
+            title="${outOfStock ? 'Out of stock' : 'Add to cart'}"
+            style="${outOfStock ? 'opacity:.3;cursor:not-allowed' : ''}">
+            <i class="ti ti-plus"></i>
+          </div>
+        </div>
+      </div>
+    </div>`
+}
+
+// ── CART ──
+async function loadCart() {
+  if (!token) return
+  const data = await api('GET', '/cart')
+  if (data?.data) {
+    cartData = data.data
+    updateCartUI()
+  }
+}
+
+async function addToCart(productId, btn) {
+  if (!token) {
+    showToast('Please login first', 'err')
+    openLogin()
+    return
+  }
+
+  btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px"></div>'
+  btn.style.pointerEvents = 'none'
+
+  const data = await api('POST', '/cart', { productId, quantity: 1 })
+
+  if (data?.data) {
+    cartData = data.data
+    updateCartUI()
+    btn.innerHTML = '<i class="ti ti-check"></i>'
+    btn.classList.add('added')
+    showToast('Added to cart')
+    // open cart drawer briefly
+    openCart()
+    setTimeout(() => {
+      btn.innerHTML = '<i class="ti ti-plus"></i>'
+      btn.classList.remove('added')
+      btn.style.pointerEvents = ''
+    }, 1500)
+  } else {
+    btn.innerHTML = '<i class="ti ti-plus"></i>'
+    btn.style.pointerEvents = ''
+    showToast(data?.message || 'Failed to add', 'err')
+  }
+}
+
+async function updateQty(itemId, delta) {
+  if (!token || !cartData) return
+  const item = cartData.items.find(i => i._id === itemId)
+  if (!item) return
+  const newQty = item.quantity + delta
+  if (newQty < 1) { removeItem(itemId); return; }
+
+  const data = await api('PUT', `/cart/${itemId}`, { quantity: newQty })
+  if (data?.data) { cartData = data.data; updateCartUI(); }
+  else showToast(data?.message || 'Error', 'err')
+}
+
+async function removeItem(itemId) {
+  const data = await api('DELETE', `/cart/${itemId}`)
+  if (data?.data !== undefined) {
+    cartData = data.data
+    updateCartUI()
+    showToast('Item removed')
+  } else showToast(data?.message || 'Error', 'err')
+}
+
+async function clearCart() {
+  if (!token || !cartData?.items?.length) return
+  const data = await api('DELETE', '/cart')
+  if (data?.message) {
+    cartData = { items: [], totalPrice: 0 }
+    updateCartUI()
+    showToast('Cart cleared')
+  }
+}
+
+async function doApplyCoupon() {
+  const code = document.getElementById('coupon-input').value.trim()
+  if (!code) return
+  const btn = document.getElementById('coupon-apply-btn')
+  btn.textContent = '...'
+  btn.disabled = true
+  const data = await api('POST', '/cart/coupon', { code })
+  btn.textContent = 'Apply'
+  btn.disabled = false
+  if (data?.data) {
+    cartData = data.data
+    updateCartUI()
+    showToast('Coupon applied!')
+  } else {
+    showToast(data?.message || 'Invalid coupon', 'err')
+  }
+}
+
+async function doRemoveCoupon() {
+  const data = await api('DELETE', '/cart/coupon')
+  if (data?.data) {
+    cartData = data.data
+    updateCartUI()
+    showToast('Coupon removed')
+  }
+}
+
+// ── CART UI ──
+function updateCartUI() {
+  const items = cartData?.items || []
+  const total = cartData?.totalPrice || 0
+  const count = items.length
+
+  // count badge
+  const badge = document.getElementById('cart-count')
+  badge.textContent = count
+  badge.classList.toggle('show', count > 0)
+
+  // header count
+  document.getElementById('cart-items-count').textContent = count ? `(${count})` : ''
+
+  // body
+  const body = document.getElementById('cart-body')
+  if (!items.length) {
+    body.innerHTML = `<div class="cart-empty"><i class="ti ti-shopping-cart-off"></i><p>Your cart is empty</p></div>`
+  } else {
+    body.innerHTML = items.map(item => {
+      const img = item.product?.images?.[0]
+        ? `<img src="${item.product.images[0]}" alt="" onerror="this.parentNode.innerHTML='🧴'">`
+        : '🧴'
+      const itemTotal = (item.price * item.quantity).toFixed(0)
+      return `
+        <div class="cart-item">
+          <div class="cart-item-img">${img}</div>
+          <div class="cart-item-info">
+            <div class="cart-item-name">${item.product?.name || 'Product'}</div>
+            <div class="cart-item-price">${item.price} EGP</div>
+            <div class="cart-item-actions">
+              <div class="qty-btn" onclick="updateQty('${item._id}', -1)"><i class="ti ti-minus"></i></div>
+              <span class="qty-num">${item.quantity}</span>
+              <div class="qty-btn" onclick="updateQty('${item._id}', 1)"><i class="ti ti-plus"></i></div>
+              <div class="remove-btn" onclick="removeItem('${item._id}')"><i class="ti ti-trash"></i></div>
+            </div>
+            <div class="item-total">Total: ${itemTotal} EGP</div>
+          </div>
+        </div>`
+    }).join('')
+  }
+
+  // footer
+  const summary = document.getElementById('cart-summary')
+  const checkoutBtn = document.getElementById('checkout-btn')
+  const loginNote = document.getElementById('login-note')
+
+  summary.style.display = items.length ? '' : 'none'
+
+  // coupon section
+  const couponSection   = document.getElementById('coupon-section')
+  const couponApplied   = document.getElementById('coupon-applied')
+  const couponInputRow  = document.getElementById('coupon-input-row')
+  const discountRow     = document.getElementById('discount-row')
+
+  couponSection.style.display = items.length && token ? '' : 'none'
+
+  if (cartData?.couponCode) {
+    couponApplied.style.display = 'flex'
+    couponInputRow.style.display = 'none'
+    document.getElementById('coupon-code-display').textContent = cartData.couponCode
+    document.getElementById('coupon-discount-display').textContent = `-${cartData.discountAmount} EGP saved`
+    discountRow.style.display = ''
+    document.getElementById('cart-discount').textContent = `-${cartData.discountAmount} EGP`
+  } else {
+    couponApplied.style.display = 'none'
+    couponInputRow.style.display = 'flex'
+    discountRow.style.display = 'none'
+    document.getElementById('coupon-input').value = ''
+  }
+
+  // subtotal + total
+  document.getElementById('cart-subtotal').textContent = (cartData?.subtotal || total) + ' EGP'
+  document.getElementById('cart-total').textContent    = (cartData?.totalPrice ?? total) + ' EGP'
+
+  checkoutBtn.disabled = !items.length || !token
+  loginNote.style.display = items.length && !token ? '' : 'none'
+}
+
+function openCart() {
+  document.getElementById('cart-overlay').classList.add('open')
+  document.getElementById('cart-drawer').classList.add('open')
+}
+
+function closeCart() {
+  document.getElementById('cart-overlay').classList.remove('open')
+  document.getElementById('cart-drawer').classList.remove('open')
+}
+
+// ── INIT ──
+loadProducts()
+loadCart()
+</script>
+</body>
+</html>

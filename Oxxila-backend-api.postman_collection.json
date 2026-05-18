@@ -1,11 +1,11 @@
 {
   "info": {
-    "_postman_id": "123a1cfe-2324-4edb-82f2-570f624641e7",
+    "_postman_id": "4062f907-628a-430c-9f5d-c9c39c20a46e",
     "name": "Oxxila-backend-api",
-    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n- **FAQs** — public list per product; user **ask specialist** (email to `ADMIN_EMAIL`); admin CRUD on `/faqs` + create under product.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
+    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n- **FAQs** — public list per product; user **ask specialist** (email to `ADMIN_EMAIL`); admin CRUD on `/faqs` + create under product.\n    \n- **Coupons** — admin CRUD. User apply/remove on **Cart** (`POST /cart/coupon`, `DELETE /cart/coupon`).\\n    \\n- **Shipping (Checkout)** — public countries, governorates, zones, resolve price, carriers.\\n    \\n- **Shipping Admin** — countries, governorates, districts, carriers, coverage, settings (/api/v1/admin/*).\\n    - **Cart** — authenticated shopping cart: add/update/remove lines, apply/remove coupon, clear cart. Line prices sync from product on every read/write.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "54107413",
-    "_collection_link": "https://go.postman.co/collection/54107413-123a1cfe-2324-4edb-82f2-570f624641e7?source=collection_link"
+    "_collection_link": "https://go.postman.co/collection/54107413-4062f907-628a-430c-9f5d-c9c39c20a46e?source=collection_link"
   },
   "item": [
     {
@@ -2816,6 +2816,1236 @@
         }
       ],
       "description": "Self-service endpoints. All require a valid Bearer token. Includes browsing history and recommendations (history is built when you open a product detail with the same token)."
+    },
+    {
+      "name": "Cart",
+      "item": [
+        {
+          "name": "Get Cart",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart"
+              ]
+            },
+            "description": "**User** Bearer. Returns populated cart with `subtotal`, `discountAmount`, `totalPrice`, and optional `couponCode`. Line `price` is synced from `product.priceAfterDiscount ?? product.price`. Empty cart → `{ items: [], subtotal: 0, discountAmount: 0, totalPrice: 0, couponCode: null }`."
+          },
+          "response": []
+        },
+        {
+          "name": "Add to Cart",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res?.data?._id) pm.environment.set('cartId', res.data._id);",
+                  "const items = res?.data?.items;",
+                  "if (items?.length) pm.environment.set('cartItemId', items[items.length - 1]._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"quantity\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart"
+              ]
+            },
+            "description": "**User** Bearer. Body `{ productId, quantity? }` — `quantity` defaults to `1`. Creates cart or merges quantity on existing line. `404` inactive/missing product; `400` insufficient stock."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Cart Item",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/:itemId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                ":itemId"
+              ],
+              "variable": [
+                {
+                  "key": "itemId",
+                  "value": "{{cartItemId}}",
+                  "description": "Cart line subdocument _id from Get/Add Cart"
+                }
+              ]
+            },
+            "description": "**User** Bearer. Body `{ quantity }` — updates one line. Same stock/active rules as add. `404` if cart or item missing."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Cart Item",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/:itemId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                ":itemId"
+              ],
+              "variable": [
+                {
+                  "key": "itemId",
+                  "value": "{{cartItemId}}",
+                  "description": "Cart line subdocument _id"
+                }
+              ]
+            },
+            "description": "**User** Bearer. Removes one line; response includes remaining `items`, `subtotal`, and `totalPrice`."
+          },
+          "response": []
+        },
+        {
+          "name": "Apply Coupon to Cart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"SAVE10\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/coupon",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                "coupon"
+              ]
+            },
+            "description": "**User** Bearer. Body `{ code }` — persists coupon on the cart (`couponCode`, `couponId`, `discountAmount`). Validates expiry, usage cap, per-user reuse, and `minOrderAmount` against cart subtotal. Does **not** increment `usageCount` (that runs at order commit). `400` empty cart or invalid coupon."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Coupon from Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart/coupon",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart",
+                "coupon"
+              ]
+            },
+            "description": "**User** Bearer. Clears `couponCode`, `couponId`, and `discountAmount` on the cart. `404` if no cart exists."
+          },
+          "response": []
+        },
+        {
+          "name": "Clear Cart",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/cart",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "cart"
+              ]
+            },
+            "description": "**User** Bearer. Deletes the entire cart document for the current user."
+          },
+          "response": []
+        }
+      ],
+      "description": "`/api/v1/cart` — all routes require Bearer token. Env: `{{productId}}`, `{{cartItemId}}`, `{{cartId}}`. Test UI: `GET /cart-test.html`."
+    },
+    {
+      "name": "Coupons",
+      "item": [
+        {
+          "name": "Get All Coupons",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coupons?page=1&limit=10&sort=-createdAt",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coupons"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "sort",
+                  "value": "-createdAt"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "keyword",
+                  "value": "SAVE",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**Admin** Bearer. Paginated list via `ApiFeatures` (`filter`, `sort`, `paginate`)."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Coupon",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res?.data?._id) pm.environment.set('couponId', res.data._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"SAVE10\",\n  \"discountType\": \"percentage\",\n  \"discountValue\": 10,\n  \"minOrderAmount\": 200,\n  \"maxUsage\": 100,\n  \"expiresAt\": \"2027-12-31T23:59:59.000Z\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coupons",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coupons"
+              ]
+            },
+            "description": "**Admin** Bearer. `code` uppercased in controller. `discountType`: `percentage` | `fixed`. Optional `maxUsage`, `expiresAt`, `minOrderAmount`, `isActive`."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Coupon By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coupons/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coupons",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{couponId}}",
+                  "description": "Coupon Mongo ObjectId"
+                }
+              ]
+            },
+            "description": "**Admin** Bearer."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Coupon",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discountValue\": 15,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coupons/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coupons",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{couponId}}"
+                }
+              ]
+            },
+            "description": "**Admin** Bearer. Partial update — send only fields to change."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Coupon",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/coupons/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "coupons",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{couponId}}"
+                }
+              ]
+            },
+            "description": "**Admin** Bearer."
+          },
+          "response": []
+        }
+      ],
+      "description": "`/api/v1/coupons` — admin CRUD only. User-facing coupon apply/remove lives under **Cart** (`POST /cart/coupon`, `DELETE /cart/coupon`). Env: `{{couponId}}`."
+    },
+    {
+      "name": "Shipping (Checkout)",
+      "item": [
+        {
+          "name": "Get Countries",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipping/countries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipping",
+                "countries"
+              ]
+            },
+            "description": "Public. Active countries only — `name`, `code`, `flag`, `currency`."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Governorates by Country",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipping/countries/:countryId/governorates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipping",
+                "countries",
+                ":countryId",
+                "governorates"
+              ],
+              "variable": [
+                {
+                  "key": "countryId",
+                  "value": "{{countryId}}"
+                }
+              ]
+            },
+            "description": "Public. Active governorates with `name`, `shippingPrice`."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Zones by Governorate",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipping/governorates/:governorateId/zones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipping",
+                "governorates",
+                ":governorateId",
+                "zones"
+              ],
+              "variable": [
+                {
+                  "key": "governorateId",
+                  "value": "{{governorateId}}"
+                }
+              ]
+            },
+            "description": "Public. If districts exist → `{ hasDistricts: true, districts[], other: { label, shippingPrice } }`. Else → `{ hasDistricts: false, shippingPrice }`."
+          },
+          "response": []
+        },
+        {
+          "name": "Resolve Shipping Price",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipping/resolve?governorateId={{governorateId}}&districtId={{districtId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipping",
+                "resolve"
+              ],
+              "query": [
+                {
+                  "key": "governorateId",
+                  "value": "{{governorateId}}",
+                  "description": "Required"
+                },
+                {
+                  "key": "districtId",
+                  "value": "{{districtId}}",
+                  "description": "Optional — omit or use `other` for governorate fallback"
+                }
+              ]
+            },
+            "description": "Public. `governorateId` required. `districtId` optional — missing/`other`/uncovered → governorate fallback price (`isOther: true`)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Available Carriers",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipping/carriers?governorateId={{governorateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shipping",
+                "carriers"
+              ],
+              "query": [
+                {
+                  "key": "governorateId",
+                  "value": "{{governorateId}}",
+                  "description": "Required"
+                }
+              ]
+            },
+            "description": "Public. Carriers with active coverage for the governorate, filtered by `ShippingSettings` type toggles (`api`, `known`, `internal`)."
+          },
+          "response": []
+        }
+      ],
+      "description": "`/api/v1/shipping` — public checkout reads. Env: `{{countryId}}`, `{{governorateId}}`, `{{districtId}}`."
+    },
+    {
+      "name": "Shipping Admin",
+      "item": [
+        {
+          "name": "Countries",
+          "item": [
+            {
+              "name": "Get All Countries",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/countries",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "countries"
+                  ]
+                },
+                "description": "**Admin** Bearer. All countries (including inactive)."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Country",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?._id) pm.environment.set('countryId', res.data._id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Egypt\",\n  \"code\": \"EG\",\n  \"currency\": \"EGP\",\n  \"flag\": \"🇪🇬\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/countries",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "countries"
+                  ]
+                },
+                "description": "**Admin** Bearer. `code` must be 2 chars (uppercased on save). `400` if code already exists."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Country",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Egypt\",\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/countries/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "countries",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{countryId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Country",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/countries/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "countries",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{countryId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Cascades delete to all governorates and districts."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Governorates by Country",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/countries/:countryId/governorates",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "countries",
+                    ":countryId",
+                    "governorates"
+                  ],
+                  "variable": [
+                    {
+                      "key": "countryId",
+                      "value": "{{countryId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. All governorates for country (including inactive)."
+              },
+              "response": []
+            }
+          ],
+          "description": "`/api/v1/admin/countries`"
+        },
+        {
+          "name": "Governorates",
+          "item": [
+            {
+              "name": "Create Governorate",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?._id) pm.environment.set('governorateId', res.data._id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"country\": \"{{countryId}}\",\n  \"name\": \"Cairo\",\n  \"shippingPrice\": 50\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/governorates",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "governorates"
+                  ]
+                },
+                "description": "**Admin** Bearer. Body `{ country, name, shippingPrice }`. `shippingPrice` is fallback when no districts or when checkout selects Other."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Governorate",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Cairo\",\n  \"shippingPrice\": 60,\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/governorates/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "governorates",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{governorateId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Governorate",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/governorates/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "governorates",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{governorateId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Deletes governorate and all its districts."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Districts by Governorate",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/governorates/:governorateId/districts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "governorates",
+                    ":governorateId",
+                    "districts"
+                  ],
+                  "variable": [
+                    {
+                      "key": "governorateId",
+                      "value": "{{governorateId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. All districts (including `isCovered: false`)."
+              },
+              "response": []
+            }
+          ],
+          "description": "`/api/v1/admin/governorates`"
+        },
+        {
+          "name": "Districts",
+          "item": [
+            {
+              "name": "Create District",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?._id) pm.environment.set('districtId', res.data._id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"governorate\": \"{{governorateId}}\",\n  \"name\": \"Nasr City\",\n  \"shippingPrice\": 40\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/districts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "districts"
+                  ]
+                },
+                "description": "**Admin** Bearer. Body `{ governorate, name, shippingPrice }`. Default `isCovered: true`."
+              },
+              "response": []
+            },
+            {
+              "name": "Update District",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Nasr City\",\n  \"shippingPrice\": 45,\n  \"isCovered\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/districts/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "districts",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{districtId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Set `isCovered: false` to hide from public zone listing."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete District",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/districts/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "districts",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{districtId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer."
+              },
+              "response": []
+            }
+          ],
+          "description": "`/api/v1/admin/districts`"
+        },
+        {
+          "name": "Carriers",
+          "item": [
+            {
+              "name": "Get All Carriers",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/carriers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "carriers"
+                  ]
+                },
+                "description": "**Admin** Bearer. Each carrier includes a `coverage` array of governorate names."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Carrier",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?._id) pm.environment.set('carrierId', res.data._id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Oxxila Delivery\",\n  \"code\": \"OXXILA\",\n  \"type\": \"internal\",\n  \"deliveryDays\": \"1-2 days\",\n  \"logo\": \"https://example.com/logo.png\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/carriers",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "carriers"
+                  ]
+                },
+                "description": "**Admin** Bearer. Create `known` or `internal` carriers. `type: api` carriers (Bosta/Mylerz) are seeded by system — prefer not creating via admin."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Carrier",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Oxxila Delivery\",\n  \"deliveryDays\": \"Same day\",\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/carriers/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "carriers",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{carrierId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. `type` and `apiProvider` cannot be changed."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Carrier",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/carriers/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "carriers",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{carrierId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Deletes carrier and all coverage rows."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Carrier Coverage",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/coverage",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "carriers",
+                    ":id",
+                    "coverage"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{carrierId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Coverage rows with populated governorate `name`."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Carrier Coverage",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"governorateIds\": [\"{{governorateId}}\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/coverage",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "carriers",
+                    ":id",
+                    "coverage"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{carrierId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Replaces all coverage — body `{ governorateIds: [] }`. Empty array clears coverage."
+              },
+              "response": []
+            }
+          ],
+          "description": "`/api/v1/admin/carriers` + coverage. Env: `{{carrierId}}`."
+        },
+        {
+          "name": "Shipping Settings",
+          "item": [
+            {
+              "name": "Get Shipping Settings",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/shipping-settings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "shipping-settings"
+                  ]
+                },
+                "description": "**Admin** Bearer. Toggles `api`, `known`, `internal` carrier visibility at checkout. Auto-creates defaults if missing."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Shipping Settings",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"api\": true,\n  \"known\": true,\n  \"internal\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/shipping-settings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "shipping-settings"
+                  ]
+                },
+                "description": "**Admin** Bearer. Send any subset of `api`, `known`, `internal` booleans."
+              },
+              "response": []
+            }
+          ],
+          "description": "`/api/v1/admin/shipping-settings` — global carrier type toggles."
+        }
+      ],
+      "description": "`/api/v1/admin/*` — all routes require admin Bearer. Ops UI: `GET /shipping-admin.html`. Env: `{{countryId}}`, `{{governorateId}}`, `{{districtId}}`, `{{carrierId}}`."
     }
   ],
   "auth": {
