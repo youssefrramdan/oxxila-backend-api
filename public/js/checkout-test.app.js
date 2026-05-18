@@ -325,7 +325,7 @@ function canRefundOrder(o) {
   return (
     adminToken &&
     o.paymentMethod === 'card' &&
-    o.paymentProvider === 'stripe' &&
+    ['stripe', 'paymob'].includes(o.paymentProvider) &&
     o.paymentStatus === 'paid'
   );
 }
@@ -370,7 +370,7 @@ async function adminLogin() {
   adminToken = accessToken;
   localStorage.setItem('oxxila_admin_token', adminToken);
   updateAdminUI();
-  showToast('Admin signed in — refund enabled');
+  showToast('Admin signed in — Stripe & Paymob refund enabled');
   loadMyOrders();
 }
 

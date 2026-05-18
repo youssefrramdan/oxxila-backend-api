@@ -125,7 +125,7 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
 });
 
 /**
- * @desc    Full refund for a paid Stripe card order (admin)
+ * @desc    Full refund for a paid card order — Stripe or Paymob (admin)
  * @route   POST /api/v1/orders/:id/refund
  * @access  Admin
  */
@@ -133,13 +133,14 @@ export const refundOrder = asyncHandler(async (req, res, next) => {
   const order = await Order.findById(req.params.id);
   if (!order) return next(new ApiError(`No order found with id: ${req.params.id}`, 404));
 
-  const { order: updated, refund, alreadyRefunded } = await processStripeOrderRefund(order);
+  const { order: updated, gatewayRefundId, alreadyRefunded } = await processCardOrderRefund(order);
 
   sendResponse(res, {
     message: alreadyRefunded ? 'Order is already refunded' : 'Order refunded successfully',
     data: {
       order: updated,
-      stripeRefundId: refund?.id ?? null,
+      gatewayRefundId,
+      stripeRefundId: order.paymentProvider === 'stripe' ? gatewayRefundId : null,
     },
   });
 });
