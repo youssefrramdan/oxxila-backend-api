@@ -37,6 +37,11 @@ const carrierSchema = new mongoose.Schema(
       select: false,
       default: null,
     },
+    apiBaseUrl: {
+      type: String,
+      select: false,
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: true,

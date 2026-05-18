@@ -26,6 +26,8 @@ import shippingRouter from './routes/shipping.routes.js';
 import cartRouter from './routes/cart.routes.js';
 import orderRouter from './routes/order.routes.js';
 import returnRouter from './routes/return.routes.js';
+import bostaRouter from './routes/bosta.routes.js';
+import Order from './models/Order.js';
 import {
   stripeWebhook,
   paymobWebhook,
@@ -70,6 +72,25 @@ app.post(
 app.get('/api/v1/webhooks/paymob', paymobRedirect);
 app.post('/api/v1/webhooks/paymob', express.json(), paymobWebhook);
 
+app.post('/api/v1/webhooks/bosta', express.json(), async (req, res) => {
+  try {
+    const { businessReference, state } = req.body;
+    if (businessReference && state?.value) {
+      await Order.findByIdAndUpdate(businessReference, {
+        bostaStatus: state.value,
+        ...(state.value === 'DELIVERED' && {
+          orderStatus: 'delivered',
+          deliveredAt: new Date(),
+        }),
+        ...(state.value === 'RETURNED' && { orderStatus: 'returned' }),
+      });
+    }
+    res.status(200).json({ received: true });
+  } catch {
+    res.status(200).json({ received: true });
+  }
+});
+
 app.use(express.json());
 app.use(cookieParser());
 // Stateless Passport — only used by OAuth routes to populate req.user.
@@ -102,6 +123,10 @@ app.get('/cart-test.html', (req, res) => {
 app.get('/checkout-test.html', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'checkout-test.html'));
 });
+app.get('/bosta-test.html', (req, res) => {
+    res.sendFile(path.join(PUBLIC_DIR, 'bosta-test.html'));
+  });
+
 
 app.use(express.static(PUBLIC_DIR));
 
@@ -123,6 +148,7 @@ app.use('/api/v1/shipping', shippingRouter);
 app.use('/api/v1/cart', cartRouter);
 app.use('/api/v1/orders', orderRouter);
 app.use('/api/v1/returns', returnRouter);
+app.use('/api/v1/bosta', bostaRouter);
 
 app.all(/(.*)/, (req, res, next) => {
   next(new ApiError(`Route ${req.originalUrl} not found`, 404));

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "4062f907-628a-430c-9f5d-c9c39c20a46e",
     "name": "Oxxila-backend-api",
-    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n- **FAQs** — public list per product; user **ask specialist** (email to `ADMIN_EMAIL`); admin CRUD on `/faqs` + create under product.\n    \n- **Coupons** — admin CRUD. User apply/remove on **Cart** (`POST /cart/coupon`, `DELETE /cart/coupon`).\n    \n- **Orders** — COD checkout, card payment sessions (Stripe/Paymob), my-orders, admin list/status/refund. Test UI: `GET /checkout-test.html`.\n    \n- **Returns** — eligible delivered orders (14-day window), partial returns, proof images, pickup/self-ship, admin workflow through refund (Stripe/Paymob auto, COD manual).\n    \n- **Webhooks** — Stripe (`checkout.session.completed`, `charge.refunded`) and Paymob processed callback (provider-signed; not for manual testing without valid signatures).\n    \n- **Shipping (Checkout)** — public countries, governorates, zones, resolve price, carriers.\n    \n- **Shipping Admin** — countries, governorates, districts, carriers, coverage, settings (`/api/v1/admin/*`).\n    \n- **Cart** — authenticated shopping cart: add/update/remove lines, apply/remove coupon, clear cart. Line prices sync from product on every read/write.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
+    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n- **FAQs** — public list per product; user **ask specialist** (email to `ADMIN_EMAIL`); admin CRUD on `/faqs` + create under product.\n    \n- **Coupons** — admin CRUD. User apply/remove on **Cart** (`POST /cart/coupon`, `DELETE /cart/coupon`).\n    \n- **Orders** — COD checkout, card payment sessions (Stripe/Paymob), my-orders, admin list/status/refund. Test UI: `GET /checkout-test.html`.\n    \n- **Returns** — eligible delivered orders (14-day window), partial returns, proof images, pickup/self-ship, admin workflow through refund (Stripe/Paymob auto, COD manual).\n    \n- **Webhooks** — Stripe (`checkout.session.completed`, `charge.refunded`); Paymob processed POST + browser redirect GET (HMAC-signed; not for manual testing without valid signatures).\n    \n- **Shipping (Checkout)** — public countries, governorates, zones, resolve price, carriers.\n    \n- **Shipping Admin** — countries, governorates, districts, carriers, coverage, settings (`/api/v1/admin/*`).\n    \n- **Cart** — authenticated shopping cart: add/update/remove lines, apply/remove coupon, clear cart. Line prices sync from product on every read/write.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "54107413",
     "_collection_link": "https://go.postman.co/collection/54107413-4062f907-628a-430c-9f5d-c9c39c20a46e?source=collection_link"
@@ -1532,7 +1532,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/products/69f3c9a3f63a475a71bc3278",
+              "raw": "{{baseUrl}}/api/v1/products/:id",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -1540,7 +1540,14 @@
                 "api",
                 "v1",
                 "products",
-                "69f3c9a3f63a475a71bc3278"
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{productId}}",
+                  "description": "Product Mongo _id"
+                }
               ]
             },
             "description": "Public. If you send **Bearer** (logged-in user), the server appends this product to **Browsing history**."
@@ -3233,7 +3240,7 @@
                     "payment-session"
                   ]
                 },
-                "description": "**User** Bearer. Snapshots cart into a `PaymentSession` (24h TTL). Returns `paymentSessionId`, `sessionId`, and `url` — open `url` in a browser to pay. Order is created on Stripe webhook `checkout.session.completed`. Card payments must not use `POST /orders` with `paymentMethod: card`."
+                "description": "**User** Bearer. Snapshots cart into a `PaymentSession` (24h TTL). Returns `paymentSessionId`, `provider`, `totalPrice`, `expiresAt`, and `url` (Stripe Checkout) — open `url` in a browser to pay. Order is created on Stripe webhook `checkout.session.completed`. Card payments must not use `POST /orders` with `paymentMethod: card`."
               },
               "response": []
             },
@@ -3278,7 +3285,7 @@
                     "payment-session"
                   ]
                 },
-                "description": "**User** Bearer. Same flow as Stripe but `provider: paymob`. Response includes `orderId` (Paymob order id), `paymentToken`, and `iframeUrl`. Fulfillment runs on Paymob processed webhook when `success: true`."
+                "description": "**User** Bearer. Same flow as Stripe but `provider: paymob`. Response includes `paymentSessionId`, `totalPrice`, `expiresAt`, and `iframeUrl` — open the iframe URL in a browser to pay. Fulfillment runs on Paymob processed webhook or redirect callback when `success: true` and HMAC is valid."
               },
               "response": []
             },
@@ -3443,6 +3450,12 @@
                       "disabled": true
                     },
                     {
+                      "key": "paymentProvider",
+                      "value": "stripe",
+                      "description": "stripe | paymob (card orders only)",
+                      "disabled": true
+                    },
+                    {
                       "key": "paymentStatus",
                       "value": "paid",
                       "disabled": true
@@ -3513,12 +3526,25 @@
                     }
                   ]
                 },
-                "description": "**Admin** Bearer. Body `{ orderStatus }` — one of: `pending`, `processing`, `shipped`, `delivered`, `cancelled`."
+                "description": "**Admin** Bearer. Body `{ orderStatus }` — one of: `pending`, `processing`, `shipped`, `delivered`, `partially_returned`, `returned`, `cancelled`. Setting `delivered` sets `deliveredAt` (starts return window)."
               },
               "response": []
             },
             {
-              "name": "Refund Order (Stripe)",
+              "name": "Refund Order (Card)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "const gatewayRefundId = res?.data?.gatewayRefundId;",
+                      "if (gatewayRefundId) console.log('Gateway refund id:', gatewayRefundId);"
+                    ]
+                  }
+                }
+              ],
               "request": {
                 "method": "POST",
                 "header": [],
@@ -3538,11 +3564,11 @@
                     {
                       "key": "id",
                       "value": "{{orderId}}",
-                      "description": "Paid Stripe card order only"
+                      "description": "Paid card order (Stripe or Paymob)"
                     }
                   ]
                 },
-                "description": "**Admin** Bearer. Full refund via Stripe API for `paymentMethod: card`, `paymentProvider: stripe`, `paymentStatus: paid`. Restores stock and sets `paymentStatus: refunded`, `orderStatus: cancelled`. Idempotent if already refunded. COD orders → `400`."
+                "description": "**Admin** Bearer. Full gateway + DB refund for paid card orders (`paymentProvider: stripe` or `paymob`, `paymentStatus: paid`). Stripe refunds via Payment Intent; Paymob refunds via transaction id in `paymentReference`. Restores stock; sets `paymentStatus: refunded`, `orderStatus: cancelled`. Response includes `gatewayRefundId` and legacy `stripeRefundId` when provider is Stripe. Idempotent if already refunded. COD → `400`."
               },
               "response": []
             }
@@ -5122,7 +5148,125 @@
                 "paymob"
               ]
             },
-            "description": "Public. Paymob processed callback. `type` must be `TRANSACTION`; `obj.success: true` fulfills the payment session. `hmac` must match server-side HMAC of `obj` fields — use Paymob dashboard test callbacks or compute HMAC with `PAYMOB_HMAC_SECRET`. Failed payments set session `failed` when `merchant_order_id` is present."
+            "description": "Public. Paymob **processed** server callback (POST). `type` must be `TRANSACTION`; `obj.success: true` fulfills the payment session. `hmac` must match server-side HMAC of `obj` fields — use Paymob dashboard test callbacks or compute HMAC with `PAYMOB_HMAC_SECRET`. Failed payments set session `failed` when `merchant_order_id` is present."
+          },
+          "response": []
+        },
+        {
+          "name": "Paymob Redirect (browser callback)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/webhooks/paymob?id=&pending=false&amount_cents=&success=true&is_auth=false&is_capture=false&is_standalone_payment=true&is_voided=false&is_refunded=false&is_3d_secure=false&integration_id=&has_parent_transaction=false&order=&merchant_order_id={{paymentSessionId}}&created_at=&currency=EGP&error_occured=false&owner=&source_data.type=&source_data.pan=&source_data.sub_type=&hmac=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "webhooks",
+                "paymob"
+              ],
+              "query": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "Paymob transaction id"
+                },
+                {
+                  "key": "pending",
+                  "value": "false"
+                },
+                {
+                  "key": "amount_cents",
+                  "value": ""
+                },
+                {
+                  "key": "success",
+                  "value": "true"
+                },
+                {
+                  "key": "is_auth",
+                  "value": "false"
+                },
+                {
+                  "key": "is_capture",
+                  "value": "false"
+                },
+                {
+                  "key": "is_standalone_payment",
+                  "value": "true"
+                },
+                {
+                  "key": "is_voided",
+                  "value": "false"
+                },
+                {
+                  "key": "is_refunded",
+                  "value": "false"
+                },
+                {
+                  "key": "is_3d_secure",
+                  "value": "false"
+                },
+                {
+                  "key": "integration_id",
+                  "value": ""
+                },
+                {
+                  "key": "has_parent_transaction",
+                  "value": "false"
+                },
+                {
+                  "key": "order",
+                  "value": "",
+                  "description": "Paymob order id"
+                },
+                {
+                  "key": "merchant_order_id",
+                  "value": "{{paymentSessionId}}",
+                  "description": "PaymentSession Mongo _id"
+                },
+                {
+                  "key": "created_at",
+                  "value": ""
+                },
+                {
+                  "key": "currency",
+                  "value": "EGP"
+                },
+                {
+                  "key": "error_occured",
+                  "value": "false"
+                },
+                {
+                  "key": "owner",
+                  "value": ""
+                },
+                {
+                  "key": "source_data.type",
+                  "value": ""
+                },
+                {
+                  "key": "source_data.pan",
+                  "value": ""
+                },
+                {
+                  "key": "source_data.sub_type",
+                  "value": ""
+                },
+                {
+                  "key": "hmac",
+                  "value": "",
+                  "description": "Required — HMAC-SHA512 over Paymob field order (see PAYMOB_HMAC_SECRET)"
+                }
+              ]
+            },
+            "description": "Public. Paymob **response** redirect after checkout (GET). Verifies `hmac`, fulfills the payment session when `success=true`, then redirects to `PAYMOB_RETURN_URL` (or checkout test page) with `?payment=completed|failed&paymentSessionId=…`. Normally hit by the browser after Paymob payment — not typical Postman testing unless you copy a real redirect URL from Paymob."
           },
           "response": []
         }

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oxxila — Bosta Shipping Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="/css/bosta-test.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Oxx<span>i</span>la<small>Bosta shipping test</small></div>
+  <div class="topbar-right">
+    <a class="nav-link" href="/checkout-test.html"><i class="ti ti-shopping-cart"></i> Checkout</a>
+    <a class="nav-link" href="/shipping-admin.html"><i class="ti ti-truck"></i> Carriers</a>
+    <div class="login-pill" id="login-pill" onclick="openLogin()">
+      <i class="ti ti-shield-lock"></i><span id="login-label">Admin login</span>
+    </div>
+  </div>
+</div>
+
+<main class="main">
+  <header class="page-head">
+    <div>
+      <h1 class="page-title">Orders &amp; Bosta API carrier</h1>
+      <p class="page-sub">Assign shipment → track → simulate webhook status from this dashboard</p>
+    </div>
+    <div class="head-actions">
+      <select class="form-input filter-sel" id="filter-status" onchange="loadOrders()">
+        <option value="">All statuses</option>
+        <option value="pending">pending</option>
+        <option value="processing">processing</option>
+        <option value="shipped">shipped</option>
+        <option value="delivered">delivered</option>
+        <option value="returned">returned</option>
+        <option value="cancelled">cancelled</option>
+      </select>
+      <button class="btn-secondary" onclick="loadOrders()"><i class="ti ti-refresh"></i> Refresh orders</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <section class="card panel-orders">
+      <div class="card-head">
+        <h2>All orders <span class="count" id="orders-count">—</span></h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Customer</th>
+              <th>Status</th>
+              <th>Bosta</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="orders-tbody">
+            <tr><td colspan="5" class="empty-cell">Sign in as admin to load orders</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside class="card panel-detail" id="detail-panel">
+      <div class="card-head">
+        <h2 id="detail-title">Select an order</h2>
+      </div>
+      <div class="card-body" id="detail-body">
+        <p class="hint">Click a row to manage Bosta shipment and simulate webhooks.</p>
+      </div>
+    </aside>
+  </div>
+
+  <section class="card panel-log">
+    <div class="card-head"><h2>API log</h2><button type="button" class="btn-ghost btn-sm" onclick="clearLog()">Clear</button></div>
+    <pre id="api-log" class="api-log">Ready…</pre>
+  </section>
+</main>
+
+<div class="modal-overlay" id="login-modal" onclick="if(event.target===this)closeLogin()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>Admin sign in</h3>
+    <p class="modal-hint">Requires admin role for orders list and ship/cancel endpoints.</p>
+    <div class="form-group">
+      <label class="form-label">API base URL</label>
+      <input class="form-input" id="base-url" value="http://localhost:3000/api/v1">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="login-email" type="email" value="admin@oxxila.local">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="login-pass" type="password">
+    </div>
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">Sign in</button>
+    <p class="modal-err" id="login-err"></p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/js/bosta-test.app.js"></script>
+</body>
+</html>

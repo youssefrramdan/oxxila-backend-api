@@ -64,6 +64,9 @@ const orderSchema = new mongoose.Schema(
       default: 'pending',
     },
     deliveredAt: { type: Date, default: null, index: true },
+    bostaDeliveryId: { type: String, default: null },
+    bostaTrackingNumber: { type: String, default: null },
+    bostaStatus: { type: String, default: null },
   },
   { timestamps: true }
 );
