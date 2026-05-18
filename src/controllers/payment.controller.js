@@ -6,7 +6,11 @@ import sendResponse from '../utils/apiResponse.js';
 import { prepareCheckoutFromCart } from '../utils/checkoutHelpers.js';
 import { constructStripeEvent, resolveCheckoutPaymentReference } from '../utils/stripeClient.js';
 import { syncOrderRefundedFromStripe } from '../utils/orderRefundHelpers.js';
-import { verifyPaymobProcessedHmac } from '../utils/paymobClient.js';
+import {
+  buildPaymobReturnUrl,
+  parsePaymobResponseQuery,
+  verifyPaymobProcessedHmac,
+} from '../utils/paymobClient.js';
 import { fulfillPaymentSession } from '../utils/paymentFulfillment.js';
 import { paymentProviderHandlers } from '../utils/paymentProviders.js';
 
@@ -98,8 +102,31 @@ export const stripeWebhook = asyncHandler(async (req, res) => {
   res.status(200).json({ received: true });
 });
 
+const handlePaymobTransaction = async (obj, hmac, next) => {
+  if (!verifyPaymobProcessedHmac(obj, hmac)) {
+    next(new ApiError('Invalid Paymob signature', 400));
+    return false;
+  }
+
+  if (!obj.success) {
+    if (obj.order?.merchant_order_id) {
+      await PaymentSession.updateOne(
+        { _id: obj.order.merchant_order_id, status: 'pending' },
+        { status: 'failed' }
+      );
+    }
+    return true;
+  }
+
+  const paymentSessionId = obj.order?.merchant_order_id;
+  if (paymentSessionId) {
+    await fulfillPaymentSession(paymentSessionId, String(obj.id));
+  }
+  return true;
+};
+
 /**
- * @desc    Paymob processed callback
+ * @desc    Paymob processed callback (server POST)
  * @route   POST /api/v1/webhooks/paymob
  * @access  Public (HMAC)
  */
@@ -110,26 +137,31 @@ export const paymobWebhook = asyncHandler(async (req, res, next) => {
     return res.status(200).json({ received: true });
   }
 
-  if (!verifyPaymobProcessedHmac(obj, req.body.hmac)) {
-    return next(new ApiError('Invalid Paymob signature', 400));
-  }
-
-  if (!obj.success) {
-    if (obj.order?.merchant_order_id) {
-      await PaymentSession.updateOne(
-        { _id: obj.order.merchant_order_id, status: 'pending' },
-        { status: 'failed' }
-      );
-    }
-    return res.status(200).json({ received: true });
-  }
-
-  const paymentSessionId = obj.order?.merchant_order_id;
-  if (paymentSessionId) {
-    await fulfillPaymentSession(paymentSessionId, String(obj.id));
-  }
-
+  const handled = await handlePaymobTransaction(obj, req.body.hmac, next);
+  if (!handled) return;
   res.status(200).json({ received: true });
+});
+
+/**
+ * @desc    Paymob response callback (browser GET redirect after payment)
+ * @route   GET /api/v1/webhooks/paymob
+ * @access  Public (HMAC)
+ */
+export const paymobRedirect = asyncHandler(async (req, res, next) => {
+  const { obj, hmac } = parsePaymobResponseQuery(req.query);
+
+  if (!obj?.id) {
+    return next(new ApiError('Invalid Paymob callback', 400));
+  }
+
+  const handled = await handlePaymobTransaction(obj, hmac, next);
+  if (!handled) return;
+
+  const returnUrl = buildPaymobReturnUrl({
+    success: obj.success,
+    merchantOrderId: obj.order?.merchant_order_id,
+  });
+  res.redirect(302, returnUrl);
 });
 
 /**

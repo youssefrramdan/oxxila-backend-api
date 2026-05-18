@@ -53,8 +53,7 @@
         <h2>Payment</h2>
         <label class="pay-opt-row active" data-pay="cod"><input type="radio" name="pay" checked> <strong>COD</strong> — creates order immediately</label>
         <label class="pay-opt-row" data-pay="stripe"><input type="radio" name="pay"> <strong>Stripe</strong> — redirect, webhook creates order</label>
-        <label class="pay-opt-row" data-pay="paymob"><input type="radio" name="pay"> <strong>Paymob</strong> — iframe, webhook creates order</label>
-        <div id="paymob-frame-wrap"><iframe id="paymob-frame" title="Paymob payment"></iframe></div>
+        <label class="pay-opt-row" data-pay="paymob"><input type="radio" name="pay"> <strong>Paymob</strong> — new tab, webhook creates order</label>
         <button class="btn-primary" id="place-btn" onclick="placeOrder()" disabled><i class="ti ti-lock"></i> Place order</button>
         <pre id="api-log" class="api-log">API log…</pre>
       </section>

@@ -26,7 +26,11 @@ import shippingRouter from './routes/shipping.routes.js';
 import cartRouter from './routes/cart.routes.js';
 import orderRouter from './routes/order.routes.js';
 import returnRouter from './routes/return.routes.js';
-import { stripeWebhook, paymobWebhook } from './controllers/payment.controller.js';
+import {
+  stripeWebhook,
+  paymobWebhook,
+  paymobRedirect,
+} from './controllers/payment.controller.js';
 import { startOfferCron } from './utils/offerCron.js';
 
 dotenv.config();
@@ -63,6 +67,7 @@ app.post(
   express.raw({ type: 'application/json' }),
   stripeWebhook
 );
+app.get('/api/v1/webhooks/paymob', paymobRedirect);
 app.post('/api/v1/webhooks/paymob', express.json(), paymobWebhook);
 
 app.use(express.json());

@@ -15,7 +15,6 @@ document.querySelectorAll('.pay-opt-row').forEach((el) => {
     el.classList.add('active');
     el.querySelector('input').checked = true;
     selectedPay = el.dataset.pay;
-    document.getElementById('paymob-frame-wrap').style.display = 'none';
   });
 });
 
@@ -289,9 +288,12 @@ async function placeOrder() {
   }
 
   if (selectedPay === 'paymob' && data.data.iframeUrl) {
-    showToast('Complete payment in iframe');
-    document.getElementById('paymob-frame-wrap').style.display = 'block';
-    document.getElementById('paymob-frame').src = data.data.iframeUrl;
+    const payWindow = window.open(data.data.iframeUrl, '_blank', 'noopener,noreferrer');
+    if (!payWindow) {
+      showToast('Allow pop-ups to open Paymob payment', 'err');
+      return;
+    }
+    showToast('Complete payment in the new tab — this page will update when done');
     pollPaymentSession(psId);
   }
 }
@@ -309,7 +311,6 @@ function pollPaymentSession(id) {
       showToast('Order created after payment');
       document.getElementById('return-alert').style.display = '';
       document.getElementById('return-msg').textContent = `Order ${orderId}`;
-      document.getElementById('paymob-frame-wrap').style.display = 'none';
       sessionStorage.removeItem('oxxila_payment_session');
       await loadCart();
       loadMyOrders();
