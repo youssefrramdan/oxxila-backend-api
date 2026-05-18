@@ -491,6 +491,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
       <select class="form-select" id="carrier-type-sel" onchange="onCarrierTypeChange()">
         <option value="known">Known Carrier (manual)</option>
         <option value="internal">Internal Delivery (your staff)</option>
+        <option value="api">API Carrier (Bosta / Mylerz)</option>
       </select>
     </div>
 
@@ -499,22 +500,21 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
       <div class="form-divider">API Configuration</div>
       <div class="form-group">
         <label class="form-label">API Provider</label>
-        <select class="form-select">
-          <option>Bosta</option>
-          <option>Mylerz</option>
+        <select class="form-select" id="carrier-api-provider">
+          <option value="bosta">Bosta</option>
+          <option value="mylerz">Mylerz</option>
         </select>
       </div>
       <div class="form-group">
         <label class="form-label">API Key</label>
-        <input class="form-input" type="password" placeholder="sk-...">
+        <input class="form-input" type="password" id="carrier-api-key" placeholder="Paste API key" autocomplete="off">
       </div>
-      <div class="api-box"><p> Coverage and pricing are fetched automatically from the provider's API. No manual zone selection needed.</p></div>
     </div>
 
     <!-- Known / Internal section -->
     <div id="manual-section">
       <div class="form-divider">Delivery Configuration</div>
-      <div class="form-group">
+      <div class="form-group" id="delivery-days-section">
         <label class="form-label">Expected delivery (business days)</label>
         <div class="day-chips">
           <div class="day-chip sel" onclick="selectDays(this)">1-2</div>

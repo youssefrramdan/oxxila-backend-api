@@ -146,9 +146,9 @@ function renderCarriers() {
       <td><div class="coverage-tags">${(c.coverage || []).map((z) => `<span class="coverage-tag">${esc(z)}</span>`).join('') || '<span style="color:var(--muted2)">-</span>'}</div></td>
       <td><span class="status-badge ${c.active ? 'status-active' : 'status-inactive'}">${c.active ? 'Active' : 'Inactive'}</span></td>
       <td><div class="action-btns">
-        ${c.type !== 'api' ? `<div class="icon-btn primary" title="Edit" onclick="openEditCarrier('${c.id}')"><i class="ti ti-pencil"></i></div>` : ''}
+        <div class="icon-btn primary" title="Edit" onclick="openEditCarrier('${c.id}')"><i class="ti ti-pencil"></i></div>
         <div class="icon-btn" title="Coverage" onclick="openCoverageEditor('${c.id}')"><i class="ti ti-map-pin"></i></div>
-        ${c.type !== 'api' ? `<div class="icon-btn danger" title="Delete" onclick="deleteCarrier('${c.id}')"><i class="ti ti-trash"></i></div>` : ''}
+        <div class="icon-btn danger" title="Delete" onclick="deleteCarrier('${c.id}')"><i class="ti ti-trash"></i></div>
       </div></td>
     </tr>`
     )
@@ -173,12 +173,17 @@ function openAddCarrier() {
   document.getElementById('carrier-drawer-title').textContent = 'Add Carrier';
   document.getElementById('carrier-name').value = '';
   document.getElementById('carrier-code').value = '';
+  document.getElementById('carrier-code').readOnly = false;
   document.getElementById('carrier-type-sel').value = 'known';
+  document.getElementById('carrier-type-sel').disabled = false;
+  document.getElementById('carrier-api-provider').value = 'bosta';
+  document.getElementById('carrier-api-key').value = '';
   document.querySelectorAll('.day-chip').forEach((c, i) => c.classList.toggle('sel', i === 0));
   document.getElementById('carrier-active-toggle').classList.add('on');
   document.getElementById('coverage-chips').innerHTML = '';
   document.getElementById('coverage-govs-wrap').style.display = 'none';
   document.getElementById('coverage-empty-msg').style.display = 'none';
+  document.getElementById('coverage-country-sel').value = '';
   onCarrierTypeChange();
   populateCoverageCountries();
   openDrawer('carrier-drawer');
@@ -186,16 +191,27 @@ function openAddCarrier() {
 
 async function openEditCarrier(id) {
   const c = carriers.find((x) => x.id === id);
-  if (!c || c.type === 'api') return;
+  if (!c) return;
   editingCarrierId = id;
   coverageOnlyMode = false;
   document.getElementById('carrier-drawer-title').textContent = 'Edit Carrier';
   document.getElementById('carrier-name').value = c.name;
   document.getElementById('carrier-code').value = c.code;
+  document.getElementById('carrier-code').readOnly = true;
   document.getElementById('carrier-type-sel').value = c.type;
+  document.getElementById('carrier-type-sel').disabled = true;
+  document.getElementById('carrier-api-key').value = '';
+  document.getElementById('carrier-api-key').placeholder =
+    c.type === 'api' ? 'New API key (optional)' : 'Paste API key';
+  if (c.type === 'api' && c.provider) {
+    document.getElementById('carrier-api-provider').value = c.provider;
+  } else {
+    document.getElementById('carrier-api-provider').value = 'bosta';
+  }
   document.getElementById('carrier-active-toggle').classList.toggle('on', c.active);
   document.querySelectorAll('.day-chip').forEach((chip) => {
-    chip.classList.toggle('sel', chip.textContent.trim() === (c.days || '').replace(/\s*days$/, ''));
+    const d = (c.days || '').replace(/\s*days$/i, '').trim();
+    chip.classList.toggle('sel', d ? chip.textContent.trim() === d : chip.textContent.trim() === '1-2');
   });
   onCarrierTypeChange();
   openDrawer('carrier-drawer');
@@ -211,7 +227,10 @@ async function openCoverageEditor(id) {
   document.getElementById('carrier-type-sel').closest('.form-group').style.display = 'none';
   document.getElementById('api-section').style.display = 'none';
   document.getElementById('manual-section').style.display = '';
-  document.querySelector('.form-group:has(#carrier-active-toggle)')?.closest('.form-group')?.style && (document.querySelector('.toggle-row').closest('.form-group').style.display = 'none');
+  const delSec = document.getElementById('delivery-days-section');
+  if (delSec) delSec.style.display = 'none';
+  const activeGrp = document.querySelector('.toggle-row')?.closest('.form-group');
+  if (activeGrp) activeGrp.style.display = 'none';
   populateCoverageCountries();
   onCarrierTypeChange();
   openDrawer('carrier-drawer');
@@ -229,23 +248,27 @@ async function saveCarrier() {
       return;
     }
 
-    const payload = {
-      name: document.getElementById('carrier-name').value.trim(),
-      code: document.getElementById('carrier-code').value.trim(),
-      type: document.getElementById('carrier-type-sel').value,
-      deliveryDays: getSelectedDeliveryDays(),
-      isActive: document.getElementById('carrier-active-toggle').classList.contains('on'),
-    };
+    const type = document.getElementById('carrier-type-sel').value;
+    const name = document.getElementById('carrier-name').value.trim();
+    const code = document.getElementById('carrier-code').value.trim();
+    const isActive = document.getElementById('carrier-active-toggle').classList.contains('on');
     const govIds = [...document.querySelectorAll('#coverage-chips .cov-chip.sel')].map((c) => c.dataset.id);
 
     let carrierId = editingCarrierId;
     if (editingCarrierId) {
-      await api('PUT', '/admin/carriers/' + editingCarrierId, {
-        name: payload.name,
-        deliveryDays: payload.deliveryDays,
-        isActive: payload.isActive,
-      });
+      const put = { name, isActive };
+      if (type !== 'api') put.deliveryDays = getSelectedDeliveryDays();
+      const newKey = document.getElementById('carrier-api-key').value.trim();
+      if (type === 'api' && newKey) put.apiKey = newKey;
+      await api('PUT', '/admin/carriers/' + editingCarrierId, put);
     } else {
+      const payload = { name, code, type, isActive };
+      if (type === 'api') {
+        payload.apiProvider = document.getElementById('carrier-api-provider').value;
+        payload.apiKey = document.getElementById('carrier-api-key').value.trim();
+      } else {
+        payload.deliveryDays = getSelectedDeliveryDays();
+      }
       const created = await api('POST', '/admin/carriers', payload);
       carrierId = created.data._id;
     }
@@ -268,8 +291,15 @@ function resetCarrierDrawerForm() {
   coverageOnlyMode = false;
   document.getElementById('carrier-name').closest('.form-group').style.display = '';
   document.getElementById('carrier-code').closest('.form-group').style.display = '';
+  document.getElementById('carrier-code').readOnly = false;
   document.getElementById('carrier-type-sel').closest('.form-group').style.display = '';
-  document.querySelector('.toggle-row')?.closest('.form-group') && (document.querySelector('.toggle-row').closest('.form-group').style.display = '');
+  document.getElementById('carrier-type-sel').disabled = false;
+  document.getElementById('carrier-api-key').placeholder = 'Paste API key';
+  const delSec = document.getElementById('delivery-days-section');
+  if (delSec) delSec.style.display = '';
+  const activeGrp = document.querySelector('.toggle-row')?.closest('.form-group');
+  if (activeGrp) activeGrp.style.display = '';
+  onCarrierTypeChange();
 }
 
 async function deleteCarrier(id) {
@@ -285,8 +315,14 @@ async function deleteCarrier(id) {
 
 function onCarrierTypeChange() {
   const v = document.getElementById('carrier-type-sel').value;
-  document.getElementById('api-section').style.display = 'none';
-  document.getElementById('manual-section').style.display = coverageOnlyMode || v !== 'api' ? '' : 'none';
+  const isApi = v === 'api';
+  document.getElementById('api-section').style.display = isApi && !coverageOnlyMode ? '' : 'none';
+  document.getElementById('manual-section').style.display = '';
+  const delSec = document.getElementById('delivery-days-section');
+  if (delSec) {
+    const hideDays = coverageOnlyMode || isApi;
+    delSec.style.display = hideDays ? 'none' : '';
+  }
 }
 
 function populateCoverageCountries() {

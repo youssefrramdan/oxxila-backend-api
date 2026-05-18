@@ -23,6 +23,7 @@ import bannerRouter from './routes/banner.routes.js';
 import couponRouter from './routes/coupon.routes.js';
 import shippingAdminRouter from './routes/shipping.admin.routes.js';
 import shippingRouter from './routes/shipping.routes.js';
+import cartRouter from './routes/cart.routes.js';
 import { startOfferCron } from './utils/offerCron.js';
 
 dotenv.config();
@@ -95,6 +96,7 @@ app.use('/api/v1/banners', bannerRouter);
 app.use('/api/v1/coupons', couponRouter);
 app.use('/api/v1/admin', shippingAdminRouter);
 app.use('/api/v1/shipping', shippingRouter);
+app.use('/api/v1/cart', cartRouter);
 
 app.all(/(.*)/, (req, res, next) => {
   next(new ApiError(`Route ${req.originalUrl} not found`, 404));

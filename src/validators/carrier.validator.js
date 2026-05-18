@@ -2,37 +2,46 @@
 import { body, param } from 'express-validator';
 import validate from '../middlewares/validate.middleware.js';
 
-const mongoId = (p) => param(p).isMongoId().withMessage(`Invalid ${p}`);
-
 export const createCarrierValidator = [
   body('name')
-    .trim()
     .notEmpty().withMessage('Carrier name is required')
     .isLength({ max: 100 }).withMessage('Name too long'),
+
   body('code')
-    .trim()
     .notEmpty().withMessage('Carrier code is required')
     .isLength({ max: 10 }).withMessage('Code too long'),
+
   body('type')
     .notEmpty().withMessage('Type is required')
-    .isIn(['known', 'internal']).withMessage('Type must be known or internal'),
+    .isIn(['api', 'known', 'internal']).withMessage('Type must be api, known, or internal'),
+
+  body('apiProvider')
+    .if(body('type').equals('api'))
+    .notEmpty().withMessage('apiProvider is required for API carriers')
+    .isIn(['bosta', 'mylerz']).withMessage('apiProvider must be bosta or mylerz'),
+
+  body('apiKey')
+    .if(body('type').equals('api'))
+    .notEmpty().withMessage('apiKey is required for API carriers'),
+
   body('deliveryDays')
-    .notEmpty().withMessage('Delivery days is required'),
-  body('logo').optional().isString(),
+    .if(body('type').not().equals('api'))
+    .notEmpty().withMessage('deliveryDays is required for non-API carriers'),
+
   validate,
 ];
 
 export const updateCarrierValidator = [
-  mongoId('id'),
-  body('name').optional().trim().isLength({ max: 100 }).withMessage('Name too long'),
+  param('id').isMongoId().withMessage('Invalid carrier ID'),
+  body('name').optional().isLength({ max: 100 }).withMessage('Name too long'),
   body('deliveryDays').optional().isString(),
-  body('logo').optional().isString(),
-  body('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
+  body('apiKey').optional().isString(),
+  body('isActive').optional().isBoolean(),
   validate,
 ];
 
 export const updateCoverageValidator = [
-  mongoId('id'),
+  param('id').isMongoId().withMessage('Invalid carrier ID'),
   body('governorateIds')
     .isArray().withMessage('governorateIds must be an array'),
   body('governorateIds.*')
@@ -40,4 +49,7 @@ export const updateCoverageValidator = [
   validate,
 ];
 
-export const carrierIdParamValidator = [mongoId('id'), validate];
+export const carrierIdParamValidator = [
+  param('id').isMongoId().withMessage('Invalid carrier ID'),
+  validate,
+];

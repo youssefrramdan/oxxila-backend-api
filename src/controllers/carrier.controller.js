@@ -35,16 +35,19 @@ export const getCarriers = asyncHandler(async (req, res) => {
  * @access  Admin
  */
 export const createCarrier = asyncHandler(async (req, res, next) => {
-  const { name, code, type, deliveryDays, logo } = req.body;
-
-  if (type === 'api') {
-    return next(new ApiError('API carriers are managed by the system', 400));
-  }
+  const { name, code, type, deliveryDays, logo, apiProvider, apiKey } = req.body;
 
   const exists = await Carrier.findOne({ code: code.toUpperCase() });
   if (exists) return next(new ApiError('Carrier code already exists', 400));
 
-  const carrier = await Carrier.create({ name, code, type, deliveryDays, logo });
+  const carrier = await Carrier.create({
+    name,
+    code,
+    type,
+    deliveryDays,
+    logo,
+    ...(type === 'api' ? { apiProvider, apiKey } : {}),
+  });
   sendResponse(res, {
     statusCode: 201,
     message: 'Carrier created successfully',
@@ -60,7 +63,6 @@ export const createCarrier = asyncHandler(async (req, res, next) => {
 export const updateCarrier = asyncHandler(async (req, res, next) => {
   delete req.body.type;
   delete req.body.apiProvider;
-  delete req.body.apiKey;
 
   const carrier = await Carrier.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
@@ -79,10 +81,6 @@ export const updateCarrier = asyncHandler(async (req, res, next) => {
 export const deleteCarrier = asyncHandler(async (req, res, next) => {
   const carrier = await Carrier.findById(req.params.id);
   if (!carrier) return next(new ApiError(`No carrier found with id: ${req.params.id}`, 404));
-
-  if (carrier.type === 'api') {
-    return next(new ApiError('API carriers cannot be deleted', 400));
-  }
 
   await CarrierCoverage.deleteMany({ carrier: req.params.id });
   await Carrier.findByIdAndDelete(req.params.id);
