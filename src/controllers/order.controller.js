@@ -5,7 +5,7 @@ import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import { prepareCheckoutFromCart, fulfillCheckout } from '../utils/checkoutHelpers.js';
 import { queryPaginatedOrders } from '../utils/orderQueryHelpers.js';
-import { processStripeOrderRefund } from '../utils/orderRefundHelpers.js';
+import { processCardOrderRefund } from '../utils/orderRefundHelpers.js';
 
 const findUserOrder = async (orderId, userId) =>
   Order.findOne({ _id: orderId, user: userId });

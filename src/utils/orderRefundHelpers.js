@@ -2,8 +2,12 @@
 import mongoose from 'mongoose';
 import Order from '../models/Order.js';
 import ApiError from './apiError.js';
-import { createStripeRefund, resolveStripePaymentIntentId } from './stripeClient.js';
+import { toMinorUnits } from './checkoutHelpers.js';
+import { createPaymobRefund } from './payment/paymob.js';
+import { createStripeRefund, resolveStripePaymentIntentId } from './payment/stripe.js';
 import { restoreStockForOrderItems } from './orderStockHelpers.js';
+
+const CARD_PROVIDERS = ['stripe', 'paymob'];
 
 const markOrderRefundedInDb = async (orderId) => {
   const session = await mongoose.startSession();
@@ -36,12 +40,12 @@ const markOrderRefundedInDb = async (orderId) => {
   return updated;
 };
 
-export const assertOrderRefundableViaStripe = (order) => {
+const assertOrderRefundable = (order) => {
   if (order.paymentStatus === 'refunded') {
     return { alreadyRefunded: true };
   }
-  if (order.paymentMethod !== 'card' || order.paymentProvider !== 'stripe') {
-    throw new ApiError('Only paid Stripe card orders can be refunded through this endpoint', 400);
+  if (order.paymentMethod !== 'card' || !CARD_PROVIDERS.includes(order.paymentProvider)) {
+    throw new ApiError('Only paid Stripe or Paymob card orders can be refunded through this endpoint', 400);
   }
   if (order.paymentStatus !== 'paid') {
     throw new ApiError('Order is not in a refundable state', 400);
@@ -52,18 +56,35 @@ export const assertOrderRefundableViaStripe = (order) => {
   return { alreadyRefunded: false };
 };
 
-export const processStripeOrderRefund = async (order) => {
-  const check = assertOrderRefundableViaStripe(order);
+/** Full gateway + DB refund for a paid card order (Stripe or Paymob). */
+export const processCardOrderRefund = async (order) => {
+  const check = assertOrderRefundable(order);
   if (check.alreadyRefunded) {
-    return { order, refund: null, alreadyRefunded: true };
+    return { order, gatewayRefundId: null, alreadyRefunded: true };
   }
 
-  const paymentIntentId = await resolveStripePaymentIntentId(order.paymentReference);
-  const refund = await createStripeRefund({ paymentIntentId });
-  const updated = await markOrderRefundedInDb(order._id);
+  let gatewayRefundId;
 
-  return { order: updated, refund, alreadyRefunded: false };
+  if (order.paymentProvider === 'stripe') {
+    const paymentIntentId = await resolveStripePaymentIntentId(order.paymentReference);
+    const refund = await createStripeRefund({ paymentIntentId });
+    gatewayRefundId = refund.id;
+  } else if (order.paymentProvider === 'paymob') {
+    const refund = await createPaymobRefund({
+      transactionId: order.paymentReference,
+      amountCents: toMinorUnits(order.totalPrice),
+    });
+    gatewayRefundId = String(refund.id ?? refund.transaction_id ?? '');
+  } else {
+    throw new ApiError('Unsupported payment provider for refund', 400);
+  }
+
+  const updated = await markOrderRefundedInDb(order._id);
+  return { order: updated, gatewayRefundId, alreadyRefunded: false };
 };
+
+/** @deprecated Use processCardOrderRefund */
+export const processStripeOrderRefund = processCardOrderRefund;
 
 export const syncOrderRefundedFromStripe = async (paymentIntentId) => {
   if (!paymentIntentId) return null;

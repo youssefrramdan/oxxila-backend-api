@@ -1,7 +1,12 @@
-// src/utils/paymobClient.js
+// src/utils/payment/paymob.js
 import crypto from 'crypto';
-import ApiError from './apiError.js';
-import { toMinorUnits } from './checkoutHelpers.js';
+import ApiError from '../apiError.js';
+import { toMinorUnits } from '../checkoutHelpers.js';
+import {
+  assertPaymentSessionForFulfillment,
+  fulfillPaymentSession,
+  markPaymentSessionFailed,
+} from './session.js';
 
 const PAYMOB_BASE = 'https://accept.paymob.com/api';
 
@@ -19,7 +24,7 @@ const paymobFetch = async (path, body) => {
   return data;
 };
 
-const getPaymobAuthToken = async () => {
+const getAuthToken = async () => {
   const apiKey = process.env.PAYMOB_API_KEY;
   if (!apiKey) throw new ApiError('Paymob is not configured', 503);
 
@@ -28,20 +33,16 @@ const getPaymobAuthToken = async () => {
   return token;
 };
 
-/**
- * @param {{ paymentSessionId: string, totalPrice: number, user: { name?: string, email: string, phone?: string } }} params
- */
-export const createPaymobPaymentSession = async ({ paymentSessionId, totalPrice, user }) => {
+export const createPaymobCheckout = async ({ paymentSessionId, totalPrice, user }) => {
   const integrationId = Number(process.env.PAYMOB_INTEGRATION_ID);
   const iframeId = process.env.PAYMOB_IFRAME_ID;
   if (!integrationId || !iframeId) {
     throw new ApiError('Paymob integration settings are not configured', 503);
   }
 
-  const authToken = await getPaymobAuthToken();
+  const authToken = await getAuthToken();
   const amountCents = toMinorUnits(totalPrice);
   const currency = process.env.PAYMOB_CURRENCY || 'EGP';
-
   const [firstName, ...rest] = (user.name || 'Customer').trim().split(/\s+/);
   const lastName = rest.join(' ') || '-';
 
@@ -78,80 +79,65 @@ export const createPaymobPaymentSession = async ({ paymentSessionId, totalPrice,
     integration_id: integrationId,
   });
 
-  if (!paymentToken) {
-    throw new ApiError('Paymob payment key creation failed', 502);
-  }
+  if (!paymentToken) throw new ApiError('Paymob payment key creation failed', 502);
 
   return {
-    sessionId: String(paymobOrderId),
-    paymentToken,
+    providerSessionId: String(paymobOrderId),
     iframeUrl: `https://accept.paymob.com/api/acceptance/iframes/${iframeId}?payment_token=${paymentToken}`,
   };
 };
 
-/**
- * Paymob processed-callback HMAC (Accept API).
- * @see https://developers.paymob.com/egypt/api-reference-guide/basics-of-api#hmac-calculation
- */
-const parsePaymobBool = (value) => {
+const parseBool = (value) => {
   if (value === true || value === false) return value;
   if (value === 'true') return true;
   if (value === 'false') return false;
   return Boolean(value);
 };
 
-/**
- * Maps Transaction Response Callback query params to the same shape as the processed POST body.
- */
-export const parsePaymobResponseQuery = (query) => {
-  const hmac = query.hmac;
-  const paymobOrderId = query.order;
-
-  const obj = {
+export const parsePaymobRedirectQuery = (query) => ({
+  hmac: query.hmac,
+  obj: {
     id: query.id,
-    pending: parsePaymobBool(query.pending),
+    pending: parseBool(query.pending),
     amount_cents: query.amount_cents,
-    success: parsePaymobBool(query.success),
-    is_auth: parsePaymobBool(query.is_auth),
-    is_capture: parsePaymobBool(query.is_capture),
-    is_standalone_payment: parsePaymobBool(query.is_standalone_payment),
-    is_voided: parsePaymobBool(query.is_voided),
-    is_refunded: parsePaymobBool(query.is_refunded),
-    is_3d_secure: parsePaymobBool(query.is_3d_secure),
+    success: parseBool(query.success),
+    is_auth: parseBool(query.is_auth),
+    is_capture: parseBool(query.is_capture),
+    is_standalone_payment: parseBool(query.is_standalone_payment),
+    is_voided: parseBool(query.is_voided),
+    is_refunded: parseBool(query.is_refunded),
+    is_3d_secure: parseBool(query.is_3d_secure),
     integration_id: query.integration_id,
-    has_parent_transaction: parsePaymobBool(query.has_parent_transaction),
+    has_parent_transaction: parseBool(query.has_parent_transaction),
     order:
-      paymobOrderId != null
-        ? { id: paymobOrderId, merchant_order_id: query.merchant_order_id }
+      query.order != null
+        ? { id: query.order, merchant_order_id: query.merchant_order_id }
         : undefined,
     created_at: query.created_at,
     currency: query.currency,
-    error_occured: parsePaymobBool(query.error_occured),
+    error_occured: parseBool(query.error_occured),
     owner: query.owner,
     source_data: {
       type: query['source_data.type'],
       pan: query['source_data.pan'],
       sub_type: query['source_data.sub_type'],
     },
-  };
+  },
+});
 
-  return { type: 'TRANSACTION', obj, hmac };
-};
-
-/** Where Paymob redirects the customer after card payment (response callback). */
 export const buildPaymobReturnUrl = ({ success, merchantOrderId }) => {
-  const configured =
+  const base =
     process.env.PAYMOB_RETURN_URL ||
     process.env.STRIPE_SUCCESS_URL?.replace(/\?.*$/, '') ||
     'http://localhost:3000/checkout-test.html';
 
-  const url = new URL(configured);
+  const url = new URL(base);
   url.searchParams.set('payment', success ? 'completed' : 'failed');
   if (merchantOrderId) url.searchParams.set('paymentSessionId', merchantOrderId);
   return url.toString();
 };
 
-export const verifyPaymobProcessedHmac = (obj, hmac) => {
+const verifyHmac = (obj, hmac) => {
   const secret = process.env.PAYMOB_HMAC_SECRET;
   if (!secret) throw new ApiError('Paymob HMAC secret is not configured', 503);
   if (!hmac) return false;
@@ -183,13 +169,31 @@ export const verifyPaymobProcessedHmac = (obj, hmac) => {
   return digest === hmac;
 };
 
-/**
- * Partial or full refund for a captured Paymob transaction.
- * @param {{ transactionId: string, amountCents: number }} params
- */
-export const createPaymobRefund = async ({ transactionId, amountCents }) => {
-  const authToken = await getPaymobAuthToken();
+export const processPaymobTransaction = async (obj, hmac) => {
+  if (!verifyHmac(obj, hmac)) {
+    throw new ApiError('Invalid Paymob signature', 400);
+  }
 
+  const paymentSessionId = obj.order?.merchant_order_id;
+
+  if (!obj.success) {
+    await markPaymentSessionFailed(paymentSessionId);
+    return;
+  }
+
+  if (!paymentSessionId) {
+    throw new ApiError('Paymob callback missing merchant_order_id', 400);
+  }
+
+  await assertPaymentSessionForFulfillment(paymentSessionId, {
+    provider: 'paymob',
+    amountCents: Number(obj.amount_cents),
+  });
+  await fulfillPaymentSession(paymentSessionId, String(obj.id));
+};
+
+export const createPaymobRefund = async ({ transactionId, amountCents }) => {
+  const authToken = await getAuthToken();
   const data = await paymobFetch('/acceptance/void_refund/refund', {
     auth_token: authToken,
     transaction_id: Number(transactionId),
@@ -199,6 +203,5 @@ export const createPaymobRefund = async ({ transactionId, amountCents }) => {
   if (!data?.id && !data?.success) {
     throw new ApiError(data?.detail || data?.message || 'Paymob refund failed', 502);
   }
-
   return data;
 };

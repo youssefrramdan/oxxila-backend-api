@@ -3,21 +3,18 @@ import asyncHandler from 'express-async-handler';
 import PaymentSession from '../models/PaymentSession.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
-import { prepareCheckoutFromCart, toMinorUnits } from '../utils/checkoutHelpers.js';
-import { constructStripeEvent, resolveCheckoutPaymentReference } from '../utils/stripeClient.js';
-import { syncOrderRefundedFromStripe } from '../utils/orderRefundHelpers.js';
+import { prepareCheckoutFromCart } from '../utils/checkoutHelpers.js';
+import { PAYMENT_SESSION_TTL_MS } from '../utils/payment/constants.js';
+import { paymentProviders } from '../utils/payment/providers.js';
 import {
   buildPaymobReturnUrl,
-  parsePaymobResponseQuery,
-  verifyPaymobProcessedHmac,
-} from '../utils/paymobClient.js';
-import { fulfillPaymentSession } from '../utils/paymentFulfillment.js';
-import { paymentProviderHandlers } from '../utils/paymentProviders.js';
-
-const PAYMENT_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+  parsePaymobRedirectQuery,
+  processPaymobTransaction,
+} from '../utils/payment/paymob.js';
+import { constructStripeEvent, handleStripeWebhookEvent } from '../utils/payment/stripe.js';
 
 /**
- * @desc    Start card checkout — creates provider session; order is created on webhook success
+ * @desc    Start card checkout — order is created on provider webhook success
  * @route   POST /api/v1/orders/payment-session
  * @access  Private
  */
@@ -30,8 +27,6 @@ export const createPaymentSession = asyncHandler(async (req, res, next) => {
     districtId,
     addressLine,
   });
-
-  const expiresAt = new Date(Date.now() + PAYMENT_SESSION_TTL_MS);
 
   const paymentSession = await PaymentSession.create({
     user: userId,
@@ -46,17 +41,19 @@ export const createPaymentSession = asyncHandler(async (req, res, next) => {
     provider,
     providerSessionId: 'pending',
     status: 'pending',
-    expiresAt,
+    expiresAt: new Date(Date.now() + PAYMENT_SESSION_TTL_MS),
   });
 
-  const startProvider = paymentProviderHandlers[provider];
-  if (!startProvider) {
-    return next(new ApiError('Invalid payment provider', 400));
-  }
+  const startProvider = paymentProviders[provider];
+  if (!startProvider) return next(new ApiError('Invalid payment provider', 400));
 
-  let providerData;
+  let providerPayload;
   try {
-    providerData = await startProvider({ paymentSession, checkout, user: req.user });
+    providerPayload = await startProvider({
+      paymentSession,
+      totalPrice: checkout.totalPrice,
+      user: req.user,
+    });
   } catch (err) {
     await PaymentSession.deleteOne({ _id: paymentSession._id });
     throw err;
@@ -69,131 +66,55 @@ export const createPaymentSession = asyncHandler(async (req, res, next) => {
       paymentSessionId: paymentSession._id,
       provider,
       totalPrice: checkout.totalPrice,
-      expiresAt,
-      ...providerData,
+      expiresAt: paymentSession.expiresAt,
+      ...providerPayload,
     },
   });
 });
 
 /**
- * @desc    Stripe webhook — checkout.session.completed, charge.refunded
+ * @desc    Stripe webhook
  * @route   POST /api/v1/webhooks/stripe
- * @access  Public (signed)
  */
 export const stripeWebhook = asyncHandler(async (req, res) => {
-  const signature = req.headers['stripe-signature'];
-  const event = constructStripeEvent(req.body, signature);
-
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    const paymentSessionId = session.metadata?.paymentSessionId;
-
-    if (paymentSessionId) {
-      const paymentReference = await resolveCheckoutPaymentReference(session);
-      await fulfillPaymentSession(paymentSessionId, paymentReference);
-    }
-  }
-
-  if (event.type === 'charge.refunded') {
-    const charge = event.data.object;
-    if (charge.refunded) {
-      const paymentIntentId =
-        typeof charge.payment_intent === 'string'
-          ? charge.payment_intent
-          : charge.payment_intent?.id;
-      await syncOrderRefundedFromStripe(paymentIntentId);
-    }
-  }
-
+  const event = constructStripeEvent(req.body, req.headers['stripe-signature']);
+  await handleStripeWebhookEvent(event);
   res.status(200).json({ received: true });
 });
 
-const handlePaymobTransaction = async (obj, hmac, next) => {
-  if (!verifyPaymobProcessedHmac(obj, hmac)) {
-    next(new ApiError('Invalid Paymob signature', 400));
-    return false;
-  }
-
-  const paymentSessionId = obj.order?.merchant_order_id;
-
-  if (!obj.success) {
-    if (paymentSessionId) {
-      await PaymentSession.updateOne(
-        { _id: paymentSessionId, status: { $in: ['pending', 'processing'] } },
-        { status: 'failed' }
-      );
-    }
-    return true;
-  }
-
-  if (!paymentSessionId) {
-    next(new ApiError('Paymob callback missing merchant_order_id', 400));
-    return false;
-  }
-
-  const session = await PaymentSession.findById(paymentSessionId);
-  if (!session) {
-    next(new ApiError(`No payment session found with id: ${paymentSessionId}`, 404));
-    return false;
-  }
-
-  if (session.provider !== 'paymob') {
-    next(new ApiError('Payment session provider mismatch', 400));
-    return false;
-  }
-
-  const paidCents = Number(obj.amount_cents);
-  const expectedCents = toMinorUnits(session.totalPrice);
-  if (!Number.isFinite(paidCents) || paidCents !== expectedCents) {
-    next(new ApiError('Paymob payment amount does not match session total', 400));
-    return false;
-  }
-
-  await fulfillPaymentSession(paymentSessionId, String(obj.id));
-  return true;
-};
-
 /**
- * @desc    Paymob processed callback (server POST)
+ * @desc    Paymob processed callback (POST)
  * @route   POST /api/v1/webhooks/paymob
- * @access  Public (HMAC)
  */
-export const paymobWebhook = asyncHandler(async (req, res, next) => {
-  const { type, obj } = req.body;
-
-  if (type !== 'TRANSACTION' || !obj) {
-    return res.status(200).json({ received: true });
+export const paymobWebhook = asyncHandler(async (req, res) => {
+  const { type, obj, hmac } = req.body;
+  if (type === 'TRANSACTION' && obj) {
+    await processPaymobTransaction(obj, hmac);
   }
-
-  const handled = await handlePaymobTransaction(obj, req.body.hmac, next);
-  if (!handled) return;
   res.status(200).json({ received: true });
 });
 
 /**
- * @desc    Paymob response callback (browser GET redirect after payment)
+ * @desc    Paymob response callback (GET redirect)
  * @route   GET /api/v1/webhooks/paymob
- * @access  Public (HMAC)
  */
 export const paymobRedirect = asyncHandler(async (req, res, next) => {
-  const { obj, hmac } = parsePaymobResponseQuery(req.query);
+  const { obj, hmac } = parsePaymobRedirectQuery(req.query);
+  if (!obj?.id) return next(new ApiError('Invalid Paymob callback', 400));
 
-  if (!obj?.id) {
-    return next(new ApiError('Invalid Paymob callback', 400));
-  }
+  await processPaymobTransaction(obj, hmac);
 
-  const handled = await handlePaymobTransaction(obj, hmac, next);
-  if (!handled) return;
-
-  const returnUrl = buildPaymobReturnUrl({
-    success: obj.success,
-    merchantOrderId: obj.order?.merchant_order_id,
-  });
-  res.redirect(302, returnUrl);
+  res.redirect(
+    302,
+    buildPaymobReturnUrl({
+      success: obj.success,
+      merchantOrderId: obj.order?.merchant_order_id,
+    })
+  );
 });
 
 /**
- * @desc    Poll payment session status (after redirect)
+ * @desc    Poll payment session status
  * @route   GET /api/v1/orders/payment-session/:id
  * @access  Private
  */

@@ -4,8 +4,8 @@ import Order from '../models/Order.js';
 import ReturnRequest from '../models/ReturnRequest.js';
 import ApiError from './apiError.js';
 import { restoreStockForOrderItems } from './orderStockHelpers.js';
-import { createStripeRefund, resolveStripePaymentIntentId } from './stripeClient.js';
-import { createPaymobRefund } from './paymobClient.js';
+import { createStripeRefund, resolveStripePaymentIntentId } from './payment/stripe.js';
+import { createPaymobRefund } from './payment/paymob.js';
 import { toMinorUnits } from './checkoutHelpers.js';
 
 const toStockItems = (returnItems) =>
