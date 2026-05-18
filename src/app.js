@@ -90,6 +90,10 @@ app.get('/shipping-admin.html', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'shipping-admin.html'));
 });
 
+app.get('/cart-test.html', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'cart-test.html'));
+});
+
 app.get('/checkout-test.html', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'checkout-test.html'));
 });
