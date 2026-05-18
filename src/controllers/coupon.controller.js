@@ -6,17 +6,6 @@ import sendResponse from '../utils/apiResponse.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 
 /**
- * Call after an order is successfully placed with this coupon.
- * Does not increment usage if this user is already recorded (safe for retries).
- */
-export const commitCouponUsage = async (couponId, userId) => {
-  await Coupon.updateOne(
-    { _id: couponId, usedBy: { $ne: userId } },
-    { $addToSet: { usedBy: userId }, $inc: { usageCount: 1 } }
-  );
-};
-
-/**
  * @desc    List coupons (admin)
  * @route   GET /api/v1/coupons
  * @access  Admin
@@ -93,56 +82,3 @@ export const deleteCoupon = asyncHandler(async (req, res, next) => {
   sendResponse(res, { message: 'Coupon deleted successfully' });
 });
 
-/**
- * @desc    Validate coupon and return discount preview (does not persist usage)
- * @route   POST /api/v1/coupons/apply
- * @access  Private
- */
-export const applyCoupon = asyncHandler(async (req, res, next) => {
-  const { code, orderAmount } = req.body;
-
-  const coupon = await Coupon.findOne({
-    code: String(code).toUpperCase(),
-    isActive: true,
-  });
-
-  if (!coupon) return next(new ApiError('Invalid or inactive coupon', 400));
-
-  if (coupon.expiresAt && new Date() > coupon.expiresAt) {
-    return next(new ApiError('Coupon has expired', 400));
-  }
-
-  if (coupon.maxUsage != null && coupon.usageCount >= coupon.maxUsage) {
-    return next(new ApiError('Coupon usage limit has been reached', 400));
-  }
-
-  const alreadyUsed = coupon.usedBy.some((id) => id.toString() === req.user._id.toString());
-    if (alreadyUsed) return next(new ApiError('You have already used this coupon', 400));
-
-    if (orderAmount < coupon.minOrderAmount) {
-        return next(
-        new ApiError(`Minimum order amount for this coupon is ${coupon.minOrderAmount} EGP`, 400)
-        );
-    }
-
-    let discountAmount = 0;
-    if (coupon.discountType === 'percentage') {
-        discountAmount = (orderAmount * coupon.discountValue) / 100;
-    } else {
-        discountAmount = Math.min(coupon.discountValue, orderAmount);
-    }
-
-  const finalAmount = Math.max(0, orderAmount - discountAmount);
-
-  sendResponse(res, {
-    message: 'Coupon applied successfully',
-    data: {
-      code: coupon.code,
-      discountType: coupon.discountType,
-      discountValue: coupon.discountValue,
-      discountAmount: Math.round(discountAmount * 100) / 100,
-      finalAmount: Math.round(finalAmount * 100) / 100,
-      couponId: coupon._id,
-    },
-  });
-});

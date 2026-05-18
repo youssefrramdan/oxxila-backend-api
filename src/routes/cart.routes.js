@@ -8,10 +8,13 @@ import {
   updateCartItem,
   removeCartItem,
   clearCart,
+  applyCoupon,
+  removeCoupon,
 } from '../controllers/cart.controller.js'
 import {
   addToCartValidator,
   updateCartItemValidator,
+  applyCouponValidator,
 } from '../validators/cart.validator.js'
 
 const router = express.Router()
@@ -22,6 +25,8 @@ router.get('/',               getCart)
 router.post('/',              addToCartValidator,        validate, addToCart)
 router.put('/:itemId',        updateCartItemValidator,   validate, updateCartItem)
 router.delete('/:itemId',     removeCartItem)
+router.post('/coupon',        applyCouponValidator, validate, applyCoupon)
+router.delete('/coupon',      removeCoupon)
 router.delete('/',            clearCart)
 
 export default router

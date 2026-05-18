@@ -24,6 +24,9 @@ import couponRouter from './routes/coupon.routes.js';
 import shippingAdminRouter from './routes/shipping.admin.routes.js';
 import shippingRouter from './routes/shipping.routes.js';
 import cartRouter from './routes/cart.routes.js';
+import orderRouter from './routes/order.routes.js';
+import returnRouter from './routes/return.routes.js';
+import { stripeWebhook, paymobWebhook } from './controllers/payment.controller.js';
 import { startOfferCron } from './utils/offerCron.js';
 
 dotenv.config();
@@ -54,6 +57,14 @@ app.use(
   })
 );
 
+// Stripe requires the raw body for signature verification.
+app.post(
+  '/api/v1/webhooks/stripe',
+  express.raw({ type: 'application/json' }),
+  stripeWebhook
+);
+app.post('/api/v1/webhooks/paymob', express.json(), paymobWebhook);
+
 app.use(express.json());
 app.use(cookieParser());
 // Stateless Passport — only used by OAuth routes to populate req.user.
@@ -79,6 +90,10 @@ app.get('/shipping-admin.html', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'shipping-admin.html'));
 });
 
+app.get('/checkout-test.html', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'checkout-test.html'));
+});
+
 app.use(express.static(PUBLIC_DIR));
 
 app.use('/api/v1/auth', authRouter);
@@ -97,6 +112,8 @@ app.use('/api/v1/coupons', couponRouter);
 app.use('/api/v1/admin', shippingAdminRouter);
 app.use('/api/v1/shipping', shippingRouter);
 app.use('/api/v1/cart', cartRouter);
+app.use('/api/v1/orders', orderRouter);
+app.use('/api/v1/returns', returnRouter);
 
 app.all(/(.*)/, (req, res, next) => {
   next(new ApiError(`Route ${req.originalUrl} not found`, 404));

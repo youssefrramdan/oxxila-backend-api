@@ -310,7 +310,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
     <p>Login to manage your cart and orders</p>
     <div class="base-row">
       <label class="form-label">API Base URL</label>
-      <input class="form-input" id="base-url" value="http://localhost:3000/api/v1">
+      <input class="form-input" id="base-url" value="https://oxxila-api-01ced6342147.herokuapp.com/api/v1">
     </div>
     <div class="form-group">
       <label class="form-label">Email</label>
@@ -374,7 +374,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
       </div>
       <div class="summary-row total"><span>Total</span><span id="cart-total">0 EGP</span></div>
     </div>
-    <button class="checkout-btn" id="checkout-btn" disabled>
+    <button class="checkout-btn" id="checkout-btn" disabled onclick="goCheckout()">
       <i class="ti ti-credit-card"></i> Proceed to Checkout
     </button>
     <p class="login-note" id="login-note" style="display:none">
@@ -388,11 +388,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
 <script>
 // ── STATE ──
-let token = ''
+let token = localStorage.getItem('oxxila_token') || ''
 let cartData = null
 let productsData = []
 
-const BASE = () => document.getElementById('base-url')?.value || 'http://localhost:3000/api/v1'
+const BASE = () => document.getElementById('base-url')?.value || 'https://oxxila-api-01ced6342147.herokuapp.com/api/v1'
 
 // ── API HELPER ──
 async function api(method, path, body, pub = false) {
@@ -445,6 +445,7 @@ async function doLogin() {
 
   if (data?.data?.accessToken || data?.token) {
     token = data.data?.accessToken || data.token
+    localStorage.setItem('oxxila_token', token)
     const pill = document.getElementById('login-pill')
     pill.classList.add('logged')
     document.getElementById('login-label').textContent = 'Logged in'
@@ -457,8 +458,14 @@ async function doLogin() {
   }
 }
 
+function goCheckout() {
+  if (!token) { showToast('Please login first', 'err'); openLogin(); return }
+  window.location.href = '/checkout-test.html'
+}
+
 function doLogout() {
   token = ''
+  localStorage.removeItem('oxxila_token')
   cartData = null
   document.getElementById('login-pill').classList.remove('logged')
   document.getElementById('login-label').textContent = 'Login'
@@ -703,6 +710,15 @@ function closeCart() {
 }
 
 // ── INIT ──
+if (localStorage.getItem('oxxila_base')) {
+  const bu = document.getElementById('base-url')
+  if (bu) bu.value = localStorage.getItem('oxxila_base')
+}
+document.getElementById('base-url')?.addEventListener('change', e => localStorage.setItem('oxxila_base', e.target.value))
+if (token) {
+  document.getElementById('login-pill')?.classList.add('logged')
+  document.getElementById('login-label').textContent = 'Logged in'
+}
 loadProducts()
 loadCart()
 </script>

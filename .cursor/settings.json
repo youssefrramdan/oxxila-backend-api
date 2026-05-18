@@ -2,6 +2,9 @@
   "plugins": {
     "cloudinary": {
       "enabled": true
+    },
+    "stripe": {
+      "enabled": true
     }
   }
 }

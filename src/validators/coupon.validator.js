@@ -106,20 +106,3 @@ export const updateCouponValidator = [
 ];
 
 export const couponIdValidator = [param('id').isMongoId().withMessage('Invalid coupon ID'), validate];
-
-export const applyCouponValidator = [
-  body('code')
-    .notEmpty()
-    .withMessage('Coupon code is required')
-    .isLength({ min: 3, max: 20 })
-    .withMessage('Invalid coupon code'),
-
-  body('orderAmount')
-    .notEmpty()
-    .withMessage('Order amount is required')
-    .toFloat()
-    .isFloat({ min: 0 })
-    .withMessage('Order amount must be zero or positive'),
-
-  validate,
-];

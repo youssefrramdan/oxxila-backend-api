@@ -19,3 +19,9 @@ export const updateCartItemValidator = [
     .notEmpty().withMessage('quantity is required')
     .isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
 ]
+
+export const applyCouponValidator = [
+  body('code')
+    .notEmpty().withMessage('Coupon code is required')
+    .isString().withMessage('Invalid coupon code'),
+]

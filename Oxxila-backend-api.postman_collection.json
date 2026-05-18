@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "4062f907-628a-430c-9f5d-c9c39c20a46e",
     "name": "Oxxila-backend-api",
-    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n- **FAQs** — public list per product; user **ask specialist** (email to `ADMIN_EMAIL`); admin CRUD on `/faqs` + create under product.\n    \n- **Coupons** — admin CRUD. User apply/remove on **Cart** (`POST /cart/coupon`, `DELETE /cart/coupon`).\\n    \\n- **Shipping (Checkout)** — public countries, governorates, zones, resolve price, carriers.\\n    \\n- **Shipping Admin** — countries, governorates, districts, carriers, coverage, settings (/api/v1/admin/*).\\n    - **Cart** — authenticated shopping cart: add/update/remove lines, apply/remove coupon, clear cart. Line prices sync from product on every read/write.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
+    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n- **FAQs** — public list per product; user **ask specialist** (email to `ADMIN_EMAIL`); admin CRUD on `/faqs` + create under product.\n    \n- **Coupons** — admin CRUD. User apply/remove on **Cart** (`POST /cart/coupon`, `DELETE /cart/coupon`).\n    \n- **Orders** — COD checkout, card payment sessions (Stripe/Paymob), my-orders, admin list/status/refund. Test UI: `GET /checkout-test.html`.\n    \n- **Returns** — eligible delivered orders (14-day window), partial returns, proof images, pickup/self-ship, admin workflow through refund (Stripe/Paymob auto, COD manual).\n    \n- **Webhooks** — Stripe (`checkout.session.completed`, `charge.refunded`) and Paymob processed callback (provider-signed; not for manual testing without valid signatures).\n    \n- **Shipping (Checkout)** — public countries, governorates, zones, resolve price, carriers.\n    \n- **Shipping Admin** — countries, governorates, districts, carriers, coverage, settings (`/api/v1/admin/*`).\n    \n- **Cart** — authenticated shopping cart: add/update/remove lines, apply/remove coupon, clear cart. Line prices sync from product on every read/write.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "54107413",
     "_collection_link": "https://go.postman.co/collection/54107413-4062f907-628a-430c-9f5d-c9c39c20a46e?source=collection_link"
@@ -581,9 +581,132 @@
             }
           ],
           "description": "Forgot-password flow. Both endpoints are unauthenticated."
+        },
+        {
+          "name": "OAuth",
+          "item": [
+            {
+              "name": "Google — start redirect",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/google",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "google"
+                  ]
+                },
+                "description": "Browser-only: redirects to Google OAuth. After consent, Google calls **Google — callback** and the API sets refresh cookie + redirects to `CLIENT_URL` with access token. Not practical to complete inside Postman without following redirects manually."
+              },
+              "response": []
+            },
+            {
+              "name": "Google — callback",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/google/callback?code=&state=",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "google",
+                    "callback"
+                  ],
+                  "query": [
+                    {
+                      "key": "code",
+                      "value": "",
+                      "description": "Set by Google — do not call manually"
+                    },
+                    {
+                      "key": "state",
+                      "value": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Called by Google after login. Documented for reference; use a browser flow instead of Postman."
+              },
+              "response": []
+            },
+            {
+              "name": "Facebook — start redirect",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/facebook",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "facebook"
+                  ]
+                },
+                "description": "Browser-only: redirects to Facebook OAuth. Same pattern as Google."
+              },
+              "response": []
+            },
+            {
+              "name": "Facebook — callback",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/facebook/callback?code=",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "auth",
+                    "facebook",
+                    "callback"
+                  ],
+                  "query": [
+                    {
+                      "key": "code",
+                      "value": "",
+                      "description": "Set by Facebook — do not call manually"
+                    }
+                  ]
+                },
+                "description": "Called by Facebook after login. Documented for reference."
+              },
+              "response": []
+            }
+          ],
+          "description": "Social login entry points. Complete the flow in a browser; tokens land on `CLIENT_URL`."
         }
       ],
-      "description": "Signup, login, session management, and password recovery."
+      "description": "Signup, login, session management, OAuth, and password recovery."
     },
     {
       "name": "Categories & Sub-categories",
@@ -3023,6 +3146,888 @@
       "description": "`/api/v1/cart` — all routes require Bearer token. Env: `{{productId}}`, `{{cartItemId}}`, `{{cartId}}`. Test UI: `GET /cart-test.html`."
     },
     {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Checkout (user)",
+          "item": [
+            {
+              "name": "Create COD Order",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?._id) pm.environment.set('orderId', res.data._id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Cairo\",\n  \"paymentMethod\": \"cod\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders"
+                  ]
+                },
+                "description": "**User** Bearer. Non-empty cart required. Validates stock, coupon, and shipping. Creates order immediately with `paymentMethod: cod`, `paymentStatus: paid`, decrements stock, clears cart, commits coupon usage. `districtId` may be a Mongo id or `\"other\"` for governorate fallback. Saves `{{orderId}}`."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Payment Session (Stripe)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?.paymentSessionId) {",
+                      "  pm.environment.set('paymentSessionId', res.data.paymentSessionId);",
+                      "}",
+                      "if (res?.data?.url) console.log('Stripe checkout URL:', res.data.url);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Cairo\",\n  \"provider\": \"stripe\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders/payment-session",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders",
+                    "payment-session"
+                  ]
+                },
+                "description": "**User** Bearer. Snapshots cart into a `PaymentSession` (24h TTL). Returns `paymentSessionId`, `sessionId`, and `url` — open `url` in a browser to pay. Order is created on Stripe webhook `checkout.session.completed`. Card payments must not use `POST /orders` with `paymentMethod: card`."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Payment Session (Paymob)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?.paymentSessionId) {",
+                      "  pm.environment.set('paymentSessionId', res.data.paymentSessionId);",
+                      "}",
+                      "if (res?.data?.iframeUrl) console.log('Paymob iframe URL:', res.data.iframeUrl);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Cairo\",\n  \"provider\": \"paymob\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders/payment-session",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders",
+                    "payment-session"
+                  ]
+                },
+                "description": "**User** Bearer. Same flow as Stripe but `provider: paymob`. Response includes `orderId` (Paymob order id), `paymentToken`, and `iframeUrl`. Fulfillment runs on Paymob processed webhook when `success: true`."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Payment Session Status",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "const order = res?.data?.order;",
+                      "if (order?._id) pm.environment.set('orderId', order._id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders/payment-session/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders",
+                    "payment-session",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{paymentSessionId}}",
+                      "description": "PaymentSession Mongo _id"
+                    }
+                  ]
+                },
+                "description": "**User** Bearer. Poll after redirect from Stripe/Paymob. Returns `status` (`pending` | `processing` | `completed` | `failed` | `expired`), `provider`, `totalPrice`, and populated `order` when completed. Saves `{{orderId}}` when present."
+              },
+              "response": []
+            },
+            {
+              "name": "Get My Orders",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders/my-orders?page=1&limit=10&sort=-createdAt",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders",
+                    "my-orders"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "-createdAt"
+                    },
+                    {
+                      "key": "orderStatus",
+                      "value": "pending",
+                      "disabled": true
+                    },
+                    {
+                      "key": "paymentStatus",
+                      "value": "paid",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "**User** Bearer. Paginated list of the current user's orders (`ApiFeatures`: filter, sort, fields, pagination)."
+              },
+              "response": []
+            },
+            {
+              "name": "Get My Order By ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders/my-orders/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders",
+                    "my-orders",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{orderId}}",
+                      "description": "Order Mongo _id"
+                    }
+                  ]
+                },
+                "description": "**User** Bearer. Single order owned by the current user. `404` if id missing or not yours."
+              },
+              "response": []
+            }
+          ],
+          "description": "Requires Bearer token + non-empty cart (except poll after payment). Use **Shipping (Checkout)** first to obtain `{{governorateId}}` / `{{districtId}}`. Typical card flow: payment-session → pay in browser → poll session status."
+        },
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "Get All Orders",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders?page=1&limit=10&sort=-createdAt",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "-createdAt"
+                    },
+                    {
+                      "key": "orderStatus",
+                      "value": "processing",
+                      "disabled": true
+                    },
+                    {
+                      "key": "paymentMethod",
+                      "value": "card",
+                      "disabled": true
+                    },
+                    {
+                      "key": "paymentStatus",
+                      "value": "paid",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. All orders with `user` populated (`name`, `email`, `phone`). Supports filter/sort/pagination."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Order By ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{orderId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Single order with populated user."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Order Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"orderStatus\": \"processing\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{orderId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Body `{ orderStatus }` — one of: `pending`, `processing`, `shipped`, `delivered`, `cancelled`."
+              },
+              "response": []
+            },
+            {
+              "name": "Refund Order (Stripe)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders/:id/refund",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders",
+                    ":id",
+                    "refund"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{orderId}}",
+                      "description": "Paid Stripe card order only"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Full refund via Stripe API for `paymentMethod: card`, `paymentProvider: stripe`, `paymentStatus: paid`. Restores stock and sets `paymentStatus: refunded`, `orderStatus: cancelled`. Idempotent if already refunded. COD orders → `400`."
+              },
+              "response": []
+            }
+          ],
+          "description": "Requires admin Bearer. Env: `{{orderId}}`."
+        }
+      ],
+      "description": "`/api/v1/orders` — checkout and order management. Env: `{{governorateId}}`, `{{districtId}}`, `{{orderId}}`, `{{paymentSessionId}}`. Test UI: `GET /checkout-test.html`."
+    },
+    {
+      "name": "Returns",
+      "item": [
+        {
+          "name": "User",
+          "item": [
+            {
+              "name": "Get Eligible Return Orders",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/eligible-orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    "eligible-orders"
+                  ]
+                },
+                "description": "**User** Bearer. Delivered / partially_returned orders within `RETURN_WINDOW_DAYS` (default 14) from `deliveredAt`, with per-line `returnableQuantity` (accounts for pending/approved returns)."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Return Request",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?._id) pm.environment.set('returnId', res.data._id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "order",
+                      "value": "{{orderId}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "items",
+                      "value": "[{\"orderItemId\":\"REPLACE_ORDER_ITEM_ID\",\"quantity\":1}]",
+                      "type": "text",
+                      "description": "JSON array — orderItemId from eligible-orders response"
+                    },
+                    {
+                      "key": "reason",
+                      "value": "damaged_item",
+                      "type": "text",
+                      "description": "damaged_item | wrong_product | allergic_reaction | expired_product | changed_mind | other"
+                    },
+                    {
+                      "key": "note",
+                      "value": "Seal was broken on arrival",
+                      "type": "text"
+                    },
+                    {
+                      "key": "returnMethod",
+                      "value": "pickup",
+                      "type": "text",
+                      "description": "pickup | self_ship"
+                    },
+                    {
+                      "key": "pickupAddress",
+                      "value": "{\"city\":\"Cairo\",\"governorate\":\"Cairo\",\"address\":\"12 Medical Plaza, Suite 100\"}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "proofImages",
+                      "type": "file",
+                      "src": [],
+                      "description": "Required for damaged_item, wrong_product, allergic_reaction (max 5)"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns"
+                  ]
+                },
+                "description": "**User** Bearer. `multipart/form-data`. Order must be `delivered` within return window. Saves `{{returnId}}`."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Return Request (JSON)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?._id) pm.environment.set('returnId', res.data._id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"order\": \"{{orderId}}\",\n  \"items\": [\n    { \"orderItemId\": \"REPLACE_ORDER_ITEM_ID\", \"quantity\": 1 }\n  ],\n  \"reason\": \"changed_mind\",\n  \"note\": \"\",\n  \"returnMethod\": \"self_ship\",\n  \"pickupAddress\": {\n    \"city\": \"Cairo\",\n    \"governorate\": \"Cairo\",\n    \"address\": \"12 Medical Plaza, Suite 100\"\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns"
+                  ]
+                },
+                "description": "**User** Bearer. JSON body without proof images — use for `changed_mind`, `expired_product`, `other`. For damaged/wrong/allergic use multipart with `proofImages`."
+              },
+              "response": []
+            },
+            {
+              "name": "Get My Return Requests",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/my-returns?page=1&limit=10&sort=-createdAt",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    "my-returns"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "-createdAt"
+                    },
+                    {
+                      "key": "refundStatus",
+                      "value": "pending",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "**User** Bearer. Paginated return history."
+              },
+              "response": []
+            },
+            {
+              "name": "Get My Return Request By ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/my-returns/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    "my-returns",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**User** Bearer. Single return with populated order."
+              },
+              "response": []
+            }
+          ],
+          "description": "Customer return flow. Mark order **delivered** first (admin) to set `deliveredAt` and start the 14-day window."
+        },
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "Get All Return Requests",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns?page=1&limit=10&sort=-createdAt",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "-createdAt"
+                    },
+                    {
+                      "key": "refundStatus",
+                      "value": "pending",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Review queue with user + order populated."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Return Request By ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Full detail including `proofImages`."
+              },
+              "response": []
+            },
+            {
+              "name": "Approve Return",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refundStatus\": \"approved\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Workflow: `pending` → `approved` → `picked_up` → `received` → `refunded` (or `pending`/`approved` → `rejected`)."
+              },
+              "response": []
+            },
+            {
+              "name": "Mark Picked Up",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refundStatus\": \"picked_up\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** `approved` → `picked_up`."
+              },
+              "response": []
+            },
+            {
+              "name": "Mark Received (warehouse)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refundStatus\": \"received\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** `picked_up` → `received` after warehouse inspection."
+              },
+              "response": []
+            },
+            {
+              "name": "Process Refund",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refundStatus\": \"refunded\",\n  \"manualRefundNote\": \"Vodafone Cash 010xxxxxxxx — COD order\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** `received` → `refunded`. Card: Stripe/Paymob partial refund + restock. COD: no gateway — set `manualRefundNote` (bank/wallet/Vodafone Cash) and restock."
+              },
+              "response": []
+            },
+            {
+              "name": "Reject Return",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refundStatus\": \"rejected\",\n  \"adminNote\": \"Outside return window / unclear proof photos\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** `pending` or `approved` → `rejected`."
+              },
+              "response": []
+            }
+          ],
+          "description": "Admin review and refund pipeline. Env: `{{returnId}}`, `{{orderId}}`."
+        }
+      ],
+      "description": "`/api/v1/returns` — return window from `deliveredAt` (`RETURN_WINDOW_DAYS`, default 14). Admin must set order to **delivered** to start the clock."
+    },
+    {
       "name": "Coupons",
       "item": [
         {
@@ -4046,6 +5051,110 @@
         }
       ],
       "description": "`/api/v1/admin/*` — all routes require admin Bearer. Ops UI: `GET /shipping-admin.html`. Env: `{{countryId}}`, `{{governorateId}}`, `{{districtId}}`, `{{carrierId}}`."
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Stripe Webhook",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "stripe-signature",
+                "value": "",
+                "description": "Required — from Stripe CLI: stripe listen --forward-to localhost:3000/api/v1/webhooks/stripe"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"evt_example\",\n  \"type\": \"checkout.session.completed\",\n  \"data\": {\n    \"object\": {\n      \"id\": \"cs_test_example\",\n      \"metadata\": {\n        \"paymentSessionId\": \"{{paymentSessionId}}\"\n      },\n      \"payment_intent\": \"pi_test_example\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/webhooks/stripe",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "webhooks",
+                "stripe"
+              ]
+            },
+            "description": "Public. Raw JSON body + valid `stripe-signature` (server uses `express.raw`). Handles `checkout.session.completed` (fulfills `PaymentSession` → creates order) and `charge.refunded` (syncs refund to DB). **Use Stripe CLI** to forward real signed events — manual Postman calls fail signature verification unless you copy a real payload + header from the CLI."
+          },
+          "response": []
+        },
+        {
+          "name": "Paymob Webhook (processed)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"TRANSACTION\",\n  \"hmac\": \"\",\n  \"obj\": {\n    \"id\": 123456789,\n    \"success\": true,\n    \"order\": {\n      \"merchant_order_id\": \"{{paymentSessionId}}\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/webhooks/paymob",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "webhooks",
+                "paymob"
+              ]
+            },
+            "description": "Public. Paymob processed callback. `type` must be `TRANSACTION`; `obj.success: true` fulfills the payment session. `hmac` must match server-side HMAC of `obj` fields — use Paymob dashboard test callbacks or compute HMAC with `PAYMOB_HMAC_SECRET`. Failed payments set session `failed` when `merchant_order_id` is present."
+          },
+          "response": []
+        }
+      ],
+      "description": "Provider callbacks — not for normal API testing without valid signatures. Env: `{{paymentSessionId}}`."
+    },
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                ""
+              ]
+            },
+            "description": "No `/api` prefix. Returns `{ success, message: 'Oxxila API is up and running' }` when the server is healthy."
+          },
+          "response": []
+        }
+      ],
+      "description": "Root-level routes outside `/api/v1`."
     }
   ],
   "auth": {

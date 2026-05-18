@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oxxila — Checkout Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="/css/checkout-test.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Oxx<span>i</span>la<small>Checkout test</small></div>
+  <div class="topbar-right">
+    <a class="nav-link" href="/cart-test.html"><i class="ti ti-shopping-cart"></i> Shop</a>
+    <div class="login-pill" id="login-pill" onclick="openLogin()">
+      <i class="ti ti-user"></i><span id="login-label">Login</span>
+    </div>
+  </div>
+</div>
+
+<main class="main">
+  <h1 class="page-title">Checkout</h1>
+  <p class="page-sub">Test COD, Stripe, and Paymob order flows</p>
+
+  <div class="checkout-grid">
+    <div class="col-left">
+      <div id="return-alert" class="return-alert" style="display:none"><span id="return-msg"></span></div>
+
+      <section class="card">
+        <h2>Shipping</h2>
+        <div class="form-group">
+          <label class="form-label">Country</label>
+          <select class="form-input" id="country" onchange="onCountryChange()"><option>Loading…</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Governorate</label>
+          <select class="form-input" id="governorate" onchange="onGovernorateChange()" disabled><option>Select country</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">District</label>
+          <select class="form-input" id="district" onchange="resolveShippingPrice()" disabled><option>Select governorate</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Address line</label>
+          <input class="form-input" id="address-line" value="123 Test Street, Cairo">
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Payment</h2>
+        <label class="pay-opt-row active" data-pay="cod"><input type="radio" name="pay" checked> <strong>COD</strong> — creates order immediately</label>
+        <label class="pay-opt-row" data-pay="stripe"><input type="radio" name="pay"> <strong>Stripe</strong> — redirect, webhook creates order</label>
+        <label class="pay-opt-row" data-pay="paymob"><input type="radio" name="pay"> <strong>Paymob</strong> — iframe, webhook creates order</label>
+        <div id="paymob-frame-wrap"><iframe id="paymob-frame" title="Paymob payment"></iframe></div>
+        <button class="btn-primary" id="place-btn" onclick="placeOrder()" disabled><i class="ti ti-lock"></i> Place order</button>
+        <pre id="api-log" class="api-log">API log…</pre>
+      </section>
+
+      <section class="card">
+        <h2>My orders</h2>
+        <div class="admin-refund-bar">
+          <span class="admin-refund-label"><i class="ti ti-shield-lock"></i> Admin (Stripe refund)</span>
+          <div class="admin-refund-fields" id="admin-fields">
+            <input class="form-input admin-input" id="admin-email" type="email" placeholder="Admin email" value="admin@oxxila.local">
+            <input class="form-input admin-input" id="admin-pass" type="password" placeholder="Admin password">
+            <button type="button" class="btn-secondary btn-sm" onclick="adminLogin()">Sign in</button>
+          </div>
+          <span id="admin-status" class="admin-status" style="display:none"></span>
+          <button type="button" class="btn-secondary btn-sm" id="admin-logout-btn" style="display:none" onclick="adminLogout()">Sign out</button>
+        </div>
+        <button class="btn-secondary" onclick="loadMyOrders()"><i class="ti ti-refresh"></i> Refresh</button>
+        <div id="orders-list" class="orders-list"><p class="empty-inline">Login to see orders</p></div>
+      </section>
+    </div>
+
+    <aside class="col-right card sticky">
+      <h2>Summary</h2>
+      <div id="cart-lines"><p class="empty-inline">Empty — <a href="/cart-test.html">add items</a></p></div>
+      <div class="totals">
+        <div class="summary-row"><span>Subtotal</span><span id="sum-sub">0 EGP</span></div>
+        <div class="summary-row discount" id="sum-disc-row" style="display:none"><span>Discount</span><span id="sum-disc">0</span></div>
+        <div class="summary-row"><span>Shipping</span><span id="sum-ship">—</span></div>
+        <div class="summary-row total"><span>Total</span><span id="sum-total">0 EGP</span></div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<div class="modal-overlay" id="login-modal" onclick="if(event.target===this)closeLogin()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>Sign in</h3>
+    <p class="modal-hint">Same account as Shop page — token is shared via localStorage</p>
+    <div class="form-group">
+      <label class="form-label">API base URL</label>
+      <input class="form-input" id="base-url" value="https://oxxila-api-01ced6342147.herokuapp.com/api/v1">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="login-email" type="email" value="user@oxxila.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="login-pass" type="password" value="User@1234">
+    </div>
+    <button class="btn-primary" id="login-btn" onclick="doLogin()">Sign in</button>
+    <p class="modal-err" id="login-err"></p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/js/checkout-test.app.js"></script>
+</body>
+</html>

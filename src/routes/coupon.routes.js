@@ -6,19 +6,15 @@ import {
   createCoupon,
   updateCoupon,
   deleteCoupon,
-  applyCoupon,
 } from '../controllers/coupon.controller.js';
 import {
   createCouponValidator,
   updateCouponValidator,
   couponIdValidator,
-  applyCouponValidator,
 } from '../validators/coupon.validator.js';
 import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
 
 const router = Router();
-
-router.post('/apply', protectedRoutes, applyCouponValidator, applyCoupon);
 
 router.use(protectedRoutes, allowTo('admin'));
 
