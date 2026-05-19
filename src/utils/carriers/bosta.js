@@ -198,6 +198,8 @@ export const buildBostaAddress = ({
     addr.districtId = distId;
   } else if (distName && cid) {
     addr.districtName = distName;
+  } else if (cid && addr.zone) {
+    addr.districtName = addr.zone;
   }
   if (secondLine) addr.secondLine = String(secondLine).trim();
   return addr;
@@ -210,7 +212,7 @@ export const enrichBostaAddress = async (addr, credentials, hints = {}) => {
   const districtId = String(hints.districtId || addr.districtId || "").trim();
   let matched = null;
 
-  if (credentials && !(cityId && districtId)) {
+  if (credentials) {
     matched = await resolveBostaDistrictMatch(credentials, {
       cityName: hints.cityName || addr.city,
       districtName: hints.districtName || addr.districtName || addr.zone,
@@ -218,17 +220,29 @@ export const enrichBostaAddress = async (addr, credentials, hints = {}) => {
     });
   }
 
+  const districtLabel =
+    matched?.districtName || hints.districtName || addr.districtName || addr.zone;
+
   return buildBostaAddress({
     city: matched?.cityName || addr.city,
     cityId: matched?.cityId || cityId || undefined,
     zone: matched?.zoneName || addr.zone,
     districtId: matched?.districtId || districtId || undefined,
-    districtName: matched?.districtId
-      ? undefined
-      : matched?.districtName || hints.districtName || addr.districtName,
+    districtName: matched?.districtId || districtId ? undefined : districtLabel,
     firstLine: addr.firstLine,
     secondLine: addr.secondLine,
   });
+};
+
+export const assertBostaAddressDistrict = (addr, label = 'Address') => {
+  if (!addr?.districtId && !addr?.districtName) {
+    const err = new Error(
+      `${label} must include districtId or districtName (add drop-off districtId in the test form)`,
+    );
+    err.statusCode = 400;
+    throw err;
+  }
+  return addr;
 };
 
 const pickupFromEnv = () => {

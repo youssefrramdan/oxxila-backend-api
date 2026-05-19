@@ -8,10 +8,10 @@ import {
   buildBostaAddress,
   addressFromPayload,
   enrichBostaAddress,
+  assertBostaAddressDistrict,
   createBostaDelivery,
   trackBostaDelivery,
   cancelBostaDelivery,
-  lookupBostaDistrict,
 } from '../utils/carriers/bosta.js';
 
 const mapBostaError = (err, next) => {
@@ -74,29 +74,35 @@ export const createShipment = asyncHandler(async (req, res, next) => {
     );
   }
   pickupAddress = await enrichBostaAddress(pickupAddress, credentials, req.body.pickupAddress);
+  try {
+    assertBostaAddressDistrict(pickupAddress, 'pickupAddress');
+  } catch (err) {
+    return next(new ApiError(err.message, err.statusCode));
+  }
+
+  const dropOffHints = {
+    ...(req.body.dropOffAddress || {}),
+    cityName: req.body.dropOffAddress?.city || shippingAddress.governorateName,
+    districtName:
+      req.body.dropOffAddress?.districtName || shippingAddress.districtName,
+    districtId: req.body.dropOffAddress?.districtId,
+    cityId: req.body.dropOffAddress?.cityId,
+  };
 
   let dropOffAddress = addressFromPayload(req.body.dropOffAddress);
-  if (dropOffAddress) {
-    dropOffAddress = await enrichBostaAddress(dropOffAddress, credentials, req.body.dropOffAddress);
-  } else {
-    const bostaDistrict =
-      !shippingAddress.isOther &&
-      (await lookupBostaDistrict(credentials, {
-        cityName: shippingAddress.governorateName,
-        districtName: shippingAddress.districtName,
-      }));
-
+  if (!dropOffAddress) {
     dropOffAddress = buildBostaAddress({
-      city: bostaDistrict?.cityName || shippingAddress.governorateName,
-      cityId: bostaDistrict?.cityId,
-      zone:
-        bostaDistrict?.zoneName ||
-        shippingAddress.districtName ||
-        shippingAddress.governorateName,
-      districtId: bostaDistrict?.districtId,
-      districtName: bostaDistrict ? undefined : shippingAddress.districtName || shippingAddress.governorateName,
+      city: shippingAddress.governorateName,
+      zone: shippingAddress.districtName || shippingAddress.governorateName,
+      districtName: shippingAddress.districtName || shippingAddress.governorateName,
       firstLine: shippingAddress.addressLine,
     });
+  }
+  dropOffAddress = await enrichBostaAddress(dropOffAddress, credentials, dropOffHints);
+  try {
+    assertBostaAddressDistrict(dropOffAddress, 'dropOffAddress');
+  } catch (err) {
+    return next(new ApiError(err.message, err.statusCode));
   }
 
   let delivery;

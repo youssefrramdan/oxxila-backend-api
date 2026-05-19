@@ -312,7 +312,7 @@ function renderDetail(order) {
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">cityId</label>
-        <input class="form-input mono" id="dropoff-city-id" placeholder="FceDyHXwpSYYF9zGW">
+        <input class="form-input mono" id="dropoff-city-id" value="${pickup.cityId || ''}" placeholder="FceDyHXwpSYYF9zGW">
       </div>
       <div class="form-group">
         <label class="form-label">City</label>
@@ -326,7 +326,7 @@ function renderDetail(order) {
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">districtId</label>
-        <input class="form-input mono" id="dropoff-district-id" placeholder="e.g. Iy7-lFD0BE0">
+        <input class="form-input mono" id="dropoff-district-id" value="${pickup.districtId}" placeholder="e.g. Iy7-lFD0BE0">
       </div>
       <div class="form-group">
         <label class="form-label">districtName</label>
@@ -507,6 +507,15 @@ async function createShipment() {
   }
 
   const dropOffAddress = readBostaAddressForm('dropoff');
+  if (!dropOffAddress.districtId && !dropOffAddress.districtName) {
+    if (pickupAddress.districtId) dropOffAddress.districtId = pickupAddress.districtId;
+    if (pickupAddress.cityId) dropOffAddress.cityId = pickupAddress.cityId;
+    if (pickupAddress.districtName) dropOffAddress.districtName = pickupAddress.districtName;
+  }
+  if (dropOffAddress.city && dropOffAddress.firstLine && !dropOffAddress.districtId && !dropOffAddress.districtName) {
+    showToast('Drop-off needs districtId (use same as pickup or paste Iy7-lFD0BE0)', 'err');
+    return;
+  }
   const notes = document.getElementById('ship-notes')?.value?.trim() || '';
   const itemsCount = Number(document.getElementById('pkg-count')?.value);
   const body = {
