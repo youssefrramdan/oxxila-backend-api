@@ -204,7 +204,7 @@ function renderDetail(order) {
   body.innerHTML = `
     <div class="detail-grid">
       <div class="detail-row"><span>Order ID</span><span class="mono">${order._id}</span></div>
-      <div class="detail-row"><span>Customer</span><span>${order.user?.name || '—'} · ${order.user?.phone || '—'}</span></div>
+      <div class="detail-row"><span>Customer</span><span>${order.user?.name || '—'} · ${order.user?.phone || '<em style="color:var(--red)">no phone</em>'}</span></div>
       <div class="detail-row"><span>Payment</span><span>${order.paymentMethod} · ${order.paymentStatus}</span></div>
       <div class="detail-row"><span>Order status</span><span>${statusBadge(order.orderStatus)}</span></div>
       <div class="detail-row"><span>Total</span><span>${order.totalPrice} EGP</span></div>

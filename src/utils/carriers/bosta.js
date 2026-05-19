@@ -9,10 +9,12 @@ const splitReceiverName = (receiverName) => {
 
 export const bostaRequest = async (method, path, body, { apiKey, apiBaseUrl }) => {
   const base = apiBaseUrl.replace(/\/$/, '');
+  const token = apiKey?.trim();
   const options = {
     method,
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      // Bosta expects the raw API key — not "Bearer <key>"
+      Authorization: token,
       'Content-Type': 'application/json',
     },
   };
@@ -41,7 +43,7 @@ export const createBostaDelivery = async (params, credentials) => {
 
   return bostaRequest(
     'POST',
-    '/api/v2/deliveries',
+    '/api/v2/deliveries?apiVersion=1',
     {
       type: 10,
       specs: { packageDetails: [{ size: 'MEDIUM' }] },

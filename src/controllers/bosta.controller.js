@@ -10,6 +10,11 @@ import {
   cancelBostaDelivery,
 } from '../utils/carriers/bosta.js';
 
+const mapBostaError = (err, next) => {
+  const message = err.bostaError?.message || err.message || 'Bosta request failed';
+  return next(new ApiError(message, err.statusCode || 502));
+};
+
 /**
  * @desc    Create Bosta shipment for an order
  * @route   POST /api/v1/bosta/orders/:orderId/ship
@@ -31,22 +36,33 @@ export const createShipment = asyncHandler(async (req, res, next) => {
     );
   }
 
+  if (!order.user?.phone) {
+    return next(
+      new ApiError('Customer phone is required on the user profile before creating a Bosta shipment', 400)
+    );
+  }
+
   const { shippingAddress } = order;
-  const delivery = await createBostaDelivery(
-    {
-      receiverName: order.user?.name || 'Customer',
-      receiverPhone: order.user?.phone,
-      receiverAddress: {
-        city: shippingAddress.governorateName,
-        zone: shippingAddress.districtName || shippingAddress.governorateName,
-        firstLine: shippingAddress.addressLine,
+  let delivery;
+  try {
+    delivery = await createBostaDelivery(
+      {
+        receiverName: order.user.name,
+        receiverPhone: order.user.phone,
+        receiverAddress: {
+          city: shippingAddress.governorateName,
+          zone: shippingAddress.districtName || shippingAddress.governorateName,
+          firstLine: shippingAddress.addressLine,
+        },
+        cod: order.paymentMethod === 'cod' ? order.totalPrice : 0,
+        businessReference: order._id.toString(),
+        notes: req.body.notes || '',
       },
-      cod: order.paymentMethod === 'cod' ? order.totalPrice : 0,
-      businessReference: order._id.toString(),
-      notes: req.body.notes || '',
-    },
-    credentials
-  );
+      credentials
+    );
+  } catch (err) {
+    return mapBostaError(err, next);
+  }
 
   const data = delivery.data ?? delivery;
   order.bostaDeliveryId = data._id ?? data.id;
@@ -85,7 +101,12 @@ export const trackShipment = asyncHandler(async (req, res, next) => {
     return next(new ApiError('No shipment created for this order yet', 404));
   }
 
-  const tracking = await trackBostaDelivery(order.bostaTrackingNumber, credentials);
+  let tracking;
+  try {
+    tracking = await trackBostaDelivery(order.bostaTrackingNumber, credentials);
+  } catch (err) {
+    return mapBostaError(err, next);
+  }
   const trackingData = tracking.data ?? tracking;
 
   sendResponse(res, {
@@ -113,7 +134,11 @@ export const cancelShipment = asyncHandler(async (req, res, next) => {
     return next(new ApiError('No shipment to cancel', 404));
   }
 
-  await cancelBostaDelivery(order.bostaDeliveryId, credentials);
+  try {
+    await cancelBostaDelivery(order.bostaDeliveryId, credentials);
+  } catch (err) {
+    return mapBostaError(err, next);
+  }
 
   order.bostaDeliveryId = null;
   order.bostaTrackingNumber = null;
