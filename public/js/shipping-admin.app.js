@@ -11,6 +11,9 @@ let orderFilter = 'all';
 let zoneMode = null;
 let editingCarrierId = null;
 let coverageOnlyMode = false;
+let orders = [];
+let assigningOrderId = null;
+let assignDetail = null;
 
 const apiBase = () =>
   (document.getElementById('api-base')?.value || localStorage.getItem('oxxila_api_base') || 'http://localhost:3000/api/v1').replace(/\/$/, '');
@@ -61,6 +64,8 @@ async function doLogin() {
   try {
     const base = document.getElementById('api-base').value.trim();
     localStorage.setItem('oxxila_api_base', base);
+    const bostaBase = document.getElementById('bosta-default-base')?.value?.trim();
+    if (bostaBase) localStorage.setItem('oxxila_bosta_default_base', bostaBase);
     const data = await api('POST', '/auth/login', {
       email: document.getElementById('login-email').value,
       password: document.getElementById('login-pass').value,
@@ -77,8 +82,7 @@ async function doLogin() {
 }
 
 async function loadAll() {
-  await Promise.all([loadSettings(), loadCarriers(), loadZones()]);
-  renderOrders();
+  await Promise.all([loadSettings(), loadCarriers(), loadZones(), loadOrders()]);
 }
 
 // â”€â”€ Settings â”€â”€
@@ -124,6 +128,8 @@ async function loadCarriers() {
     days: c.deliveryDays || 'n/a',
     coverage: c.coverage || [],
     active: c.isActive !== false,
+    apiBaseUrl: c.apiBaseUrl || '',
+    hasApiKey: c.hasApiKey === true,
   }));
   renderCarriers();
   populateCoverageCountries();
@@ -177,6 +183,8 @@ function openAddCarrier() {
   document.getElementById('carrier-type-sel').value = 'known';
   document.getElementById('carrier-type-sel').disabled = false;
   document.getElementById('carrier-api-provider').value = 'bosta';
+  document.getElementById('carrier-api-base-url').value =
+    localStorage.getItem('oxxila_bosta_default_base') || 'https://app.bosta.co';
   document.getElementById('carrier-api-key').value = '';
   document.querySelectorAll('.day-chip').forEach((c, i) => c.classList.toggle('sel', i === 0));
   document.getElementById('carrier-active-toggle').classList.add('on');
@@ -208,12 +216,22 @@ async function openEditCarrier(id) {
   } else {
     document.getElementById('carrier-api-provider').value = 'bosta';
   }
+  if (c.type === 'api') {
+    document.getElementById('carrier-api-base-url').value =
+      c.apiBaseUrl || localStorage.getItem('oxxila_bosta_default_base') || 'https://app.bosta.co';
+  }
   document.getElementById('carrier-active-toggle').classList.toggle('on', c.active);
   document.querySelectorAll('.day-chip').forEach((chip) => {
     const d = (c.days || '').replace(/\s*days$/i, '').trim();
     chip.classList.toggle('sel', d ? chip.textContent.trim() === d : chip.textContent.trim() === '1-2');
   });
   onCarrierTypeChange();
+  onApiProviderChange();
+  if (c.type === 'api' && c.provider === 'bosta') {
+    document.getElementById('carrier-api-base-url').value =
+      c.apiBaseUrl || localStorage.getItem('oxxila_bosta_default_base') || 'https://app.bosta.co';
+    await loadPickups(id);
+  }
   openDrawer('carrier-drawer');
 }
 
@@ -259,28 +277,43 @@ async function saveCarrier() {
       const put = { name, isActive };
       if (type !== 'api') put.deliveryDays = getSelectedDeliveryDays();
       const newKey = document.getElementById('carrier-api-key').value.trim();
-      if (type === 'api' && newKey) put.apiKey = newKey;
-      await api('PUT', '/admin/carriers/' + editingCarrierId, put);
+      if (type === 'api') {
+        put.apiBaseUrl = document.getElementById('carrier-api-base-url').value.trim();
+        if (newKey) put.apiKey = newKey;
+      }
+      const updated = await api('PUT', '/admin/carriers/' + editingCarrierId, put);
+      if (updated.data?.syncSummary) {
+        toast(
+          `Synced: ${updated.data.syncSummary.count ?? 0} governorates, ` +
+            `${updated.data.syncSummary.districtsCreated ?? 0} new districts`
+        );
+      }
     } else {
       const payload = { name, code, type, isActive };
       if (type === 'api') {
         payload.apiProvider = document.getElementById('carrier-api-provider').value;
         payload.apiKey = document.getElementById('carrier-api-key').value.trim();
+        payload.apiBaseUrl = document.getElementById('carrier-api-base-url').value.trim();
       } else {
         payload.deliveryDays = getSelectedDeliveryDays();
       }
       const created = await api('POST', '/admin/carriers', payload);
-      carrierId = created.data._id;
+      carrierId = created.data?.carrier?._id ?? created.data?._id;
+      if (created.data?.syncSummary) {
+        toast(`Bosta sync: ${created.data.syncSummary.count ?? 0} governorates covered`);
+      }
     }
 
-    if (carrierId && govIds.length) {
+    if (carrierId && govIds.length && type !== 'api') {
       await api('PUT', '/admin/carriers/' + carrierId + '/coverage', { governorateIds: govIds });
     }
 
     closeAll();
     resetCarrierDrawerForm();
     await loadCarriers();
-    toast(editingCarrierId ? 'Carrier updated' : 'Carrier created');
+    await loadZones();
+    if (!editingCarrierId && carrierId) toast('Carrier created');
+    else if (editingCarrierId) toast('Carrier updated');
   } catch (e) {
     toast(e.message, true);
   }
@@ -317,11 +350,110 @@ function onCarrierTypeChange() {
   const v = document.getElementById('carrier-type-sel').value;
   const isApi = v === 'api';
   document.getElementById('api-section').style.display = isApi && !coverageOnlyMode ? '' : 'none';
-  document.getElementById('manual-section').style.display = '';
+  document.getElementById('manual-section').style.display = coverageOnlyMode || !isApi ? '' : 'none';
   const delSec = document.getElementById('delivery-days-section');
   if (delSec) {
     const hideDays = coverageOnlyMode || isApi;
     delSec.style.display = hideDays ? 'none' : '';
+  }
+  onApiProviderChange();
+}
+
+function onApiProviderChange() {
+  const provider = document.getElementById('carrier-api-provider')?.value;
+  const isBosta = provider === 'bosta';
+  const pickupsSec = document.getElementById('bosta-pickups-section');
+  if (pickupsSec) {
+    pickupsSec.style.display = isBosta && editingCarrierId ? '' : 'none';
+  }
+}
+
+async function syncBostaZones() {
+  if (!editingCarrierId) return;
+  try {
+    const { data } = await api('POST', '/admin/carriers/' + editingCarrierId + '/bosta/sync-zones');
+    toast(`Zones synced — ${data.count ?? 0} governorates in coverage`);
+    await loadZones();
+    await loadCarriers();
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+async function loadPickups(carrierId) {
+  const el = document.getElementById('pickups-list');
+  if (!el) return;
+  try {
+    const { data } = await api('GET', '/admin/carriers/' + carrierId + '/pickups');
+    if (!data?.length) {
+      el.innerHTML = 'No pickup locations yet';
+      return;
+    }
+    el.innerHTML = data
+      .map(
+        (p) => `
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div><strong>${esc(p.locationName)}</strong>${p.isDefault ? ' <span class="bosta-badge">Default</span>' : ''}<br><span style="color:var(--muted)">${esc(p.address?.city)}</span></div>
+        <div style="display:flex;gap:4px">
+          ${!p.isDefault ? `<button class="btn btn-secondary" style="font-size:10px;padding:4px 8px" onclick="setDefaultPickup('${carrierId}','${p._id}')">Set default</button>` : ''}
+          <button class="btn btn-secondary" style="font-size:10px;padding:4px 8px" onclick="deletePickup('${carrierId}','${p._id}')">Delete</button>
+        </div>
+      </div>`
+      )
+      .join('');
+  } catch (e) {
+    el.textContent = e.message;
+  }
+}
+
+async function openAddPickupForm() {
+  if (!editingCarrierId) return;
+  const name = prompt('Location name');
+  if (!name) return;
+  const firstLine = prompt('Address first line');
+  if (!firstLine) return;
+  const city = prompt('City name (e.g. Cairo)');
+  if (!city) return;
+  const cityId = prompt('Bosta cityId (from districts lookup)') || '';
+  const districtId = prompt('Bosta districtId') || '';
+  const contactName = prompt('Contact name') || 'Warehouse';
+  const contactPhone = prompt('Contact phone') || '';
+  if (!contactPhone) {
+    toast('Phone is required', true);
+    return;
+  }
+  try {
+    await api('POST', '/admin/carriers/' + editingCarrierId + '/pickups', {
+      locationName: name,
+      contactPerson: { name: contactName, phone: contactPhone, email: '' },
+      address: { firstLine, city, cityId, districtId, floor: '0', apartment: '0' },
+      isDefault: true,
+    });
+    await loadPickups(editingCarrierId);
+    toast('Pickup added');
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+async function setDefaultPickup(carrierId, pickupId) {
+  try {
+    await api('PUT', '/admin/carriers/' + carrierId + '/pickups/' + pickupId + '/default');
+    await loadPickups(carrierId);
+    toast('Default pickup updated');
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+async function deletePickup(carrierId, pickupId) {
+  if (!confirm('Delete this pickup?')) return;
+  try {
+    await api('DELETE', '/admin/carriers/' + carrierId + '/pickups/' + pickupId);
+    await loadPickups(carrierId);
+    toast('Pickup deleted');
+  } catch (e) {
+    toast(e.message, true);
   }
 }
 
@@ -383,6 +515,7 @@ async function loadZones() {
         country: c._id,
         name: g.name,
         price: g.shippingPrice,
+        bostaApiCovered: g.bostaApiCovered === true,
       });
       const { data: dists } = await api('GET', '/admin/governorates/' + g._id + '/districts');
       for (const d of dists || []) {
@@ -392,6 +525,7 @@ async function loadZones() {
           name: d.name,
           price: d.shippingPrice,
           covered: d.isCovered !== false,
+          bostaApiCovered: d.bostaApiCovered === true,
         });
       }
     }
@@ -476,7 +610,7 @@ function renderDistricts() {
       (d) => `
     <div class="district-row">
       <span class="cov-badge ${d.covered ? 'cov-yes' : 'cov-no'}" onclick="toggleCovered('${d._id}')">${d.covered ? 'Covered' : 'Closed'}</span>
-      <span style="flex:1;font-size:13px">${esc(d.name)}</span>
+      <span style="flex:1;font-size:13px">${esc(d.name)}${d.bostaApiCovered ? '<span class="bosta-badge">Bosta API</span>' : ''}</span>
       <input class="price-inp" type="number" value="${d.price}" onchange="updateDistPrice('${d._id}',this.value)">
       <i class="ti ti-trash zone-del" onclick="deleteDistrict('${d._id}')"></i>
     </div>`
@@ -561,21 +695,192 @@ async function deleteDistrict(id) {
   }
 }
 
-// â”€â”€ Orders (placeholder - no orders API yet) â”€â”€
+// —— Orders ——
+async function loadOrders() {
+  try {
+    let path = '/orders?limit=50&sort=-createdAt';
+    if (orderFilter !== 'all') path += '&orderStatus=' + orderFilter;
+    const { data } = await api('GET', path);
+    orders = data || [];
+    updateOrdersBadge();
+    renderOrders();
+  } catch (e) {
+    orders = [];
+    renderOrders();
+    toast(e.message, true);
+  }
+}
+
+function updateOrdersBadge() {
+  const badge = document.querySelector('.nav-item .nav-badge');
+  if (!badge) return;
+  const n = orders.filter(
+    (o) =>
+      ['pending', 'processing'].includes(o.orderStatus) && !o.fulfillment?.carrier
+  ).length;
+  badge.textContent = n > 0 ? String(n) : '0';
+}
+
+function orderStatusClass(status) {
+  if (status === 'shipped') return 'os-shipped';
+  if (status === 'delivered') return 'os-delivered';
+  if (status === 'processing') return 'os-assigned';
+  return 'os-pending';
+}
+
+function shortId(id) {
+  return String(id || '').slice(-6).toUpperCase();
+}
+
 function renderOrders() {
   const body = document.getElementById('orders-body');
-  body.innerHTML = `<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:28px">Orders shipping API is not connected yet.<br><span style="font-size:11px">Use Carriers + Zone Manager above.</span></td></tr>`;
+  let list = orders;
+  if (orderFilter !== 'all') {
+    list = orders.filter((o) => o.orderStatus === orderFilter);
+  }
+  if (!list.length) {
+    body.innerHTML =
+      '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:28px">No orders found</td></tr>';
+    return;
+  }
+  body.innerHTML = list
+    .map((o) => {
+      const user = o.user || {};
+      const zone = `${o.shippingAddress?.governorateName || ''} / ${o.shippingAddress?.districtName || ''}`;
+      const carrier = o.fulfillment?.carrierName || '—';
+      const tracking =
+        o.fulfillment?.trackingNumber ||
+        o.fulfillment?.driverName ||
+        '—';
+      const canAssign =
+        ['pending', 'processing'].includes(o.orderStatus) && !o.fulfillment?.carrier;
+      return `
+    <tr>
+      <td style="font-family:var(--mono);font-size:12px">#${shortId(o._id)}</td>
+      <td><div style="font-size:13px">${esc(user.name || '—')}</div><div style="font-size:10px;color:var(--muted)">${esc(user.email || '')}</div></td>
+      <td style="font-size:12px">${esc(zone)}</td>
+      <td style="font-size:12px">${esc(carrier)}</td>
+      <td><span class="order-status ${orderStatusClass(o.orderStatus)}">${esc(o.orderStatus)}</span></td>
+      <td style="font-size:11px;font-family:var(--mono);color:var(--muted)">${esc(tracking)}</td>
+      <td>${
+        canAssign
+          ? `<button class="btn btn-primary" style="font-size:11px;padding:5px 10px" onclick="openAssign('${o._id}')">Assign</button>`
+          : '<span style="color:var(--muted2);font-size:11px">—</span>'
+      }</td>
+    </tr>`;
+    })
+    .join('');
 }
 
 function filterOrders(type, el) {
   document.querySelectorAll('.order-filter-btn').forEach((b) => b.classList.remove('active'));
   el.classList.add('active');
   orderFilter = type;
-  renderOrders();
+  loadOrders();
 }
 
-function openAssign() {
-  toast('Orders API coming soon', true);
+async function openAssign(orderId) {
+  assigningOrderId = orderId;
+  try {
+    const { data } = await api('GET', '/admin/shipping/orders/' + orderId);
+    assignDetail = data;
+    renderAssignDrawer();
+    openDrawer('assign-drawer');
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+function renderAssignDrawer() {
+  const body = document.getElementById('assign-body');
+  if (!assignDetail) return;
+  const o = assignDetail.order;
+  const user = o.user || {};
+  const carriersList = assignDetail.carriers || [];
+  const bostaWarn =
+    assignDetail.districtBosta && !assignDetail.districtBosta.bostaApiCovered
+      ? '<p style="color:var(--amber);font-size:11px;margin-top:8px">This district is not Bosta API covered — Bosta assignment may fail.</p>'
+      : '';
+
+  const grouped = { api: [], known: [], internal: [] };
+  carriersList.forEach((c) => {
+    if (c.isActive === false) return;
+    const t = c.type || 'known';
+    if (grouped[t]) grouped[t].push(c);
+  });
+
+  const renderGroup = (label, list) => {
+    if (!list.length) return '';
+    return `
+      <div class="form-divider">${label}</div>
+      ${list
+        .map((c) => {
+          const disabled = !c.coversGovernorate;
+          const id = c._id;
+          return `
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 0;opacity:${disabled ? 0.45 : 1};cursor:${disabled ? 'not-allowed' : 'pointer'}">
+          <input type="radio" name="assign-carrier" value="${id}" ${disabled ? 'disabled' : ''} onchange="onAssignCarrierChange('${c.type}','${c.apiProvider || ''}')">
+          <span>${esc(c.name)} <span style="color:var(--muted);font-size:10px">(${esc(c.code)})</span></span>
+          ${disabled ? '<span style="font-size:10px;color:var(--muted)">— not in coverage</span>' : ''}
+        </label>`;
+        })
+        .join('')}`;
+  };
+
+  body.innerHTML = `
+    <div class="assign-order-info">
+      <p>Order <strong>#${shortId(o._id)}</strong></p>
+      <p>Customer: <strong>${esc(user.name)}</strong> · ${esc(user.phone || 'no phone')}</p>
+      <p>Zone: <strong>${esc(o.shippingAddress?.governorateName)} / ${esc(o.shippingAddress?.districtName)}</strong></p>
+      <p>Total: <strong>${o.totalPrice} EGP</strong> · ${esc(o.paymentMethod)}</p>
+    </div>
+    ${bostaWarn}
+    <div id="assign-carriers-list">
+      ${renderGroup('API (Bosta / Mylerz)', grouped.api)}
+      ${renderGroup('Known carriers', grouped.known)}
+      ${renderGroup('Internal delivery', grouped.internal)}
+    </div>
+    <div id="manual-assign-fields" style="display:none;margin-top:12px">
+      <div class="form-group"><label class="form-label">Driver name</label><input class="form-input" id="assign-driver-name"></div>
+      <div class="form-group"><label class="form-label">Driver phone</label><input class="form-input" id="assign-driver-phone"></div>
+      <div class="form-group"><label class="form-label">Tracking number (optional)</label><input class="form-input" id="assign-tracking"></div>
+      <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="assign-notes"></div>
+    </div>`;
+}
+
+function onAssignCarrierChange(type, provider) {
+  const manual = document.getElementById('manual-assign-fields');
+  if (!manual) return;
+  const showManual = type === 'known' || type === 'internal';
+  manual.style.display = showManual ? '' : 'none';
+}
+
+async function confirmAssign() {
+  const selected = document.querySelector('input[name="assign-carrier"]:checked');
+  if (!selected) {
+    toast('Select a carrier', true);
+    return;
+  }
+  const carrierId = selected.value;
+  const carrier = assignDetail?.carriers?.find((c) => c._id === carrierId);
+  const payload = {
+    carrierId,
+    driverName: document.getElementById('assign-driver-name')?.value?.trim(),
+    driverPhone: document.getElementById('assign-driver-phone')?.value?.trim(),
+    trackingNumber: document.getElementById('assign-tracking')?.value?.trim(),
+    notes: document.getElementById('assign-notes')?.value?.trim(),
+    markShipped: carrier?.type === 'api' && carrier?.apiProvider === 'bosta',
+  };
+  try {
+    await api('POST', '/admin/shipping/orders/' + assigningOrderId + '/assign', payload);
+    closeAll();
+    assigningOrderId = null;
+    assignDetail = null;
+    await loadOrders();
+    toast('Carrier assigned');
+  } catch (e) {
+    toast(e.message, true);
+  }
 }
 
 // â”€â”€ Drawers â”€â”€
@@ -677,6 +982,9 @@ if (token) {
   document.getElementById('login-overlay').classList.add('hidden');
   const savedBase = localStorage.getItem('oxxila_api_base');
   if (savedBase) document.getElementById('api-base').value = savedBase;
+  const savedBosta = localStorage.getItem('oxxila_bosta_default_base');
+  const bostaEl = document.getElementById('bosta-default-base');
+  if (savedBosta && bostaEl) bostaEl.value = savedBosta;
   loadAll().catch(() => {
     token = '';
     localStorage.removeItem('oxxila_admin_token');

@@ -30,7 +30,12 @@ export const createDistrict = asyncHandler(async (req, res, next) => {
   const govExists = await Governorate.findById(governorate);
   if (!govExists) return next(new ApiError(`No governorate found with id: ${governorate}`, 404));
 
-  const district = await District.create({ governorate, name, shippingPrice });
+  const district = await District.create({
+    governorate,
+    name,
+    shippingPrice,
+    bostaApiCovered: false,
+  });
   sendResponse(res, {
     statusCode: 201,
     message: 'District created successfully',

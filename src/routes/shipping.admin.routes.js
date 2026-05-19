@@ -41,7 +41,20 @@ import {
   deleteCarrier,
   getCarrierCoverage,
   updateCarrierCoverage,
+  syncBostaZonesForCarrier,
 } from '../controllers/carrier.controller.js';
+import {
+  getCarrierPickups,
+  createCarrierPickup,
+  updateCarrierPickup,
+  deleteCarrierPickup,
+  setDefaultCarrierPickup,
+  getBostaDistrictsLookup,
+} from '../controllers/carrierPickup.controller.js';
+import {
+  getOrderShippingDetail,
+  assignOrderShipping,
+} from '../controllers/orderShipping.controller.js';
 import { getSettings, updateSettings } from '../controllers/shippingSettings.controller.js';
 import {
   createCarrierValidator,
@@ -49,6 +62,16 @@ import {
   updateCoverageValidator,
   carrierIdParamValidator,
 } from '../validators/carrier.validator.js';
+import {
+  carrierPickupParamValidator,
+  pickupIdParamValidator,
+  createPickupValidator,
+  updatePickupValidator,
+} from '../validators/carrierPickup.validator.js';
+import {
+  assignOrderShippingValidator,
+  orderShippingDetailValidator,
+} from '../validators/orderShipping.validator.js';
 
 const router = Router();
 
@@ -75,6 +98,25 @@ router.put('/carriers/:id', updateCarrierValidator, updateCarrier);
 router.delete('/carriers/:id', carrierIdParamValidator, deleteCarrier);
 router.get('/carriers/:id/coverage', carrierIdParamValidator, getCarrierCoverage);
 router.put('/carriers/:id/coverage', updateCoverageValidator, updateCarrierCoverage);
+router.post('/carriers/:id/bosta/sync-zones', carrierIdParamValidator, syncBostaZonesForCarrier);
+
+router.get('/carriers/:id/pickups', carrierPickupParamValidator, getCarrierPickups);
+router.post('/carriers/:id/pickups', createPickupValidator, createCarrierPickup);
+router.put('/carriers/:id/pickups/:pickupId', updatePickupValidator, updateCarrierPickup);
+router.delete('/carriers/:id/pickups/:pickupId', pickupIdParamValidator, deleteCarrierPickup);
+router.put(
+  '/carriers/:id/pickups/:pickupId/default',
+  pickupIdParamValidator,
+  setDefaultCarrierPickup
+);
+router.get(
+  '/carriers/:id/bosta/districts-lookup',
+  carrierPickupParamValidator,
+  getBostaDistrictsLookup
+);
+
+router.get('/shipping/orders/:id', orderShippingDetailValidator, getOrderShippingDetail);
+router.post('/shipping/orders/:id/assign', assignOrderShippingValidator, assignOrderShipping);
 
 router.get('/shipping-settings', getSettings);
 router.put('/shipping-settings', updateSettings);

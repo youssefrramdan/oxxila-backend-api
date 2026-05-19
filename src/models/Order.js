@@ -11,6 +11,24 @@ const orderItemSchema = new mongoose.Schema(
   },
 );
 
+const fulfillmentSchema = new mongoose.Schema(
+  {
+    carrier: { type: mongoose.Schema.Types.ObjectId, ref: 'Carrier', default: null },
+    carrierName: { type: String, default: null },
+    carrierCode: { type: String, default: null },
+    carrierType: { type: String, enum: ['api', 'known', 'internal'], default: null },
+    assignedAt: { type: Date, default: null },
+    assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    trackingNumber: { type: String, default: null },
+    externalDeliveryId: { type: String, default: null },
+    driverName: { type: String, default: null },
+    driverPhone: { type: String, default: null },
+    notes: { type: String, default: null },
+    bostaState: { type: String, default: null },
+  },
+  { _id: false }
+);
+
 const shippingAddressSchema = new mongoose.Schema(
   {
     countryName: { type: String, required: true, trim: true },
@@ -64,14 +82,13 @@ const orderSchema = new mongoose.Schema(
       default: 'pending',
     },
     deliveredAt: { type: Date, default: null, index: true },
-    bostaDeliveryId: { type: String, default: null },
-    bostaTrackingNumber: { type: String, default: null },
-    bostaStatus: { type: String, default: null },
+    fulfillment: { type: fulfillmentSchema, default: () => ({}) },
   },
   { timestamps: true }
 );
 
 orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ 'fulfillment.carrier': 1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ user: 1, orderStatus: 1, deliveredAt: -1 });

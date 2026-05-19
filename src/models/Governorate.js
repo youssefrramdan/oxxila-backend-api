@@ -22,6 +22,8 @@ const governorateSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    bostaApiCovered: { type: Boolean, default: false },
+    bostaCityId: { type: String, default: null },
   },
   { timestamps: true }
 );

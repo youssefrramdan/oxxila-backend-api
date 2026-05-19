@@ -4879,7 +4879,7 @@
                     "carriers"
                   ]
                 },
-                "description": "**Admin** Bearer. Create `known` or `internal` carriers. `type: api` carriers (Bosta/Mylerz) are seeded by system — prefer not creating via admin."
+                "description": "**Admin** Bearer. Create `known` or `internal` carriers. `type: api` carriers (Mylerz) are seeded by system — prefer not creating via admin."
               },
               "response": []
             },
@@ -5014,9 +5014,73 @@
                 "description": "**Admin** Bearer. Replaces all coverage — body `{ governorateIds: [] }`. Empty array clears coverage."
               },
               "response": []
+            },
+            {
+              "name": "Sync Bosta Zones",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/bosta/sync-zones",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "carriers", ":id", "bosta", "sync-zones"],
+                  "variable": [{ "key": "id", "value": "{{carrierId}}" }]
+                },
+                "description": "**Admin** Bearer. Bosta carrier only. Syncs zones from Bosta API and replaces CarrierCoverage."
+              },
+              "response": []
+            },
+            {
+              "name": "List Carrier Pickups",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/pickups",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "carriers", ":id", "pickups"],
+                  "variable": [{ "key": "id", "value": "{{carrierId}}" }]
+                },
+                "description": "**Admin** Bearer. Bosta pickup locations stored locally + synced to Bosta."
+              },
+              "response": []
+            },
+            {
+              "name": "Assign Order Shipping",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"driverName\": \"\",\n  \"driverPhone\": \"\",\n  \"trackingNumber\": \"\",\n  \"notes\": \"\",\n  \"markShipped\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/assign",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "shipping", "orders", ":id", "assign"],
+                  "variable": [{ "key": "id", "value": "{{orderId}}" }]
+                },
+                "description": "**Admin** Bearer. Assign Bosta (creates delivery) or known/internal (manual fulfillment fields)."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Order Shipping Detail",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "shipping", "orders", ":id"],
+                  "variable": [{ "key": "id", "value": "{{orderId}}" }]
+                },
+                "description": "**Admin** Bearer. Order + carriers available for assign drawer."
+              },
+              "response": []
             }
           ],
-          "description": "`/api/v1/admin/carriers` + coverage. Env: `{{carrierId}}`."
+          "description": "`/api/v1/admin/carriers` + coverage + Bosta pickups/sync + order assign. Env: `{{carrierId}}`, `{{orderId}}`."
         },
         {
           "name": "Shipping Settings",

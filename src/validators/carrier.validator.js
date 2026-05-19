@@ -18,11 +18,16 @@ export const createCarrierValidator = [
   body('apiProvider')
     .if(body('type').equals('api'))
     .notEmpty().withMessage('apiProvider is required for API carriers')
-    .isIn(['bosta', 'mylerz']).withMessage('apiProvider must be bosta or mylerz'),
+    .isIn(['mylerz', 'bosta']).withMessage('apiProvider must be mylerz or bosta'),
 
   body('apiKey')
     .if(body('type').equals('api'))
     .notEmpty().withMessage('apiKey is required for API carriers'),
+
+  body('apiBaseUrl')
+    .if(body('type').equals('api'))
+    .optional()
+    .isString(),
 
   body('deliveryDays')
     .if(body('type').not().equals('api'))
@@ -36,6 +41,7 @@ export const updateCarrierValidator = [
   body('name').optional().isLength({ max: 100 }).withMessage('Name too long'),
   body('deliveryDays').optional().isString(),
   body('apiKey').optional().isString(),
+  body('apiBaseUrl').optional().isString(),
   body('isActive').optional().isBoolean(),
   validate,
 ];

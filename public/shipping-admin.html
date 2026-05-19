@@ -170,6 +170,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
 .zone-del:hover{color:var(--red);}
 .district-row{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:7px;background:var(--card);border:1px solid var(--border);margin-bottom:4px;}
 .cov-badge{font-size:9px;padding:2px 7px;border-radius:12px;font-weight:500;cursor:pointer;flex-shrink:0;}
+.bosta-badge{font-size:9px;padding:2px 6px;border-radius:10px;background:var(--blue-bg);color:var(--blue);border:1px solid rgba(96,165,250,.25);margin-left:6px;}
 .cov-yes{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
 .cov-no{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,.2);}
 .price-inp{width:58px;background:var(--card2);border:1px solid var(--border2);border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--mono);color:var(--text);text-align:center;outline:none;}
@@ -264,7 +265,11 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
   <div class="login-card">
     <h3>Admin Login</h3>
     <p>Sign in to manage shipping</p>
-    <div class="form-group"><label class="form-label">API Base URL</label><input class="form-input" id="api-base" value="http://localhost:3000/api/v1"></div>
+    <div class="form-group"><label class="form-label">Oxxila API Base URL</label><input class="form-input" id="api-base" value="http://localhost:3000/api/v1"></div>
+    <details style="margin-bottom:14px;font-size:12px">
+      <summary style="cursor:pointer;color:var(--muted);margin-bottom:8px">Bosta defaults (staging backup)</summary>
+      <div class="form-group"><label class="form-label">Bosta API Base URL</label><input class="form-input" id="bosta-default-base" placeholder="https://app.bosta.co"></div>
+    </details>
     <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="login-email" value="admin@oxxila.local"></div>
     <div class="form-group"><label class="form-label">Password</label><input class="form-input" id="login-pass" type="password" value="OxxilaDev1!"></div>
     <button class="save-btn" onclick="doLogin()">Login</button>
@@ -335,7 +340,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
             <div class="method-icon courier"><i class="ti ti-building-store"></i></div>
             <div>
               <div class="method-title">API Carrier</div>
-              <div class="method-sub">Bosta, Mylerz - automated booking</div>
+              <div class="method-sub">Mylerz — automated booking</div>
             </div>
           </div>
           <div class="toggle on" onclick="event.stopPropagation();toggleMethodSetting(this.closest('.method-card'))"></div>
@@ -500,14 +505,24 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
       <div class="form-divider">API Configuration</div>
       <div class="form-group">
         <label class="form-label">API Provider</label>
-        <select class="form-select" id="carrier-api-provider">
+        <select class="form-select" id="carrier-api-provider" onchange="onApiProviderChange()">
           <option value="bosta">Bosta</option>
           <option value="mylerz">Mylerz</option>
         </select>
       </div>
       <div class="form-group">
+        <label class="form-label">API Base URL</label>
+        <input class="form-input" id="carrier-api-base-url" placeholder="https://app.bosta.co" autocomplete="off">
+      </div>
+      <div class="form-group">
         <label class="form-label">API Key</label>
         <input class="form-input" type="password" id="carrier-api-key" placeholder="Paste API key" autocomplete="off">
+      </div>
+      <div id="bosta-pickups-section" style="display:none">
+        <div class="form-divider">Bosta Pickup Locations</div>
+        <div id="pickups-list" style="font-size:12px;margin-bottom:10px;color:var(--muted)">Save carrier with API key to manage pickups</div>
+        <button type="button" class="btn btn-secondary" style="width:100%;margin-bottom:8px" onclick="openAddPickupForm()"><i class="ti ti-plus"></i> Add pickup</button>
+        <button type="button" class="btn btn-secondary" style="width:100%" onclick="syncBostaZones()"><i class="ti ti-refresh"></i> Sync zones from Bosta</button>
       </div>
     </div>
 
@@ -562,7 +577,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
   </div>
   <div class="drawer-body" id="assign-body"></div>
   <div class="drawer-footer">
-    <button class="save-btn" onclick="closeAll()">Confirm Assignment</button>
+    <button class="save-btn" onclick="confirmAssign()">Confirm Assignment</button>
   </div>
 </div>
 

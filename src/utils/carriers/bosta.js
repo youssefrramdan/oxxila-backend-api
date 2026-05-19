@@ -91,17 +91,6 @@ export const matchBostaDistrict = (cities, { cityName, districtName }) => {
   };
 };
 
-// Fallback when cities catalog fetch fails (staging test values from Bosta dashboard)
-const BOSTA_DISTRICT_FALLBACK = {
-  "Iy7-lFD0BE0": {
-    cityId: "FceDyHXwpSYYF9zGW",
-    cityName: "Cairo",
-    zoneName: "15 May",
-    districtId: "Iy7-lFD0BE0",
-    districtName: "15 May",
-  },
-};
-
 export const matchBostaDistrictById = (cities, districtId) => {
   const id = String(districtId || "").trim();
   if (!id) return null;
@@ -117,7 +106,7 @@ export const matchBostaDistrictById = (cities, districtId) => {
       districtName: district.districtName,
     };
   }
-  return BOSTA_DISTRICT_FALLBACK[id] ?? null;
+  return null;
 };
 
 export const fetchBostaCityDistricts = async (credentials) => {
@@ -157,22 +146,6 @@ export const resolveBostaDistrictMatch = async (
     return matchBostaDistrict(cities, { cityName, districtName });
   }
   return null;
-};
-
-export const lookupBostaDistrict = async (credentials, { cityName, districtName, districtId }) =>
-  resolveBostaDistrictMatch(credentials, { cityName, districtName, districtId });
-
-export const addressFromPayload = (payload) => {
-  if (!payload?.city?.trim() || !payload?.firstLine?.trim()) return null;
-  return buildBostaAddress({
-    city: payload.city,
-    cityId: payload.cityId,
-    zone: payload.zone,
-    districtId: payload.districtId,
-    districtName: payload.districtName,
-    firstLine: payload.firstLine,
-    secondLine: payload.secondLine,
-  });
 };
 
 export const buildBostaAddress = ({
@@ -234,17 +207,6 @@ export const enrichBostaAddress = async (addr, credentials, hints = {}) => {
   });
 };
 
-export const assertBostaAddressDistrict = (addr, label = 'Address') => {
-  if (!addr?.districtId && !addr?.districtName) {
-    const err = new Error(
-      `${label} must include districtId or districtName (add drop-off districtId in the test form)`,
-    );
-    err.statusCode = 400;
-    throw err;
-  }
-  return addr;
-};
-
 const pickupFromEnv = () => {
   const city = process.env.BOSTA_PICKUP_CITY?.trim();
   const firstLine = process.env.BOSTA_PICKUP_FIRST_LINE?.trim();
@@ -301,7 +263,50 @@ export const fetchBostaPickupAddress = async (credentials) => {
 const enrichAddressWithBostaDistrict = async (addr, credentials, hints) =>
   enrichBostaAddress(addr, credentials, hints);
 
-export const resolveBostaPickupAddress = async (credentials) => {
+const pickupDocToBostaAddress = (pickupDoc) => {
+  if (!pickupDoc?.address?.firstLine) return null;
+  const { address } = pickupDoc;
+  return buildBostaAddress({
+    city: address.city,
+    cityId: address.cityId,
+    zone: address.districtName || address.city,
+    districtId: address.districtId,
+    districtName: address.districtName,
+    firstLine: address.firstLine,
+    secondLine: address.secondLine,
+  });
+};
+
+export const listBostaPickupLocations = async (credentials) => {
+  const res = await bostaRequest("GET", "/api/v2/pickup-locations", null, credentials);
+  const list = res.data?.list ?? res.data?.pickupLocations ?? [];
+  return Array.isArray(list) ? list : [];
+};
+
+export const createBostaPickupLocation = async (payload, credentials) =>
+  bostaRequest("POST", "/api/v2/pickup-locations", payload, credentials);
+
+export const updateBostaPickupLocation = async (locationId, payload, credentials) =>
+  bostaRequest("PUT", `/api/v2/pickup-locations/${locationId}`, payload, credentials);
+
+export const deleteBostaPickupLocation = async (locationId, credentials) =>
+  bostaRequest("DELETE", `/api/v2/pickup-locations/${locationId}`, null, credentials);
+
+export const setBostaDefaultPickupLocation = async (locationId, credentials) =>
+  bostaRequest("PUT", `/api/v2/pickup-locations/${locationId}/default`, null, credentials);
+
+export const resolveBostaPickupAddress = async (credentials, { defaultPickupFromDb } = {}) => {
+  if (defaultPickupFromDb) {
+    const fromDb = pickupDocToBostaAddress(defaultPickupFromDb);
+    if (fromDb) {
+      return enrichAddressWithBostaDistrict(fromDb, credentials, {
+        cityName: defaultPickupFromDb.address?.city,
+        districtName: defaultPickupFromDb.address?.districtName,
+        districtId: defaultPickupFromDb.address?.districtId,
+      });
+    }
+  }
+
   let fromEnv = pickupFromEnv();
   if (fromEnv) {
     fromEnv = await enrichAddressWithBostaDistrict(fromEnv, credentials, {
@@ -317,7 +322,7 @@ export const resolveBostaPickupAddress = async (credentials) => {
   if (fromApi) return fromApi;
 
   const err = new Error(
-    "Pickup address is required: send pickupAddress in the request body or configure Bosta pickup in the dashboard / .env",
+    "Bosta pickup address is not configured. Add a pickup location in the shipping admin or set BOSTA_PICKUP_* in .env",
   );
   err.statusCode = 400;
   throw err;
@@ -344,7 +349,10 @@ export const createBostaDelivery = async (params, credentials) => {
   const { firstName, lastName } = splitReceiverName(params.receiverName);
   const specs = buildBostaSpecs(params.packageSpecs);
   const pickupAddress =
-    params.pickupAddress ?? (await resolveBostaPickupAddress(credentials));
+    params.pickupAddress ??
+    (await resolveBostaPickupAddress(credentials, {
+      defaultPickupFromDb: params.defaultPickupFromDb,
+    }));
 
   return bostaRequest(
     "POST",
