@@ -3,10 +3,10 @@ import CarrierCoverage from '../../models/CarrierCoverage.js';
 import District from '../../models/District.js';
 import Governorate from '../../models/Governorate.js';
 import User from '../../models/User.js';
-import CarrierPickup from '../../models/CarrierPickup.js';
 import ApiError from '../apiError.js';
 import { getBostaCredentials } from './bostaCredentials.js';
 import { createBostaDelivery, enrichBostaAddress } from './bosta.js';
+import { findDefaultCarrierPickup } from './syncCarrierPickups.js';
 
 const BLOCKED_STATUSES = new Set(['cancelled', 'delivered', 'returned']);
 
@@ -52,12 +52,12 @@ export const assignOrderToCarrier = async (order, carrier, adminUserId, options 
       throw new ApiError('Bosta API key is not configured for this carrier', 400);
     }
 
-    const defaultPickup = await CarrierPickup.findOne({
-      carrier: carrier._id,
-      isDefault: true,
-    });
+    const defaultPickup = await findDefaultCarrierPickup(carrier._id, credentials);
     if (!defaultPickup) {
-      throw new ApiError('No default Bosta pickup location configured', 400);
+      throw new ApiError(
+        'No default Bosta pickup location configured. Add one in shipping admin or in Bosta dashboard, then refresh the carrier.',
+        400
+      );
     }
 
     let districtDoc = null;

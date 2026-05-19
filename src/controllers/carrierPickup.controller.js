@@ -14,6 +14,7 @@ import {
   setBostaDefaultPickupLocation,
   fetchBostaCityDistricts,
 } from '../utils/carriers/bosta.js';
+import { syncCarrierPickupsFromBosta } from '../utils/carriers/syncCarrierPickups.js';
 
 const assertBostaCarrier = async (carrierId, next) => {
   const carrier = await Carrier.findById(carrierId);
@@ -30,18 +31,23 @@ const assertBostaCarrier = async (carrierId, next) => {
 
 const buildBostaPickupPayload = (body) => {
   const { address } = body;
+  const isDefault = body.isDefault === true;
   const bostaAddress = buildBostaPickupLocationAddress({
     city: address.city,
+    zoneId: address.zoneId,
     districtId: address.districtId,
     firstLine: address.firstLine,
     secondLine: address.secondLine,
     floor: address.floor,
     apartment: address.apartment,
+    buildingNumber: address.buildingNumber,
   });
 
   return {
     locationName: body.locationName,
-    contacts: [buildBostaPickupLocationContact(body.contactPerson)],
+    contacts: [
+      buildBostaPickupLocationContact({ ...body.contactPerson, isDefault }),
+    ],
     address: bostaAddress,
   };
 };
@@ -55,10 +61,26 @@ export const getCarrierPickups = asyncHandler(async (req, res, next) => {
   const carrier = await assertBostaCarrier(req.params.id, next);
   if (!carrier) return;
 
-  const pickups = await CarrierPickup.find({ carrier: req.params.id }).sort({
+  let pickups = await CarrierPickup.find({ carrier: req.params.id }).sort({
     isDefault: -1,
     createdAt: 1,
   });
+
+  if (!pickups.length) {
+    const credentials = await getBostaCredentials(carrier);
+    if (credentials) {
+      try {
+        await syncCarrierPickupsFromBosta(req.params.id, credentials);
+        pickups = await CarrierPickup.find({ carrier: req.params.id }).sort({
+          isDefault: -1,
+          createdAt: 1,
+        });
+      } catch {
+        /* Bosta list failed — return empty */
+      }
+    }
+  }
+
   sendResponse(res, { message: 'Pickup locations retrieved successfully', data: pickups });
 });
 

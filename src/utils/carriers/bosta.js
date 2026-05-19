@@ -7,14 +7,17 @@ export const splitBostaContactName = (fullName) => {
   return { firstName, lastName };
 };
 
-export const buildBostaPickupLocationContact = ({ name, email, phone } = {}) => {
+export const buildBostaPickupLocationContact = ({ name, email, phone, isDefault } = {}) => {
   const { firstName, lastName } = splitBostaContactName(name);
-  return {
+  const contact = {
     firstName,
     lastName,
-    email: String(email || "").trim(),
     phone: String(phone || "").trim(),
   };
+  const mail = String(email || "").trim();
+  if (mail) contact.email = mail;
+  if (isDefault === true) contact.isDefault = true;
+  return contact;
 };
 
 export const bostaRequest = async (
@@ -95,6 +98,7 @@ export const matchBostaDistrict = (cities, { cityName, districtName }) => {
   return {
     cityId: city.cityId,
     cityName: city.cityName,
+    zoneId: district.zoneId,
     zoneName: district.zoneName,
     districtId: district.districtId,
     districtName: district.districtName,
@@ -111,6 +115,7 @@ export const matchBostaDistrictById = (cities, districtId) => {
     return {
       cityId: city.cityId,
       cityName: city.cityName,
+      zoneId: district.zoneId,
       zoneName: district.zoneName,
       districtId: district.districtId,
       districtName: district.districtName,
@@ -188,24 +193,69 @@ export const buildBostaAddress = ({
   return addr;
 };
 
-/** Pickup-location create/update — Bosta blocks zone, cityId, buildingType on many API keys. */
+/** POST /api/v2/pickup-locations — see Bosta docs (city, zoneId, districtId, firstLine, …). */
 export const buildBostaPickupLocationAddress = ({
   city,
+  zoneId,
   districtId,
   firstLine,
   secondLine,
   floor,
   apartment,
+  buildingNumber,
 } = {}) => {
   const addr = {
     city: String(city || "").trim(),
     firstLine: String(firstLine || "").trim(),
-    districtId: String(districtId || "").trim(),
   };
+  const zid = String(zoneId || "").trim();
+  const did = String(districtId || "").trim();
+  if (zid) addr.zoneId = zid;
+  if (did) addr.districtId = did;
   if (secondLine) addr.secondLine = String(secondLine).trim();
   if (floor) addr.floor = floor;
   if (apartment) addr.apartment = apartment;
+  if (buildingNumber) addr.buildingNumber = buildingNumber;
   return addr;
+};
+
+export const mapBostaPickupLocationToLocal = (loc) => {
+  const addr = loc?.address ?? {};
+  const city =
+    typeof addr.city === "object" ? addr.city?.name : addr.city;
+  const zone =
+    typeof addr.zone === "object" ? addr.zone : null;
+  const district =
+    typeof addr.district === "object" ? addr.district : null;
+  const rawContact = loc?.contactPerson ?? loc?.contacts?.[0];
+  const contactName =
+    rawContact?.name ||
+    [rawContact?.firstName, rawContact?.lastName].filter(Boolean).join(" ").trim();
+
+  return {
+    locationName: loc?.locationName || "Pickup",
+    bostaLocationId: loc?._id ?? loc?.id ?? null,
+    isDefault: !!loc?.isDefault,
+    contactPerson: {
+      name: contactName || "Contact",
+      email: rawContact?.email || "",
+      phone: String(rawContact?.phone || "").replace(/^\+20/, "0"),
+    },
+    address: {
+      firstLine: addr.firstLine ?? addr.first_line ?? "",
+      secondLine: addr.secondLine || "",
+      floor: addr.floor != null ? String(addr.floor) : "",
+      apartment: addr.apartment != null ? String(addr.apartment) : "",
+      city: city || "",
+      cityId:
+        typeof addr.city === "object"
+          ? addr.city?._id
+          : addr.cityId ?? null,
+      zoneId: zone?._id ?? addr.zoneId ?? null,
+      districtId: district?._id ?? addr.districtId ?? null,
+      districtName: district?.name ?? zone?.name ?? null,
+    },
+  };
 };
 
 export const enrichBostaAddress = async (addr, credentials, hints = {}) => {
@@ -252,16 +302,15 @@ const pickupFromEnv = () => {
 };
 
 const normalizePickupLocation = (loc) => {
-  const addr = loc?.address ?? loc;
-  if (!addr?.city || !(addr.firstLine || addr.first_line)) return null;
+  const mapped = mapBostaPickupLocationToLocal(loc);
+  if (!mapped.address.city || !mapped.address.firstLine) return null;
   return buildBostaAddress({
-    city: addr.city,
-    cityId: addr.cityId ?? loc?.cityId,
-    zone: addr.zone ?? addr.zoneName ?? addr.city,
-    districtId: addr.districtId ?? addr.district?._id ?? addr.district?.id,
-    districtName: addr.districtName ?? addr.district?.name ?? loc?.districtName,
-    firstLine: addr.firstLine ?? addr.first_line,
-    secondLine: addr.secondLine,
+    city: mapped.address.city,
+    cityId: mapped.address.cityId,
+    zone: mapped.address.districtName || mapped.address.city,
+    districtId: mapped.address.districtId,
+    firstLine: mapped.address.firstLine,
+    secondLine: mapped.address.secondLine,
   });
 };
 
@@ -276,6 +325,7 @@ export const fetchBostaPickupAddress = async (credentials) => {
     try {
       const res = await bostaRequest("GET", path, null, credentials);
       const list =
+        res.data?.list ??
         res.data?.pickupLocations ??
         res.data?.locations ??
         res.pickupLocations ??

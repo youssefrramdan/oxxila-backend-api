@@ -4,6 +4,7 @@ import Order from '../models/Order.js';
 import Carrier from '../models/Carrier.js';
 import CarrierCoverage from '../models/CarrierCoverage.js';
 import District from '../models/District.js';
+import CarrierPickup from '../models/CarrierPickup.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import { assignOrderToCarrier } from '../utils/carriers/assignOrderShipping.js';
@@ -32,12 +33,20 @@ export const getOrderShippingDetail = asyncHandler(async (req, res, next) => {
     );
   }
 
+  const bostaPickupCarrierIds = new Set(
+    (
+      await CarrierPickup.find({ isDefault: true }).distinct('carrier')
+    ).map((id) => id.toString())
+  );
+
   const data = {
     order,
     districtBosta,
     carriers: carriers.map((c) => ({
       ...c.toObject(),
       coversGovernorate: coveredIds.some((id) => id.toString() === c._id.toString()),
+      hasDefaultPickup:
+        c.apiProvider !== 'bosta' || c.type !== 'api' || bostaPickupCarrierIds.has(c._id.toString()),
     })),
   };
 

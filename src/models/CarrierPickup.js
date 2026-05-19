@@ -18,6 +18,7 @@ const pickupAddressSchema = new mongoose.Schema(
     apartment: { type: String, trim: true, default: '' },
     city: { type: String, required: true, trim: true },
     cityId: { type: String, trim: true, default: null },
+    zoneId: { type: String, trim: true, default: null },
     districtId: { type: String, trim: true, default: null },
     districtName: { type: String, trim: true, default: null },
   },

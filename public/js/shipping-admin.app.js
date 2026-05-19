@@ -454,7 +454,7 @@ function onPickupCityChange() {
     districts
       .map((d) => {
         const label = d.districtName || d.zoneName;
-        return `<option value="${esc(d.districtId)}">${esc(label)}</option>`;
+        return `<option value="${esc(d.districtId)}" data-zone-id="${esc(d.zoneId || '')}">${esc(label)}</option>`;
       })
       .join('');
 }
@@ -490,6 +490,7 @@ async function submitPickupInlineForm() {
   const cityId = citySel?.value;
   const cityName = citySel?.selectedOptions?.[0]?.dataset?.name || '';
   const districtId = distSel?.value;
+  const zoneId = distSel?.selectedOptions?.[0]?.dataset?.zoneId || '';
   const districtName = distSel?.selectedOptions?.[0]?.textContent?.trim() || '';
   const contactName = document.getElementById('pickup-contact-name')?.value?.trim() || 'Warehouse';
   const contactPhone = document.getElementById('pickup-contact-phone')?.value?.trim();
@@ -508,6 +509,7 @@ async function submitPickupInlineForm() {
         firstLine,
         city: cityName,
         cityId,
+        zoneId,
         districtId,
         districtName,
       },
@@ -962,13 +964,23 @@ function renderAssignDrawer() {
       <div class="form-divider">${label}</div>
       ${list
         .map((c) => {
-          const disabled = !c.coversGovernorate;
+          const noCoverage = !c.coversGovernorate;
+          const noPickup =
+            c.type === 'api' &&
+            c.apiProvider === 'bosta' &&
+            c.hasDefaultPickup === false;
+          const disabled = noCoverage || noPickup;
           const id = c._id;
+          const hint = noCoverage
+            ? 'not in coverage'
+            : noPickup
+              ? 'no default pickup'
+              : '';
           return `
         <label style="display:flex;align-items:center;gap:8px;padding:8px 0;opacity:${disabled ? 0.45 : 1};cursor:${disabled ? 'not-allowed' : 'pointer'}">
           <input type="radio" name="assign-carrier" value="${id}" ${disabled ? 'disabled' : ''} onchange="onAssignCarrierChange('${c.type}','${c.apiProvider || ''}')">
           <span>${esc(c.name)} <span style="color:var(--muted);font-size:10px">(${esc(c.code)})</span></span>
-          ${disabled ? '<span style="font-size:10px;color:var(--muted)">— not in coverage</span>' : ''}
+          ${hint ? `<span style="font-size:10px;color:var(--muted)">— ${hint}</span>` : ''}
         </label>`;
         })
         .join('')}`;

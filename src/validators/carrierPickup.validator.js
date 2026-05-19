@@ -21,6 +21,7 @@ export const createPickupValidator = [
   body('address.firstLine').notEmpty().withMessage('address.firstLine is required'),
   body('address.city').notEmpty().withMessage('address.city is required'),
   body('address.cityId').optional().isString(),
+  body('address.zoneId').optional().isString(),
   body('address.districtId').optional().isString(),
   body('isDefault').optional().isBoolean(),
   validate,
