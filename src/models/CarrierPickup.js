@@ -14,8 +14,6 @@ const pickupAddressSchema = new mongoose.Schema(
   {
     firstLine: { type: String, required: true, trim: true },
     secondLine: { type: String, trim: true, default: '' },
-    floor: { type: String, trim: true, default: '' },
-    apartment: { type: String, trim: true, default: '' },
     city: { type: String, required: true, trim: true },
     cityId: { type: String, trim: true, default: null },
     zoneId: { type: String, trim: true, default: null },
@@ -46,6 +44,7 @@ const carrierPickupSchema = new mongoose.Schema(
 );
 
 carrierPickupSchema.index({ carrier: 1 });
+carrierPickupSchema.index({ carrier: 1, bostaLocationId: 1 }, { sparse: true });
 
 carrierPickupSchema.pre('save', async function () {
   if (!this.isDefault) return;

@@ -6,17 +6,17 @@ import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import { getBostaCredentials } from '../utils/carriers/bostaCredentials.js';
 import {
-  buildBostaPickupLocationAddress,
-  buildBostaPickupLocationContact,
+  buildPickupLocationPayload,
   createBostaPickupLocation,
-  updateBostaPickupLocation,
   deleteBostaPickupLocation,
   setBostaDefaultPickupLocation,
-  fetchBostaCityDistricts,
-} from '../utils/carriers/bosta.js';
-import { syncCarrierPickupsFromBosta } from '../utils/carriers/syncCarrierPickups.js';
+  extractBostaLocationId,
+  fetchBostaDistricts,
+  listPickupsFromDb,
+  syncPickupsToDb,
+} from '../utils/carriers/bostaPickup.js';
 
-const assertBostaCarrier = async (carrierId, next) => {
+const requireBostaCarrier = async (carrierId, next) => {
   const carrier = await Carrier.findById(carrierId);
   if (!carrier) {
     next(new ApiError(`No carrier found with id: ${carrierId}`, 404));
@@ -26,58 +26,42 @@ const assertBostaCarrier = async (carrierId, next) => {
     next(new ApiError('Pickups are only supported for Bosta API carriers', 400));
     return null;
   }
-  return carrier;
+  const credentials = await getBostaCredentials(carrier);
+  if (!credentials) {
+    next(new ApiError('Bosta API key is not configured', 400));
+    return null;
+  }
+  return { carrier, credentials };
 };
 
-const buildBostaPickupPayload = (body) => {
-  const { address } = body;
-  const isDefault = body.isDefault === true;
-  const bostaAddress = buildBostaPickupLocationAddress({
-    city: address.city,
-    zoneId: address.zoneId,
-    districtId: address.districtId,
-    firstLine: address.firstLine,
-    secondLine: address.secondLine,
-    floor: address.floor,
-    apartment: address.apartment,
-    buildingNumber: address.buildingNumber,
-  });
-
-  return {
-    locationName: body.locationName,
-    contacts: [
-      buildBostaPickupLocationContact({ ...body.contactPerson, isDefault }),
-    ],
-    address: bostaAddress,
-  };
+const findPickup = async (carrierId, pickupId, next) => {
+  const pickup = await CarrierPickup.findOne({ _id: pickupId, carrier: carrierId });
+  if (!pickup) {
+    next(new ApiError(`No pickup found with id: ${pickupId}`, 404));
+    return null;
+  }
+  return pickup;
 };
+
+const bostaApiError = (err, fallback) =>
+  new ApiError(err.message || fallback, err.statusCode || 502);
 
 /**
- * @desc    List carrier pickup locations
+ * @desc    List carrier pickup locations (syncs from Bosta when DB is empty)
  * @route   GET /api/v1/admin/carriers/:id/pickups
  * @access  Admin
  */
 export const getCarrierPickups = asyncHandler(async (req, res, next) => {
-  const carrier = await assertBostaCarrier(req.params.id, next);
-  if (!carrier) return;
+  const ctx = await requireBostaCarrier(req.params.id, next);
+  if (!ctx) return;
 
-  let pickups = await CarrierPickup.find({ carrier: req.params.id }).sort({
-    isDefault: -1,
-    createdAt: 1,
-  });
-
+  let pickups = await listPickupsFromDb(ctx.carrier._id);
   if (!pickups.length) {
-    const credentials = await getBostaCredentials(carrier);
-    if (credentials) {
-      try {
-        await syncCarrierPickupsFromBosta(req.params.id, credentials);
-        pickups = await CarrierPickup.find({ carrier: req.params.id }).sort({
-          isDefault: -1,
-          createdAt: 1,
-        });
-      } catch {
-        /* Bosta list failed — return empty */
-      }
+    try {
+      await syncPickupsToDb(ctx.carrier._id, ctx.credentials);
+      pickups = await listPickupsFromDb(ctx.carrier._id);
+    } catch {
+      /* keep empty */
     }
   }
 
@@ -85,55 +69,44 @@ export const getCarrierPickups = asyncHandler(async (req, res, next) => {
 });
 
 /**
- * @desc    Bosta cities/districts lookup for pickup forms
+ * @desc    Bosta cities/districts for pickup form
  * @route   GET /api/v1/admin/carriers/:id/bosta/districts-lookup
  * @access  Admin
  */
 export const getBostaDistrictsLookup = asyncHandler(async (req, res, next) => {
-  const carrier = await assertBostaCarrier(req.params.id, next);
-  if (!carrier) return;
+  const ctx = await requireBostaCarrier(req.params.id, next);
+  if (!ctx) return;
 
-  const credentials = await getBostaCredentials(carrier);
-  if (!credentials) {
-    return next(new ApiError('Bosta API key is not configured', 400));
-  }
-
-  const cities = await fetchBostaCityDistricts(credentials);
+  const cities = await fetchBostaDistricts(ctx.credentials);
   sendResponse(res, { message: 'Bosta districts retrieved successfully', data: cities });
 });
 
 /**
- * @desc    Create pickup (sync to Bosta)
+ * @desc    Create pickup on Bosta and store locally
  * @route   POST /api/v1/admin/carriers/:id/pickups
  * @access  Admin
  */
 export const createCarrierPickup = asyncHandler(async (req, res, next) => {
-  const carrier = await assertBostaCarrier(req.params.id, next);
-  if (!carrier) return;
+  const ctx = await requireBostaCarrier(req.params.id, next);
+  if (!ctx) return;
 
-  const credentials = await getBostaCredentials(carrier);
-  if (!credentials) {
-    return next(new ApiError('Bosta API key is not configured', 400));
-  }
-
-  const bostaPayload = buildBostaPickupPayload(req.body);
   let bostaRes;
   try {
-    bostaRes = await createBostaPickupLocation(bostaPayload, credentials);
-  } catch (err) {
-    return next(
-      new ApiError(err.message || 'Bosta pickup location creation failed', err.statusCode || 502)
+    bostaRes = await createBostaPickupLocation(
+      buildPickupLocationPayload(req.body),
+      ctx.credentials
     );
+  } catch (err) {
+    return next(bostaApiError(err, 'Bosta pickup location creation failed'));
   }
-  const bostaLoc = bostaRes.data ?? bostaRes;
-  const bostaLocationId = bostaLoc._id ?? bostaLoc.id;
 
+  const bostaLocationId = extractBostaLocationId(bostaRes);
   const isDefault =
     req.body.isDefault === true ||
-    (await CarrierPickup.countDocuments({ carrier: req.params.id })) === 0;
+    (await CarrierPickup.countDocuments({ carrier: ctx.carrier._id })) === 0;
 
   const pickup = await CarrierPickup.create({
-    carrier: req.params.id,
+    carrier: ctx.carrier._id,
     locationName: req.body.locationName,
     contactPerson: req.body.contactPerson,
     address: req.body.address,
@@ -142,7 +115,7 @@ export const createCarrierPickup = asyncHandler(async (req, res, next) => {
   });
 
   if (isDefault && bostaLocationId) {
-    await setBostaDefaultPickupLocation(bostaLocationId, credentials);
+    await setBostaDefaultPickupLocation(bostaLocationId, ctx.credentials);
   }
 
   sendResponse(res, {
@@ -153,69 +126,22 @@ export const createCarrierPickup = asyncHandler(async (req, res, next) => {
 });
 
 /**
- * @desc    Update pickup
- * @route   PUT /api/v1/admin/carriers/:id/pickups/:pickupId
- * @access  Admin
- */
-export const updateCarrierPickup = asyncHandler(async (req, res, next) => {
-  const carrier = await assertBostaCarrier(req.params.id, next);
-  if (!carrier) return;
-
-  const pickup = await CarrierPickup.findOne({
-    _id: req.params.pickupId,
-    carrier: req.params.id,
-  });
-  if (!pickup) {
-    return next(new ApiError(`No pickup found with id: ${req.params.pickupId}`, 404));
-  }
-
-  const credentials = await getBostaCredentials(carrier);
-  if (pickup.bostaLocationId && credentials && req.body.address) {
-    await updateBostaPickupLocation(
-      pickup.bostaLocationId,
-      buildBostaPickupPayload({ ...req.body, contactPerson: req.body.contactPerson ?? pickup.contactPerson }),
-      credentials
-    );
-  }
-
-  Object.assign(pickup, {
-    ...(req.body.locationName && { locationName: req.body.locationName }),
-    ...(req.body.contactPerson && { contactPerson: req.body.contactPerson }),
-    ...(req.body.address && { address: req.body.address }),
-    ...(req.body.isDefault !== undefined && { isDefault: req.body.isDefault }),
-  });
-  await pickup.save();
-
-  if (pickup.isDefault && pickup.bostaLocationId && credentials) {
-    await setBostaDefaultPickupLocation(pickup.bostaLocationId, credentials);
-  }
-
-  sendResponse(res, { message: 'Pickup location updated successfully', data: pickup });
-});
-
-/**
  * @desc    Delete pickup
  * @route   DELETE /api/v1/admin/carriers/:id/pickups/:pickupId
  * @access  Admin
  */
 export const deleteCarrierPickup = asyncHandler(async (req, res, next) => {
-  const carrier = await assertBostaCarrier(req.params.id, next);
-  if (!carrier) return;
+  const ctx = await requireBostaCarrier(req.params.id, next);
+  if (!ctx) return;
 
-  const pickup = await CarrierPickup.findOne({
-    _id: req.params.pickupId,
-    carrier: req.params.id,
-  });
-  if (!pickup) {
-    return next(new ApiError(`No pickup found with id: ${req.params.pickupId}`, 404));
-  }
+  const pickup = await findPickup(ctx.carrier._id, req.params.pickupId, next);
+  if (!pickup) return;
 
-  const credentials = await getBostaCredentials(carrier);
-  if (pickup.bostaLocationId && credentials) {
+  if (pickup.bostaLocationId) {
     try {
-      await deleteBostaPickupLocation(pickup.bostaLocationId, credentials);
+      await deleteBostaPickupLocation(pickup.bostaLocationId, ctx.credentials);
     } catch {
-      // Bosta may block delete on original location — still remove locally
+      // Bosta may block delete on the account default — still remove locally
     }
   }
 
@@ -229,20 +155,18 @@ export const deleteCarrierPickup = asyncHandler(async (req, res, next) => {
  * @access  Admin
  */
 export const setDefaultCarrierPickup = asyncHandler(async (req, res, next) => {
-  const carrier = await assertBostaCarrier(req.params.id, next);
-  if (!carrier) return;
+  const ctx = await requireBostaCarrier(req.params.id, next);
+  if (!ctx) return;
 
-  const pickup = await CarrierPickup.findOne({
-    _id: req.params.pickupId,
-    carrier: req.params.id,
-  });
-  if (!pickup) {
-    return next(new ApiError(`No pickup found with id: ${req.params.pickupId}`, 404));
-  }
+  const pickup = await findPickup(ctx.carrier._id, req.params.pickupId, next);
+  if (!pickup) return;
 
-  const credentials = await getBostaCredentials(carrier);
-  if (pickup.bostaLocationId && credentials) {
-    await setBostaDefaultPickupLocation(pickup.bostaLocationId, credentials);
+  if (pickup.bostaLocationId) {
+    try {
+      await setBostaDefaultPickupLocation(pickup.bostaLocationId, ctx.credentials);
+    } catch (err) {
+      return next(bostaApiError(err, 'Could not set default pickup on Bosta'));
+    }
   }
 
   pickup.isDefault = true;

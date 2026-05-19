@@ -535,15 +535,11 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
             <div id="bosta-pickups-section" style="display:none">
         <div class="form-divider">Bosta Pickup Locations</div>
         <div class="pickups-toolbar">
-          <button type="button" class="icon-btn" id="carrier-info-toggle" title="View coverage & pickups (read-only)" onclick="toggleCarrierInfoPanel()">
-            <i class="ti ti-eye"></i>
-          </button>
           <div id="pickups-list" class="pickups-list-main">Save carrier with API key first</div>
           <button type="button" class="btn btn-secondary pickups-add-btn" title="Add pickup" onclick="togglePickupInlineForm()">
             <i class="ti ti-plus"></i>
           </button>
         </div>
-        <div id="carrier-info-panel" class="carrier-info-panel hidden"></div>
         <div id="pickup-inline-form" class="pickup-inline-form hidden">
           <div class="form-group">
             <label class="form-label">Location name</label>
@@ -652,6 +648,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
   </div>
 </div>
 
+<script src="js/shipping-admin.pickups.js"></script>
 <script src="js/shipping-admin.app.js"></script>
 </body>
 </html>

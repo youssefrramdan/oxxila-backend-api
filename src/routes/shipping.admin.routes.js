@@ -46,7 +46,6 @@ import {
 import {
   getCarrierPickups,
   createCarrierPickup,
-  updateCarrierPickup,
   deleteCarrierPickup,
   setDefaultCarrierPickup,
   getBostaDistrictsLookup,
@@ -66,7 +65,6 @@ import {
   carrierPickupParamValidator,
   pickupIdParamValidator,
   createPickupValidator,
-  updatePickupValidator,
 } from '../validators/carrierPickup.validator.js';
 import {
   assignOrderShippingValidator,
@@ -102,7 +100,6 @@ router.post('/carriers/:id/bosta/sync-zones', carrierIdParamValidator, syncBosta
 
 router.get('/carriers/:id/pickups', carrierPickupParamValidator, getCarrierPickups);
 router.post('/carriers/:id/pickups', createPickupValidator, createCarrierPickup);
-router.put('/carriers/:id/pickups/:pickupId', updatePickupValidator, updateCarrierPickup);
 router.delete('/carriers/:id/pickups/:pickupId', pickupIdParamValidator, deleteCarrierPickup);
 router.put(
   '/carriers/:id/pickups/:pickupId/default',
