@@ -143,8 +143,42 @@ export const createBostaPickupLocation = (payload, credentials) =>
 export const deleteBostaPickupLocation = (locationId, credentials) =>
   bostaRequest('DELETE', `${PICKUP_LOCATIONS_PATH}/${locationId}`, null, credentials);
 
-export const setBostaDefaultPickupLocation = (locationId, credentials) =>
-  bostaRequest('PUT', `${PICKUP_LOCATIONS_PATH}/${locationId}/default`, null, credentials);
+export const isBostaAlreadyDefaultError = (err) => {
+  const msg = String(err?.message || '').toLowerCase();
+  return msg.includes('already the default') || msg.includes('already default');
+};
+
+export const setBostaDefaultPickupLocation = async (locationId, credentials) => {
+  try {
+    return await bostaRequest(
+      'PUT',
+      `${PICKUP_LOCATIONS_PATH}/${locationId}/default`,
+      null,
+      credentials
+    );
+  } catch (err) {
+    if (isBostaAlreadyDefaultError(err)) return null;
+    throw err;
+  }
+};
+
+/** Align Mongo isDefault flags with Bosta (source of truth). */
+export const reconcilePickupDefaultsFromBosta = async (carrierId, credentials) => {
+  const list = await listBostaPickupLocations(credentials);
+  if (!list.length) return;
+
+  const defaultBostaId =
+    list.find((l) => l.isDefault)?._id ?? list.find((l) => l.isDefault)?.id ?? null;
+
+  await CarrierPickup.updateMany({ carrier: carrierId }, { $set: { isDefault: false } });
+
+  if (defaultBostaId) {
+    await CarrierPickup.updateOne(
+      { carrier: carrierId, bostaLocationId: defaultBostaId },
+      { $set: { isDefault: true } }
+    );
+  }
+};
 
 export const fetchBostaDistricts = (credentials) => fetchBostaCityDistricts(credentials);
 
@@ -184,7 +218,7 @@ export const findDefaultPickup = async (carrierId, credentials) => {
   if (pickup || !credentials) return pickup;
 
   try {
-    await syncPickupsToDb(carrierId, credentials);
+    await reconcilePickupDefaultsFromBosta(carrierId, credentials);
   } catch {
     return null;
   }

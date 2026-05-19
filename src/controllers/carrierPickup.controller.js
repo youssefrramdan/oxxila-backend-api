@@ -14,6 +14,7 @@ import {
   fetchBostaDistricts,
   listPickupsFromDb,
   syncPickupsToDb,
+  reconcilePickupDefaultsFromBosta,
 } from '../utils/carriers/bostaPickup.js';
 
 const requireBostaCarrier = async (carrierId, next) => {
@@ -56,13 +57,15 @@ export const getCarrierPickups = asyncHandler(async (req, res, next) => {
   if (!ctx) return;
 
   let pickups = await listPickupsFromDb(ctx.carrier._id);
-  if (!pickups.length) {
-    try {
+  try {
+    if (!pickups.length) {
       await syncPickupsToDb(ctx.carrier._id, ctx.credentials);
-      pickups = await listPickupsFromDb(ctx.carrier._id);
-    } catch {
-      /* keep empty */
+    } else {
+      await reconcilePickupDefaultsFromBosta(ctx.carrier._id, ctx.credentials);
     }
+    pickups = await listPickupsFromDb(ctx.carrier._id);
+  } catch {
+    /* keep last known DB state */
   }
 
   sendResponse(res, { message: 'Pickup locations retrieved successfully', data: pickups });
@@ -117,11 +120,13 @@ export const createCarrierPickup = asyncHandler(async (req, res, next) => {
   if (isDefault && bostaLocationId) {
     await setBostaDefaultPickupLocation(bostaLocationId, ctx.credentials);
   }
+  await reconcilePickupDefaultsFromBosta(ctx.carrier._id, ctx.credentials);
+  const saved = await CarrierPickup.findById(pickup._id);
 
   sendResponse(res, {
     statusCode: 201,
     message: 'Pickup location created successfully',
-    data: pickup,
+    data: saved ?? pickup,
   });
 });
 
@@ -167,10 +172,15 @@ export const setDefaultCarrierPickup = asyncHandler(async (req, res, next) => {
     } catch (err) {
       return next(bostaApiError(err, 'Could not set default pickup on Bosta'));
     }
+    await reconcilePickupDefaultsFromBosta(ctx.carrier._id, ctx.credentials);
+  } else {
+    pickup.isDefault = true;
+    await pickup.save();
   }
 
-  pickup.isDefault = true;
-  await pickup.save();
-
-  sendResponse(res, { message: 'Default pickup location updated successfully', data: pickup });
+  const updated = await CarrierPickup.findById(pickup._id);
+  sendResponse(res, {
+    message: 'Default pickup location updated successfully',
+    data: updated ?? pickup,
+  });
 });
