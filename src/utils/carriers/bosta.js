@@ -70,7 +70,7 @@ const pickupFromEnv = () => {
   return buildBostaAddress({
     city,
     zone: process.env.BOSTA_PICKUP_ZONE?.trim() || city,
-    districtId: process.env.BOSTA_PICKUP_DISTRICT_ID?.trim(),
+    // district Id: process.env.BOSTA_PICKUP_DISTRICT_ID?.trim(),
     districtName: "Mohandesiin El Sadiq", // ← ضيف ده
     firstLine,
     secondLine: process.env.BOSTA_PICKUP_SECOND_LINE?.trim(),
