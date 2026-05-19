@@ -1,10 +1,20 @@
 // src/utils/carriers/bosta.js
 
-const splitReceiverName = (receiverName) => {
-  const parts = (receiverName || "").trim().split(/\s+/).filter(Boolean);
-  const firstName = parts[0] || "Customer";
+export const splitBostaContactName = (fullName) => {
+  const parts = (fullName || "").trim().split(/\s+/).filter(Boolean);
+  const firstName = parts[0] || "Contact";
   const lastName = parts.slice(1).join(" ") || firstName;
   return { firstName, lastName };
+};
+
+export const buildBostaPickupLocationContact = ({ name, email, phone } = {}) => {
+  const { firstName, lastName } = splitBostaContactName(name);
+  return {
+    firstName,
+    lastName,
+    email: String(email || "").trim(),
+    phone: String(phone || "").trim(),
+  };
 };
 
 export const bostaRequest = async (
@@ -366,7 +376,7 @@ export const buildBostaSpecs = ({
 });
 
 export const createBostaDelivery = async (params, credentials) => {
-  const { firstName, lastName } = splitReceiverName(params.receiverName);
+  const { firstName, lastName } = splitBostaContactName(params.receiverName);
   const specs = buildBostaSpecs(params.packageSpecs);
   const pickupAddress =
     params.pickupAddress ??

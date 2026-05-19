@@ -7,6 +7,7 @@ import sendResponse from '../utils/apiResponse.js';
 import { getBostaCredentials } from '../utils/carriers/bostaCredentials.js';
 import {
   buildBostaPickupLocationAddress,
+  buildBostaPickupLocationContact,
   createBostaPickupLocation,
   updateBostaPickupLocation,
   deleteBostaPickupLocation,
@@ -40,13 +41,7 @@ const buildBostaPickupPayload = (body) => {
 
   return {
     locationName: body.locationName,
-    contacts: [
-      {
-        name: body.contactPerson.name,
-        email: body.contactPerson.email || '',
-        phone: body.contactPerson.phone,
-      },
-    ],
+    contacts: [buildBostaPickupLocationContact(body.contactPerson)],
     address: bostaAddress,
   };
 };
