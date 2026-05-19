@@ -31,5 +31,19 @@ export const createBostaShipmentValidator = [
     .isLength({ min: 1, max: 500 })
     .withMessage('description must be 1–500 characters'),
 
+  body('pickupAddress.city').optional().trim().notEmpty(),
+  body('pickupAddress.zone').optional().trim(),
+  body('pickupAddress.districtId').optional().trim(),
+  body('pickupAddress.districtName').optional().trim(),
+  body('pickupAddress.firstLine').optional().trim().notEmpty(),
+  body('pickupAddress.secondLine').optional().trim(),
+
+  body('dropOffAddress.city').optional().trim().notEmpty(),
+  body('dropOffAddress.zone').optional().trim(),
+  body('dropOffAddress.districtId').optional().trim(),
+  body('dropOffAddress.districtName').optional().trim(),
+  body('dropOffAddress.firstLine').optional().trim().notEmpty(),
+  body('dropOffAddress.secondLine').optional().trim(),
+
   validate,
 ];

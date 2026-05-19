@@ -6,9 +6,11 @@ import sendResponse from '../utils/apiResponse.js';
 import { getBostaCarrier } from '../utils/carriers/getBostaCarrier.js';
 import {
   buildBostaAddress,
+  addressFromPayload,
   createBostaDelivery,
   trackBostaDelivery,
   cancelBostaDelivery,
+  lookupBostaDistrict,
 } from '../utils/carriers/bosta.js';
 
 const mapBostaError = (err, next) => {
@@ -64,13 +66,33 @@ export const createShipment = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Order is missing a valid shipping address', 400));
   }
 
-  const dropOffAddress = buildBostaAddress({
-    city: shippingAddress.governorateName,
-    zone: shippingAddress.districtName || shippingAddress.governorateName,
-    districtName: shippingAddress.districtName,  // ← ضيف السطر ده
-    firstLine: shippingAddress.addressLine,
-  });
+  const pickupAddress = addressFromPayload(req.body.pickupAddress);
+  if (!pickupAddress) {
+    return next(
+      new ApiError('pickupAddress with city, firstLine, and districtId or districtName is required', 400)
+    );
+  }
 
+  let dropOffAddress = addressFromPayload(req.body.dropOffAddress);
+  if (!dropOffAddress) {
+    const bostaDistrict =
+      !shippingAddress.isOther &&
+      (await lookupBostaDistrict(credentials, {
+        cityName: shippingAddress.governorateName,
+        districtName: shippingAddress.districtName,
+      }));
+
+    dropOffAddress = buildBostaAddress({
+      city: shippingAddress.governorateName,
+      zone:
+        bostaDistrict?.zoneName ||
+        shippingAddress.districtName ||
+        shippingAddress.governorateName,
+      districtId: bostaDistrict?.districtId,
+      districtName: shippingAddress.districtName || shippingAddress.governorateName,
+      firstLine: shippingAddress.addressLine,
+    });
+  }
 
   let delivery;
   try {
@@ -78,6 +100,7 @@ export const createShipment = asyncHandler(async (req, res, next) => {
       {
         receiverName: order.user.name,
         receiverPhone: order.user.phone,
+        pickupAddress,
         dropOffAddress,
         cod: order.paymentMethod === 'cod' ? order.totalPrice : 0,
         businessReference: order._id.toString(),

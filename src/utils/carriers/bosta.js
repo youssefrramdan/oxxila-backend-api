@@ -46,10 +46,97 @@ export const bostaRequest = async (
   return data;
 };
 
+const normalizeLabel = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+let cityDistrictsCache = { list: null, fetchedAt: 0 };
+const CITY_DISTRICTS_CACHE_MS = 5 * 60 * 1000;
+
+const parseCityDistrictList = (res) => {
+  const raw =
+    res.data?.list ?? res.data?.cities ?? res.data ?? res.cities ?? res;
+  return Array.isArray(raw) ? raw : [];
+};
+
+export const matchBostaDistrict = (cities, { cityName, districtName }) => {
+  const cityNeedle = normalizeLabel(cityName);
+  const distNeedle = normalizeLabel(districtName);
+  if (!cityNeedle || !distNeedle || distNeedle === "other") return null;
+
+  const city = cities.find(
+    (c) =>
+      normalizeLabel(c.cityName) === cityNeedle ||
+      normalizeLabel(c.cityOtherName) === cityNeedle ||
+      normalizeLabel(c.cityCode) === cityNeedle,
+  );
+  if (!city?.districts?.length) return null;
+
+  const district = city.districts.find(
+    (d) =>
+      normalizeLabel(d.districtName) === distNeedle ||
+      normalizeLabel(d.districtOtherName) === distNeedle ||
+      normalizeLabel(d.zoneName) === distNeedle ||
+      normalizeLabel(d.zoneOtherName) === distNeedle,
+  );
+  if (!district?.districtId) return null;
+
+  return {
+    cityId: city.cityId,
+    cityName: city.cityName,
+    zoneName: district.zoneName,
+    districtId: district.districtId,
+    districtName: district.districtName,
+  };
+};
+
+export const fetchBostaCityDistricts = async (credentials) => {
+  if (
+    cityDistrictsCache.list &&
+    Date.now() - cityDistrictsCache.fetchedAt < CITY_DISTRICTS_CACHE_MS
+  ) {
+    return cityDistrictsCache.list;
+  }
+
+  const paths = ["/api/v2/cities/getAllDistricts", "/api/v2/cities"];
+  for (const path of paths) {
+    try {
+      const res = await bostaRequest("GET", path, null, credentials);
+      const list = parseCityDistrictList(res);
+      if (list.length > 0 && list[0]?.districts) {
+        cityDistrictsCache = { list, fetchedAt: Date.now() };
+        return list;
+      }
+    } catch {
+      // try next endpoint shape
+    }
+  }
+  return [];
+};
+
+export const lookupBostaDistrict = async (credentials, { cityName, districtName }) => {
+  const cities = await fetchBostaCityDistricts(credentials);
+  return matchBostaDistrict(cities, { cityName, districtName });
+};
+
+export const addressFromPayload = (payload) => {
+  if (!payload?.city?.trim() || !payload?.firstLine?.trim()) return null;
+  return buildBostaAddress({
+    city: payload.city,
+    zone: payload.zone,
+    districtId: payload.districtId,
+    districtName: payload.districtName,
+    firstLine: payload.firstLine,
+    secondLine: payload.secondLine,
+  });
+};
+
 export const buildBostaAddress = ({
   city,
   zone,
   districtId,
+  districtName,
   firstLine,
   secondLine,
 } = {}) => {
@@ -58,7 +145,15 @@ export const buildBostaAddress = ({
     zone: String(zone || city || "").trim(),
     firstLine: String(firstLine || "").trim(),
   };
-  if (districtId) addr.districtId = String(districtId).trim();
+  const distId = String(districtId || "").trim();
+  const distName = String(districtName || "").trim();
+  if (distId) {
+    addr.districtId = distId;
+  } else if (distName) {
+    addr.districtName = distName;
+  } else if (addr.zone) {
+    addr.districtName = addr.zone;
+  }
   if (secondLine) addr.secondLine = String(secondLine).trim();
   return addr;
 };
@@ -70,8 +165,8 @@ const pickupFromEnv = () => {
   return buildBostaAddress({
     city,
     zone: process.env.BOSTA_PICKUP_ZONE?.trim() || city,
-    // district Id: process.env.BOSTA_PICKUP_DISTRICT_ID?.trim(),
-    districtName: "Mohandesiin El Sadiq", // ← ضيف ده
+    districtId: process.env.BOSTA_PICKUP_DISTRICT_ID?.trim(),
+    districtName: process.env.BOSTA_PICKUP_DISTRICT_NAME?.trim(),
     firstLine,
     secondLine: process.env.BOSTA_PICKUP_SECOND_LINE?.trim(),
   });
@@ -83,7 +178,8 @@ const normalizePickupLocation = (loc) => {
   return buildBostaAddress({
     city: addr.city,
     zone: addr.zone ?? addr.zoneName ?? addr.city,
-    districtId: addr.districtId ?? addr.district?._id,
+    districtId: addr.districtId ?? addr.district?._id ?? addr.district?.id,
+    districtName: addr.districtName ?? addr.district?.name ?? loc?.districtName,
     firstLine: addr.firstLine ?? addr.first_line,
     secondLine: addr.secondLine,
   });
@@ -114,15 +210,40 @@ export const fetchBostaPickupAddress = async (credentials) => {
   return null;
 };
 
+const enrichAddressWithBostaDistrict = async (
+  addr,
+  credentials,
+  { cityName, districtName },
+) => {
+  if (addr.districtId || !credentials) return addr;
+  const matched = await lookupBostaDistrict(credentials, { cityName, districtName });
+  if (!matched) return addr;
+  return buildBostaAddress({
+    city: addr.city,
+    zone: matched.zoneName || addr.zone,
+    districtId: matched.districtId,
+    firstLine: addr.firstLine,
+    secondLine: addr.secondLine,
+  });
+};
+
 export const resolveBostaPickupAddress = async (credentials) => {
-  const fromEnv = pickupFromEnv();
-  if (fromEnv) return fromEnv;
+  let fromEnv = pickupFromEnv();
+  if (fromEnv) {
+    fromEnv = await enrichAddressWithBostaDistrict(fromEnv, credentials, {
+      cityName: process.env.BOSTA_PICKUP_CITY?.trim(),
+      districtName:
+        process.env.BOSTA_PICKUP_DISTRICT_NAME?.trim() ||
+        process.env.BOSTA_PICKUP_ZONE?.trim(),
+    });
+    return fromEnv;
+  }
 
   const fromApi = await fetchBostaPickupAddress(credentials);
   if (fromApi) return fromApi;
 
   const err = new Error(
-    "Bosta pickup address is not configured. Add a pickup location in the Bosta dashboard or set BOSTA_PICKUP_CITY and BOSTA_PICKUP_FIRST_LINE in .env",
+    "Pickup address is required: send pickupAddress in the request body or configure Bosta pickup in the dashboard / .env",
   );
   err.statusCode = 400;
   throw err;

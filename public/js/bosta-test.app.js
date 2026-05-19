@@ -247,8 +247,61 @@ function renderDetail(order) {
     <p class="section-title">Order line items</p>
     ${renderOrderItemsList(order.items)}
 
-    <p class="section-title">1 — Assign API carrier (Bosta)</p>
-    <p class="hint">Bosta specs: packageType, size, and packageDetails (object).</p>
+    <p class="section-title">1 — Pickup address (manual)</p>
+    <p class="hint">From Bosta cities API — paste districtId (no .env).</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">City</label>
+        <input class="form-input" id="pickup-city" value="Cairo">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Zone</label>
+        <input class="form-input" id="pickup-zone" value="15 May">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">districtId</label>
+        <input class="form-input mono" id="pickup-district-id" value="Iy7-lFD0BE0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">districtName</label>
+        <input class="form-input" id="pickup-district-name" value="15 May">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">firstLine (warehouse)</label>
+      <input class="form-input" id="pickup-first-line" placeholder="Street address">
+    </div>
+
+    <p class="section-title">2 — Drop-off override</p>
+    <p class="hint">Prefilled from order — edit districtId if needed.</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">City</label>
+        <input class="form-input" id="dropoff-city" value="${order.shippingAddress?.governorateName || ''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Zone</label>
+        <input class="form-input" id="dropoff-zone" value="${order.shippingAddress?.districtName || order.shippingAddress?.governorateName || ''}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">districtId</label>
+        <input class="form-input mono" id="dropoff-district-id" placeholder="e.g. Iy7-lFD0BE0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">districtName</label>
+        <input class="form-input" id="dropoff-district-name" value="${order.shippingAddress?.districtName || ''}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">firstLine</label>
+      <input class="form-input" id="dropoff-first-line" value="${order.shippingAddress?.addressLine || ''}">
+    </div>
+
+    <p class="section-title">3 — Package &amp; create shipment</p>
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Package type</label>
@@ -288,7 +341,7 @@ function renderDetail(order) {
       <button class="btn-secondary" onclick="refreshSelectedOrder()"><i class="ti ti-refresh"></i> Reload order</button>
     </div>
 
-    <p class="section-title">2 — Track shipment</p>
+    <p class="section-title">4 — Track shipment</p>
     <div class="btn-row">
       <button class="btn-secondary" onclick="trackShipment()" ${hasShipment ? '' : 'disabled'}>
         <i class="ti ti-map-pin"></i> Track on Bosta
@@ -299,7 +352,7 @@ function renderDetail(order) {
     </div>
     <div id="track-output" class="track-box">${hasShipment ? 'Click “Track on Bosta” to load live status.' : 'No shipment yet.'}</div>
 
-    <p class="section-title">3 — Simulate Bosta webhook (dashboard)</p>
+    <p class="section-title">5 — Simulate Bosta webhook (dashboard)</p>
     <p class="hint">POST /webhooks/bosta — updates bostaStatus and order on DELIVERED / RETURNED.</p>
     <div class="form-group">
       <label class="form-label">State value</label>
@@ -382,12 +435,39 @@ async function refreshSelectedOrder() {
   }
 }
 
+function readBostaAddressForm(prefix) {
+  const districtId = document.getElementById(`${prefix}-district-id`)?.value?.trim();
+  const districtName = document.getElementById(`${prefix}-district-name`)?.value?.trim();
+  const addr = {
+    city: document.getElementById(`${prefix}-city`)?.value?.trim(),
+    zone: document.getElementById(`${prefix}-zone`)?.value?.trim(),
+    firstLine: document.getElementById(`${prefix}-first-line`)?.value?.trim(),
+  };
+  if (districtId) addr.districtId = districtId;
+  if (districtName) addr.districtName = districtName;
+  return addr;
+}
+
 async function createShipment() {
   if (!selectedOrderId) return;
+  const pickupAddress = readBostaAddressForm('pickup');
+  if (!pickupAddress.city || !pickupAddress.firstLine) {
+    showToast('Pickup city and firstLine are required', 'err');
+    return;
+  }
+  if (!pickupAddress.districtId && !pickupAddress.districtName) {
+    showToast('Pickup needs districtId or districtName', 'err');
+    return;
+  }
+
+  const dropOffAddress = readBostaAddressForm('dropoff');
   const notes = document.getElementById('ship-notes')?.value?.trim() || '';
   const itemsCount = Number(document.getElementById('pkg-count')?.value);
   const body = {
     notes,
+    pickupAddress,
+    dropOffAddress:
+      dropOffAddress.city && dropOffAddress.firstLine ? dropOffAddress : undefined,
     packageType: document.getElementById('pkg-type')?.value || 'Parcel',
     size: document.getElementById('pkg-size')?.value || 'MEDIUM',
     itemsCount: Number.isFinite(itemsCount) && itemsCount > 0 ? itemsCount : undefined,
