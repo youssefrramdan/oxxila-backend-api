@@ -91,6 +91,17 @@ export const matchBostaDistrict = (cities, { cityName, districtName }) => {
   };
 };
 
+// Fallback when cities catalog fetch fails (staging test values from Bosta dashboard)
+const BOSTA_DISTRICT_FALLBACK = {
+  "Iy7-lFD0BE0": {
+    cityId: "FceDyHXwpSYYF9zGW",
+    cityName: "Cairo",
+    zoneName: "15 May",
+    districtId: "Iy7-lFD0BE0",
+    districtName: "15 May",
+  },
+};
+
 export const matchBostaDistrictById = (cities, districtId) => {
   const id = String(districtId || "").trim();
   if (!id) return null;
@@ -106,7 +117,7 @@ export const matchBostaDistrictById = (cities, districtId) => {
       districtName: district.districtName,
     };
   }
-  return null;
+  return BOSTA_DISTRICT_FALLBACK[id] ?? null;
 };
 
 export const fetchBostaCityDistricts = async (credentials) => {
@@ -182,36 +193,39 @@ export const buildBostaAddress = ({
   const distId = String(districtId || "").trim();
   const distName = String(districtName || "").trim();
   if (cid) addr.cityId = cid;
+  // districtId alone is enough for Bosta; districtName requires cityId peer
   if (distId) {
     addr.districtId = distId;
-  } else if (distName) {
+  } else if (distName && cid) {
     addr.districtName = distName;
-  } else if (addr.zone) {
-    addr.districtName = addr.zone;
   }
   if (secondLine) addr.secondLine = String(secondLine).trim();
   return addr;
 };
 
 export const enrichBostaAddress = async (addr, credentials, hints = {}) => {
-  if (!addr || !credentials) return addr;
+  if (!addr) return addr;
 
   const cityId = String(hints.cityId || addr.cityId || "").trim();
   const districtId = String(hints.districtId || addr.districtId || "").trim();
-  if (cityId && districtId) return addr;
+  let matched = null;
 
-  const matched = await resolveBostaDistrictMatch(credentials, {
-    cityName: hints.cityName || addr.city,
-    districtName: hints.districtName || addr.districtName || addr.zone,
-    districtId: hints.districtId || addr.districtId,
-  });
-  if (!matched) return addr;
+  if (credentials && !(cityId && districtId)) {
+    matched = await resolveBostaDistrictMatch(credentials, {
+      cityName: hints.cityName || addr.city,
+      districtName: hints.districtName || addr.districtName || addr.zone,
+      districtId: hints.districtId || addr.districtId,
+    });
+  }
 
   return buildBostaAddress({
-    city: matched.cityName || addr.city,
-    cityId: matched.cityId,
-    zone: matched.zoneName || addr.zone,
-    districtId: matched.districtId,
+    city: matched?.cityName || addr.city,
+    cityId: matched?.cityId || cityId || undefined,
+    zone: matched?.zoneName || addr.zone,
+    districtId: matched?.districtId || districtId || undefined,
+    districtName: matched?.districtId
+      ? undefined
+      : matched?.districtName || hints.districtName || addr.districtName,
     firstLine: addr.firstLine,
     secondLine: addr.secondLine,
   });

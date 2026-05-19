@@ -21,7 +21,9 @@ const defaultBostaPickup = () => ({
 const loadBostaPickupDraft = () => {
   try {
     const raw = localStorage.getItem(BOSTA_PICKUP_STORAGE_KEY);
-    return raw ? { ...defaultBostaPickup(), ...JSON.parse(raw) } : defaultBostaPickup();
+    const draft = raw ? { ...defaultBostaPickup(), ...JSON.parse(raw) } : defaultBostaPickup();
+    if (!draft.cityId) draft.cityId = defaultBostaPickup().cityId;
+    return draft;
   } catch {
     return defaultBostaPickup();
   }
@@ -480,8 +482,11 @@ function readBostaAddressForm(prefix) {
     firstLine: document.getElementById(`${prefix}-first-line`)?.value?.trim(),
   };
   if (cityId) addr.cityId = cityId;
-  if (districtId) addr.districtId = districtId;
-  if (districtName) addr.districtName = districtName;
+  if (districtId) {
+    addr.districtId = districtId;
+  } else if (districtName) {
+    addr.districtName = districtName;
+  }
   return addr;
 }
 
