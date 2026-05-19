@@ -7,6 +7,7 @@ import { getBostaCarrier } from '../utils/carriers/getBostaCarrier.js';
 import {
   buildBostaAddress,
   addressFromPayload,
+  enrichBostaAddress,
   createBostaDelivery,
   trackBostaDelivery,
   cancelBostaDelivery,
@@ -66,15 +67,18 @@ export const createShipment = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Order is missing a valid shipping address', 400));
   }
 
-  const pickupAddress = addressFromPayload(req.body.pickupAddress);
+  let pickupAddress = addressFromPayload(req.body.pickupAddress);
   if (!pickupAddress) {
     return next(
       new ApiError('pickupAddress with city, firstLine, and districtId or districtName is required', 400)
     );
   }
+  pickupAddress = await enrichBostaAddress(pickupAddress, credentials, req.body.pickupAddress);
 
   let dropOffAddress = addressFromPayload(req.body.dropOffAddress);
-  if (!dropOffAddress) {
+  if (dropOffAddress) {
+    dropOffAddress = await enrichBostaAddress(dropOffAddress, credentials, req.body.dropOffAddress);
+  } else {
     const bostaDistrict =
       !shippingAddress.isOther &&
       (await lookupBostaDistrict(credentials, {
@@ -83,13 +87,14 @@ export const createShipment = asyncHandler(async (req, res, next) => {
       }));
 
     dropOffAddress = buildBostaAddress({
-      city: shippingAddress.governorateName,
+      city: bostaDistrict?.cityName || shippingAddress.governorateName,
+      cityId: bostaDistrict?.cityId,
       zone:
         bostaDistrict?.zoneName ||
         shippingAddress.districtName ||
         shippingAddress.governorateName,
       districtId: bostaDistrict?.districtId,
-      districtName: shippingAddress.districtName || shippingAddress.governorateName,
+      districtName: bostaDistrict ? undefined : shippingAddress.districtName || shippingAddress.governorateName,
       firstLine: shippingAddress.addressLine,
     });
   }

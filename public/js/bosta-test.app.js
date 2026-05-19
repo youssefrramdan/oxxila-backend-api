@@ -10,6 +10,7 @@ const PACKAGE_SIZES = ['SMALL', 'MEDIUM', 'LARGE', 'LIGHT_BULKY', 'HEAVY_BULKY']
 const BOSTA_PICKUP_STORAGE_KEY = 'oxxila_bosta_pickup_draft';
 
 const defaultBostaPickup = () => ({
+  cityId: 'FceDyHXwpSYYF9zGW',
   city: 'Cairo',
   zone: '15 May',
   districtId: 'Iy7-lFD0BE0',
@@ -272,12 +273,18 @@ function renderDetail(order) {
     ${renderOrderItemsList(order.items)}
 
     <p class="section-title">1 — Pickup address (manual)</p>
-    <p class="hint">From Bosta cities API — paste districtId (no .env).</p>
+    <p class="hint">cityId + districtId from Bosta cities API (server fills cityId from districtId).</p>
     <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">cityId</label>
+        <input class="form-input mono" id="pickup-city-id" value="${pickup.cityId || ''}">
+      </div>
       <div class="form-group">
         <label class="form-label">City</label>
         <input class="form-input" id="pickup-city" value="${pickup.city}">
       </div>
+    </div>
+    <div class="form-row">
       <div class="form-group">
         <label class="form-label">Zone</label>
         <input class="form-input" id="pickup-zone" value="${pickup.zone}">
@@ -299,8 +306,12 @@ function renderDetail(order) {
     </div>
 
     <p class="section-title">2 — Drop-off override</p>
-    <p class="hint">Prefilled from order — edit districtId if needed.</p>
+    <p class="hint">Prefilled from order — add cityId + districtId from Bosta if needed.</p>
     <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">cityId</label>
+        <input class="form-input mono" id="dropoff-city-id" placeholder="FceDyHXwpSYYF9zGW">
+      </div>
       <div class="form-group">
         <label class="form-label">City</label>
         <input class="form-input" id="dropoff-city" value="${order.shippingAddress?.governorateName || ''}">
@@ -462,11 +473,13 @@ async function refreshSelectedOrder() {
 function readBostaAddressForm(prefix) {
   const districtId = document.getElementById(`${prefix}-district-id`)?.value?.trim();
   const districtName = document.getElementById(`${prefix}-district-name`)?.value?.trim();
+  const cityId = document.getElementById(`${prefix}-city-id`)?.value?.trim();
   const addr = {
     city: document.getElementById(`${prefix}-city`)?.value?.trim(),
     zone: document.getElementById(`${prefix}-zone`)?.value?.trim(),
     firstLine: document.getElementById(`${prefix}-first-line`)?.value?.trim(),
   };
+  if (cityId) addr.cityId = cityId;
   if (districtId) addr.districtId = districtId;
   if (districtName) addr.districtName = districtName;
   return addr;

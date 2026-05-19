@@ -91,6 +91,24 @@ export const matchBostaDistrict = (cities, { cityName, districtName }) => {
   };
 };
 
+export const matchBostaDistrictById = (cities, districtId) => {
+  const id = String(districtId || "").trim();
+  if (!id) return null;
+
+  for (const city of cities) {
+    const district = city.districts?.find((d) => d.districtId === id);
+    if (!district) continue;
+    return {
+      cityId: city.cityId,
+      cityName: city.cityName,
+      zoneName: district.zoneName,
+      districtId: district.districtId,
+      districtName: district.districtName,
+    };
+  }
+  return null;
+};
+
 export const fetchBostaCityDistricts = async (credentials) => {
   if (
     cityDistrictsCache.list &&
@@ -115,15 +133,29 @@ export const fetchBostaCityDistricts = async (credentials) => {
   return [];
 };
 
-export const lookupBostaDistrict = async (credentials, { cityName, districtName }) => {
+export const resolveBostaDistrictMatch = async (
+  credentials,
+  { cityName, districtName, districtId },
+) => {
   const cities = await fetchBostaCityDistricts(credentials);
-  return matchBostaDistrict(cities, { cityName, districtName });
+  if (districtId) {
+    const byId = matchBostaDistrictById(cities, districtId);
+    if (byId) return byId;
+  }
+  if (cityName && districtName) {
+    return matchBostaDistrict(cities, { cityName, districtName });
+  }
+  return null;
 };
+
+export const lookupBostaDistrict = async (credentials, { cityName, districtName, districtId }) =>
+  resolveBostaDistrictMatch(credentials, { cityName, districtName, districtId });
 
 export const addressFromPayload = (payload) => {
   if (!payload?.city?.trim() || !payload?.firstLine?.trim()) return null;
   return buildBostaAddress({
     city: payload.city,
+    cityId: payload.cityId,
     zone: payload.zone,
     districtId: payload.districtId,
     districtName: payload.districtName,
@@ -134,6 +166,7 @@ export const addressFromPayload = (payload) => {
 
 export const buildBostaAddress = ({
   city,
+  cityId,
   zone,
   districtId,
   districtName,
@@ -145,8 +178,10 @@ export const buildBostaAddress = ({
     zone: String(zone || city || "").trim(),
     firstLine: String(firstLine || "").trim(),
   };
+  const cid = String(cityId || "").trim();
   const distId = String(districtId || "").trim();
   const distName = String(districtName || "").trim();
+  if (cid) addr.cityId = cid;
   if (distId) {
     addr.districtId = distId;
   } else if (distName) {
@@ -156,6 +191,30 @@ export const buildBostaAddress = ({
   }
   if (secondLine) addr.secondLine = String(secondLine).trim();
   return addr;
+};
+
+export const enrichBostaAddress = async (addr, credentials, hints = {}) => {
+  if (!addr || !credentials) return addr;
+
+  const cityId = String(hints.cityId || addr.cityId || "").trim();
+  const districtId = String(hints.districtId || addr.districtId || "").trim();
+  if (cityId && districtId) return addr;
+
+  const matched = await resolveBostaDistrictMatch(credentials, {
+    cityName: hints.cityName || addr.city,
+    districtName: hints.districtName || addr.districtName || addr.zone,
+    districtId: hints.districtId || addr.districtId,
+  });
+  if (!matched) return addr;
+
+  return buildBostaAddress({
+    city: matched.cityName || addr.city,
+    cityId: matched.cityId,
+    zone: matched.zoneName || addr.zone,
+    districtId: matched.districtId,
+    firstLine: addr.firstLine,
+    secondLine: addr.secondLine,
+  });
 };
 
 const pickupFromEnv = () => {
@@ -177,6 +236,7 @@ const normalizePickupLocation = (loc) => {
   if (!addr?.city || !(addr.firstLine || addr.first_line)) return null;
   return buildBostaAddress({
     city: addr.city,
+    cityId: addr.cityId ?? loc?.cityId,
     zone: addr.zone ?? addr.zoneName ?? addr.city,
     districtId: addr.districtId ?? addr.district?._id ?? addr.district?.id,
     districtName: addr.districtName ?? addr.district?.name ?? loc?.districtName,
@@ -210,22 +270,8 @@ export const fetchBostaPickupAddress = async (credentials) => {
   return null;
 };
 
-const enrichAddressWithBostaDistrict = async (
-  addr,
-  credentials,
-  { cityName, districtName },
-) => {
-  if (addr.districtId || !credentials) return addr;
-  const matched = await lookupBostaDistrict(credentials, { cityName, districtName });
-  if (!matched) return addr;
-  return buildBostaAddress({
-    city: addr.city,
-    zone: matched.zoneName || addr.zone,
-    districtId: matched.districtId,
-    firstLine: addr.firstLine,
-    secondLine: addr.secondLine,
-  });
-};
+const enrichAddressWithBostaDistrict = async (addr, credentials, hints) =>
+  enrichBostaAddress(addr, credentials, hints);
 
 export const resolveBostaPickupAddress = async (credentials) => {
   let fromEnv = pickupFromEnv();
