@@ -38,6 +38,87 @@ export const bostaRequest = async (method, path, body, { apiKey, apiBaseUrl }) =
   return data;
 };
 
+export const buildBostaAddress = ({
+  city,
+  zone,
+  districtId,
+  firstLine,
+  secondLine,
+} = {}) => {
+  const addr = {
+    city: String(city || '').trim(),
+    zone: String(zone || city || '').trim(),
+    firstLine: String(firstLine || '').trim(),
+  };
+  if (districtId) addr.districtId = String(districtId).trim();
+  if (secondLine) addr.secondLine = String(secondLine).trim();
+  return addr;
+};
+
+const pickupFromEnv = () => {
+  const city = process.env.BOSTA_PICKUP_CITY?.trim();
+  const firstLine = process.env.BOSTA_PICKUP_FIRST_LINE?.trim();
+  if (!city || !firstLine) return null;
+  return buildBostaAddress({
+    city,
+    zone: process.env.BOSTA_PICKUP_ZONE?.trim() || city,
+    districtId: process.env.BOSTA_PICKUP_DISTRICT_ID?.trim(),
+    firstLine,
+    secondLine: process.env.BOSTA_PICKUP_SECOND_LINE?.trim(),
+  });
+};
+
+const normalizePickupLocation = (loc) => {
+  const addr = loc?.address ?? loc;
+  if (!addr?.city || !(addr.firstLine || addr.first_line)) return null;
+  return buildBostaAddress({
+    city: addr.city,
+    zone: addr.zone ?? addr.zoneName ?? addr.city,
+    districtId: addr.districtId ?? addr.district?._id,
+    firstLine: addr.firstLine ?? addr.first_line,
+    secondLine: addr.secondLine,
+  });
+};
+
+export const fetchBostaPickupAddress = async (credentials) => {
+  const paths = [
+    '/api/v2/pickup-locations',
+    '/api/v2/pickups/locations',
+    '/api/v2/businesses/pickup-locations',
+  ];
+
+  for (const path of paths) {
+    try {
+      const res = await bostaRequest('GET', path, null, credentials);
+      const list =
+        res.data?.pickupLocations ??
+        res.data?.locations ??
+        res.pickupLocations ??
+        (Array.isArray(res.data) ? res.data : null);
+      const loc = Array.isArray(list) ? list[0] : res.data;
+      const normalized = normalizePickupLocation(loc);
+      if (normalized) return normalized;
+    } catch {
+      // try next endpoint shape
+    }
+  }
+  return null;
+};
+
+export const resolveBostaPickupAddress = async (credentials) => {
+  const fromEnv = pickupFromEnv();
+  if (fromEnv) return fromEnv;
+
+  const fromApi = await fetchBostaPickupAddress(credentials);
+  if (fromApi) return fromApi;
+
+  const err = new Error(
+    'Bosta pickup address is not configured. Add a pickup location in the Bosta dashboard or set BOSTA_PICKUP_CITY and BOSTA_PICKUP_FIRST_LINE in .env'
+  );
+  err.statusCode = 400;
+  throw err;
+};
+
 export const buildBostaSpecs = ({
   packageType = 'Parcel',
   size = 'MEDIUM',
@@ -55,6 +136,8 @@ export const buildBostaSpecs = ({
 export const createBostaDelivery = async (params, credentials) => {
   const { firstName, lastName } = splitReceiverName(params.receiverName);
   const specs = buildBostaSpecs(params.packageSpecs);
+  const pickupAddress =
+    params.pickupAddress ?? (await resolveBostaPickupAddress(credentials));
 
   return bostaRequest(
     'POST',
@@ -66,8 +149,9 @@ export const createBostaDelivery = async (params, credentials) => {
         firstName,
         lastName,
         phone: params.receiverPhone,
-        address: params.receiverAddress,
       },
+      dropOffAddress: params.dropOffAddress,
+      pickupAddress,
       cod: params.cod,
       businessReference: params.businessReference,
       notes: params.notes ?? '',

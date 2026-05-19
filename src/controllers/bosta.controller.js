@@ -5,13 +5,18 @@ import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import { getBostaCarrier } from '../utils/carriers/getBostaCarrier.js';
 import {
+  buildBostaAddress,
   createBostaDelivery,
   trackBostaDelivery,
   cancelBostaDelivery,
 } from '../utils/carriers/bosta.js';
 
 const mapBostaError = (err, next) => {
-  const message = err.bostaError?.message || err.message || 'Bosta request failed';
+  let message = err.bostaError?.message || err.message || 'Bosta request failed';
+  if (/reading ['"]city['"]/.test(message)) {
+    message =
+      'Bosta pickup address is missing. In stg-business.bosta.co add a pickup location under Settings, or set BOSTA_PICKUP_CITY and BOSTA_PICKUP_FIRST_LINE in .env';
+  }
   return next(new ApiError(message, err.statusCode || 502));
 };
 
@@ -55,17 +60,23 @@ export const createShipment = asyncHandler(async (req, res, next) => {
   }
 
   const { shippingAddress } = order;
+  if (!shippingAddress?.governorateName || !shippingAddress?.addressLine) {
+    return next(new ApiError('Order is missing a valid shipping address', 400));
+  }
+
+  const dropOffAddress = buildBostaAddress({
+    city: shippingAddress.governorateName,
+    zone: shippingAddress.districtName || shippingAddress.governorateName,
+    firstLine: shippingAddress.addressLine,
+  });
+
   let delivery;
   try {
     delivery = await createBostaDelivery(
       {
         receiverName: order.user.name,
         receiverPhone: order.user.phone,
-        receiverAddress: {
-          city: shippingAddress.governorateName,
-          zone: shippingAddress.districtName || shippingAddress.governorateName,
-          firstLine: shippingAddress.addressLine,
-        },
+        dropOffAddress,
         cod: order.paymentMethod === 'cod' ? order.totalPrice : 0,
         businessReference: order._id.toString(),
         notes: req.body.notes || '',
