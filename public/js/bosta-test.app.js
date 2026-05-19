@@ -7,6 +7,29 @@ let selectedWebhookState = 'DELIVERED';
 const PACKAGE_TYPES = ['Parcel', 'Document', 'Bulky'];
 const PACKAGE_SIZES = ['SMALL', 'MEDIUM', 'LARGE', 'LIGHT_BULKY', 'HEAVY_BULKY'];
 
+const BOSTA_PICKUP_STORAGE_KEY = 'oxxila_bosta_pickup_draft';
+
+const defaultBostaPickup = () => ({
+  city: 'Cairo',
+  zone: '15 May',
+  districtId: 'Iy7-lFD0BE0',
+  districtName: '15 May',
+  firstLine: '1 Test warehouse street',
+});
+
+const loadBostaPickupDraft = () => {
+  try {
+    const raw = localStorage.getItem(BOSTA_PICKUP_STORAGE_KEY);
+    return raw ? { ...defaultBostaPickup(), ...JSON.parse(raw) } : defaultBostaPickup();
+  } catch {
+    return defaultBostaPickup();
+  }
+};
+
+const saveBostaPickupDraft = (addr) => {
+  localStorage.setItem(BOSTA_PICKUP_STORAGE_KEY, JSON.stringify(addr));
+};
+
 const BOSTA_STATES = [
   'CREATED',
   'PICKED_UP',
@@ -228,6 +251,7 @@ function renderDetail(order) {
   ).join('');
 
   title.textContent = `Order ${shortId(order._id)}`;
+  const pickup = loadBostaPickupDraft();
 
   body.innerHTML = `
     <div class="detail-grid">
@@ -252,26 +276,26 @@ function renderDetail(order) {
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">City</label>
-        <input class="form-input" id="pickup-city" value="Cairo">
+        <input class="form-input" id="pickup-city" value="${pickup.city}">
       </div>
       <div class="form-group">
         <label class="form-label">Zone</label>
-        <input class="form-input" id="pickup-zone" value="15 May">
+        <input class="form-input" id="pickup-zone" value="${pickup.zone}">
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">districtId</label>
-        <input class="form-input mono" id="pickup-district-id" value="Iy7-lFD0BE0">
+        <input class="form-input mono" id="pickup-district-id" value="${pickup.districtId}">
       </div>
       <div class="form-group">
         <label class="form-label">districtName</label>
-        <input class="form-input" id="pickup-district-name" value="15 May">
+        <input class="form-input" id="pickup-district-name" value="${pickup.districtName}">
       </div>
     </div>
     <div class="form-group">
       <label class="form-label">firstLine (warehouse)</label>
-      <input class="form-input" id="pickup-first-line" placeholder="Street address">
+      <input class="form-input" id="pickup-first-line" value="${pickup.firstLine}" placeholder="Street address">
     </div>
 
     <p class="section-title">2 — Drop-off override</p>
@@ -451,10 +475,14 @@ function readBostaAddressForm(prefix) {
 async function createShipment() {
   if (!selectedOrderId) return;
   const pickupAddress = readBostaAddressForm('pickup');
+  if (!pickupAddress.firstLine) {
+    pickupAddress.firstLine = defaultBostaPickup().firstLine;
+  }
   if (!pickupAddress.city || !pickupAddress.firstLine) {
     showToast('Pickup city and firstLine are required', 'err');
     return;
   }
+  saveBostaPickupDraft(pickupAddress);
   if (!pickupAddress.districtId && !pickupAddress.districtName) {
     showToast('Pickup needs districtId or districtName', 'err');
     return;
