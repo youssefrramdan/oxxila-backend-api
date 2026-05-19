@@ -1,21 +1,26 @@
 // src/utils/carriers/bosta.js
 
 const splitReceiverName = (receiverName) => {
-  const parts = (receiverName || '').trim().split(/\s+/).filter(Boolean);
-  const firstName = parts[0] || 'Customer';
-  const lastName = parts.slice(1).join(' ') || firstName;
+  const parts = (receiverName || "").trim().split(/\s+/).filter(Boolean);
+  const firstName = parts[0] || "Customer";
+  const lastName = parts.slice(1).join(" ") || firstName;
   return { firstName, lastName };
 };
 
-export const bostaRequest = async (method, path, body, { apiKey, apiBaseUrl }) => {
-  const base = apiBaseUrl.replace(/\/$/, '');
+export const bostaRequest = async (
+  method,
+  path,
+  body,
+  { apiKey, apiBaseUrl },
+) => {
+  const base = apiBaseUrl.replace(/\/$/, "");
   const token = apiKey?.trim();
   const options = {
     method,
     headers: {
       // Bosta expects the raw API key — not "Bearer <key>"
       Authorization: token,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
   };
 
@@ -28,7 +33,10 @@ export const bostaRequest = async (method, path, body, { apiKey, apiBaseUrl }) =
 
   if (!res.ok) {
     const err = new Error(
-      data?.message || data?.error || data?.errorMessage || 'Bosta request failed'
+      data?.message ||
+        data?.error ||
+        data?.errorMessage ||
+        "Bosta request failed",
     );
     err.statusCode = res.status;
     err.bostaError = data;
@@ -46,9 +54,9 @@ export const buildBostaAddress = ({
   secondLine,
 } = {}) => {
   const addr = {
-    city: String(city || '').trim(),
-    zone: String(zone || city || '').trim(),
-    firstLine: String(firstLine || '').trim(),
+    city: String(city || "").trim(),
+    zone: String(zone || city || "").trim(),
+    firstLine: String(firstLine || "").trim(),
   };
   if (districtId) addr.districtId = String(districtId).trim();
   if (secondLine) addr.secondLine = String(secondLine).trim();
@@ -63,6 +71,7 @@ const pickupFromEnv = () => {
     city,
     zone: process.env.BOSTA_PICKUP_ZONE?.trim() || city,
     districtId: process.env.BOSTA_PICKUP_DISTRICT_ID?.trim(),
+    districtName: "Mohandesiin El Sadiq", // ← ضيف ده
     firstLine,
     secondLine: process.env.BOSTA_PICKUP_SECOND_LINE?.trim(),
   });
@@ -82,14 +91,14 @@ const normalizePickupLocation = (loc) => {
 
 export const fetchBostaPickupAddress = async (credentials) => {
   const paths = [
-    '/api/v2/pickup-locations',
-    '/api/v2/pickups/locations',
-    '/api/v2/businesses/pickup-locations',
+    "/api/v2/pickup-locations",
+    "/api/v2/pickups/locations",
+    "/api/v2/businesses/pickup-locations",
   ];
 
   for (const path of paths) {
     try {
-      const res = await bostaRequest('GET', path, null, credentials);
+      const res = await bostaRequest("GET", path, null, credentials);
       const list =
         res.data?.pickupLocations ??
         res.data?.locations ??
@@ -113,23 +122,26 @@ export const resolveBostaPickupAddress = async (credentials) => {
   if (fromApi) return fromApi;
 
   const err = new Error(
-    'Bosta pickup address is not configured. Add a pickup location in the Bosta dashboard or set BOSTA_PICKUP_CITY and BOSTA_PICKUP_FIRST_LINE in .env'
+    "Bosta pickup address is not configured. Add a pickup location in the Bosta dashboard or set BOSTA_PICKUP_CITY and BOSTA_PICKUP_FIRST_LINE in .env",
   );
   err.statusCode = 400;
   throw err;
 };
 
 export const buildBostaSpecs = ({
-  packageType = 'Parcel',
-  size = 'MEDIUM',
+  packageType = "Parcel",
+  size = "MEDIUM",
   itemsCount = 1,
-  description = 'Shipment',
+  description = "Shipment",
 } = {}) => ({
   packageType,
   size,
   packageDetails: {
     itemsCount: Math.max(1, Number(itemsCount) || 1),
-    description: String(description || 'Shipment').trim().slice(0, 500) || 'Shipment',
+    description:
+      String(description || "Shipment")
+        .trim()
+        .slice(0, 500) || "Shipment",
   },
 });
 
@@ -140,8 +152,8 @@ export const createBostaDelivery = async (params, credentials) => {
     params.pickupAddress ?? (await resolveBostaPickupAddress(credentials));
 
   return bostaRequest(
-    'POST',
-    '/api/v2/deliveries?apiVersion=1',
+    "POST",
+    "/api/v2/deliveries?apiVersion=1",
     {
       type: 10,
       specs,
@@ -154,14 +166,19 @@ export const createBostaDelivery = async (params, credentials) => {
       pickupAddress,
       cod: params.cod,
       businessReference: params.businessReference,
-      notes: params.notes ?? '',
+      notes: params.notes ?? "",
     },
-    credentials
+    credentials,
   );
 };
 
 export const trackBostaDelivery = async (trackingNumber, credentials) =>
-  bostaRequest('GET', `/api/v2/deliveries/tracking/${trackingNumber}`, null, credentials);
+  bostaRequest(
+    "GET",
+    `/api/v2/deliveries/tracking/${trackingNumber}`,
+    null,
+    credentials,
+  );
 
 export const cancelBostaDelivery = async (deliveryId, credentials) =>
-  bostaRequest('DELETE', `/api/v2/deliveries/${deliveryId}`, null, credentials);
+  bostaRequest("DELETE", `/api/v2/deliveries/${deliveryId}`, null, credentials);
