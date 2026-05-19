@@ -1,25 +1,26 @@
 // src/utils/carriers/bostaSync.js
-import Country from '../../models/Country.js';
-import Governorate from '../../models/Governorate.js';
-import District from '../../models/District.js';
-import CarrierCoverage from '../../models/CarrierCoverage.js';
-import { fetchBostaCityDistricts } from './bosta.js';
+import Country from "../../models/Country.js";
+import Governorate from "../../models/Governorate.js";
+import District from "../../models/District.js";
+import CarrierCoverage from "../../models/CarrierCoverage.js";
+import { fetchBostaCityDistricts } from "./bosta.js";
 
 const normalizeLabel = (value) =>
-  String(value || '')
+  String(value || "")
     .trim()
     .toLowerCase();
 
 const matchGovernorate = (governorates, city) => {
-  const needles = [
-    city.cityName,
-    city.cityOtherName,
-    city.cityCode,
-  ].map(normalizeLabel).filter(Boolean);
+  const needles = [city.cityName, city.cityOtherName, city.cityCode]
+    .map(normalizeLabel)
+    .filter(Boolean);
 
   return governorates.find((g) => {
     const name = normalizeLabel(g.name);
-    return needles.some((n) => n === name || name.includes(n) || n.includes(name));
+    return needles.some(
+      (n) =>
+        n.length > 2 && (n === name || name.includes(n) || n.includes(name)),
+    );
   });
 };
 
@@ -35,13 +36,22 @@ const matchDistrict = (districts, bostaDistrict) => {
 
   return districts.find((d) => {
     const name = normalizeLabel(d.name);
-    return needles.some((n) => n === name || name.includes(n) || n.includes(name));
+    return needles.some(
+      (n) =>
+        n.length > 2 && (n === name || name.includes(n) || n.includes(name)),
+    );
   });
 };
 
-export const syncBostaZones = async (credentials, { countryCode = 'EG' } = {}) => {
+export const syncBostaZones = async (
+  credentials,
+  { countryCode = "EG" } = {},
+) => {
   const cities = await fetchBostaCityDistricts(credentials);
-  const country = await Country.findOne({ code: countryCode.toUpperCase(), isActive: true });
+  const country = await Country.findOne({
+    code: countryCode.toUpperCase(),
+    isActive: true,
+  });
   if (!country) {
     throw new Error(`No active country found with code: ${countryCode}`);
   }
@@ -76,37 +86,52 @@ export const syncBostaZones = async (credentials, { countryCode = 'EG' } = {}) =
       governoratesMatched += 1;
     }
 
-    const existingDistricts = await District.find({ governorate: governorate._id });
+    const existingDistricts = await District.find({
+      governorate: governorate._id,
+    });
     const bostaDistricts = city.districts || [];
 
+    const ops = [];
     for (const bd of bostaDistricts) {
       if (bd.dropOffAvailability === false) continue;
 
       const matched = matchDistrict(existingDistricts, bd);
       if (matched) {
-        await District.findByIdAndUpdate(matched._id, {
-          bostaApiCovered: true,
-          bostaDistrictId: bd.districtId,
-          bostaZoneId: bd.zoneId ?? null,
-          bostaDropOffAvailable: bd.dropOffAvailability !== false,
-          isCovered: true,
+        ops.push({
+          updateOne: {
+            filter: { _id: matched._id },
+            update: {
+              $set: {
+                bostaApiCovered: true,
+                bostaDistrictId: bd.districtId,
+                bostaZoneId: bd.zoneId ?? null,
+                bostaDropOffAvailable: bd.dropOffAvailability !== false,
+                isCovered: true,
+              },
+            },
+          },
         });
         districtsUpdated += 1;
       } else {
-        const created = await District.create({
-          governorate: governorate._id,
-          name: bd.districtName || bd.zoneName || 'District',
-          shippingPrice: governorate.shippingPrice ?? 0,
-          isCovered: true,
-          bostaApiCovered: true,
-          bostaDistrictId: bd.districtId,
-          bostaZoneId: bd.zoneId ?? null,
-          bostaDropOffAvailable: bd.dropOffAvailability !== false,
+        ops.push({
+          insertOne: {
+            document: {
+              governorate: governorate._id,
+              name: bd.districtName || bd.zoneName || "District",
+              shippingPrice: governorate.shippingPrice ?? 0,
+              isCovered: true,
+              bostaApiCovered: true,
+              bostaDistrictId: bd.districtId,
+              bostaZoneId: bd.zoneId ?? null,
+              bostaDropOffAvailable: bd.dropOffAvailability !== false,
+            },
+          },
         });
-        existingDistricts.push(created);
         districtsCreated += 1;
       }
     }
+
+    if (ops.length) await District.bulkWrite(ops);
   }
 
   return {
@@ -121,7 +146,7 @@ export const syncBostaZones = async (credentials, { countryCode = 'EG' } = {}) =
 export const syncBostaCarrierCoverage = async (carrierId, credentials) => {
   await syncBostaZones(credentials);
 
-  const country = await Country.findOne({ code: 'EG', isActive: true });
+  const country = await Country.findOne({ code: "EG", isActive: true });
   if (!country) return { count: 0 };
 
   const governorates = await Governorate.find({
@@ -147,7 +172,7 @@ export const syncBostaCarrierCoverage = async (carrierId, credentials) => {
         carrier: carrierId,
         governorate,
         isActive: true,
-      }))
+      })),
     );
   }
 

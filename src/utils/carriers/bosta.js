@@ -1,5 +1,5 @@
 // src/utils/carriers/bosta.js
-import { resolveDeliveryPickupAddress } from './bostaPickup.js';
+import { resolveDeliveryPickupAddress } from "./bostaPickup.js";
 
 export const splitBostaContactName = (fullName) => {
   const parts = (fullName || "").trim().split(/\s+/).filter(Boolean);
@@ -129,8 +129,9 @@ export const fetchBostaCityDistricts = async (credentials) => {
         cityDistrictsCache = { list, fetchedAt: Date.now() };
         return list;
       }
-    } catch {
-      // try next endpoint shape
+    } catch (err) {
+      if (err.statusCode === 401 || err.statusCode === 403) throw err;
+      // otherwise try next endpoint shape
     }
   }
   return [];
@@ -167,16 +168,12 @@ export const buildBostaAddress = ({
   };
   const cid = String(cityId || "").trim();
   const distId = String(districtId || "").trim();
-  const distName = String(districtName || "").trim();
+  const label = String(districtName || "").trim() || addr.zone;
+
   if (cid) addr.cityId = cid;
-  // districtId alone is enough for Bosta; districtName requires cityId peer
-  if (distId) {
-    addr.districtId = distId;
-  } else if (distName && cid) {
-    addr.districtName = distName;
-  } else if (cid && addr.zone) {
-    addr.districtName = addr.zone;
-  }
+  if (distId) addr.districtId = distId;
+  else if (label && cid) addr.districtName = label;
+
   if (secondLine) addr.secondLine = String(secondLine).trim();
   return addr;
 };
@@ -197,7 +194,10 @@ export const enrichBostaAddress = async (addr, credentials, hints = {}) => {
   }
 
   const districtLabel =
-    matched?.districtName || hints.districtName || addr.districtName || addr.zone;
+    matched?.districtName ||
+    hints.districtName ||
+    addr.districtName ||
+    addr.zone;
 
   return buildBostaAddress({
     city: matched?.cityName || addr.city,
