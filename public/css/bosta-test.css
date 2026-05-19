@@ -210,6 +210,50 @@ tbody tr.selected { background: var(--accent-dim); }
 .section-title:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 
 .form-group { margin-bottom: 10px; }
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 520px) {
+  .form-row { grid-template-columns: 1fr; }
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 56px;
+  line-height: 1.45;
+}
+
+.items-list {
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.items-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  padding: 8px 10px;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+}
+
+.items-list li span:first-child { flex: 1; min-width: 0; }
+
+.hint code {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+}
 .form-label { display: block; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
 
 .form-input {

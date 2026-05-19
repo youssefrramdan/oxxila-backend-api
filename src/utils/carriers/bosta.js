@@ -38,15 +38,30 @@ export const bostaRequest = async (method, path, body, { apiKey, apiBaseUrl }) =
   return data;
 };
 
+export const buildBostaSpecs = ({
+  packageType = 'Parcel',
+  size = 'MEDIUM',
+  itemsCount = 1,
+  description = 'Shipment',
+} = {}) => ({
+  packageType,
+  size,
+  packageDetails: {
+    itemsCount: Math.max(1, Number(itemsCount) || 1),
+    description: String(description || 'Shipment').trim().slice(0, 500) || 'Shipment',
+  },
+});
+
 export const createBostaDelivery = async (params, credentials) => {
   const { firstName, lastName } = splitReceiverName(params.receiverName);
+  const specs = buildBostaSpecs(params.packageSpecs);
 
   return bostaRequest(
     'POST',
     '/api/v2/deliveries?apiVersion=1',
     {
       type: 10,
-      specs: { packageDetails: [{ size: 'MEDIUM' }] },
+      specs,
       receiver: {
         firstName,
         lastName,

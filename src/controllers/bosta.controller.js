@@ -15,6 +15,18 @@ const mapBostaError = (err, next) => {
   return next(new ApiError(message, err.statusCode || 502));
 };
 
+const orderItemsCount = (items) =>
+  items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+const defaultShipmentDescription = (order) => {
+  const preview = order.items
+    .slice(0, 3)
+    .map((item) => `${item.name}×${item.quantity}`)
+    .join(', ');
+  const extra = order.items.length > 3 ? ` (+${order.items.length - 3} more)` : '';
+  return `Oxxila order: ${preview}${extra}`.slice(0, 500);
+};
+
 /**
  * @desc    Create Bosta shipment for an order
  * @route   POST /api/v1/bosta/orders/:orderId/ship
@@ -57,6 +69,12 @@ export const createShipment = asyncHandler(async (req, res, next) => {
         cod: order.paymentMethod === 'cod' ? order.totalPrice : 0,
         businessReference: order._id.toString(),
         notes: req.body.notes || '',
+        packageSpecs: {
+          packageType: req.body.packageType || 'Parcel',
+          size: req.body.size || 'MEDIUM',
+          itemsCount: req.body.itemsCount ?? orderItemsCount(order.items),
+          description: req.body.description?.trim() || defaultShipmentDescription(order),
+        },
       },
       credentials
     );

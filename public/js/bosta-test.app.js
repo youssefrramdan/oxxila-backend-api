@@ -4,6 +4,9 @@ let orders = [];
 let selectedOrderId = null;
 let selectedWebhookState = 'DELIVERED';
 
+const PACKAGE_TYPES = ['Parcel', 'Document', 'Bulky'];
+const PACKAGE_SIZES = ['SMALL', 'MEDIUM', 'LARGE', 'LIGHT_BULKY', 'HEAVY_BULKY'];
+
 const BOSTA_STATES = [
   'CREATED',
   'PICKED_UP',
@@ -74,6 +77,29 @@ function shortId(id) {
   if (!id) return '—';
   const s = String(id);
   return s.length > 10 ? `${s.slice(0, 8)}…` : s;
+}
+
+function orderItemsCount(items = []) {
+  return items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+}
+
+function defaultPackageDescription(order) {
+  const preview = (order.items || [])
+    .slice(0, 3)
+    .map((item) => `${item.name}×${item.quantity}`)
+    .join(', ');
+  const extra = (order.items?.length || 0) > 3 ? ` (+${order.items.length - 3} more)` : '';
+  return `Oxxila order: ${preview}${extra}`;
+}
+
+function renderOrderItemsList(items = []) {
+  if (!items.length) return '<p class="hint">No line items</p>';
+  return `<ul class="items-list">${items
+    .map(
+      (item) =>
+        `<li><span>${item.name}</span><span class="mono">×${item.quantity} · ${item.price} EGP</span></li>`
+    )
+    .join('')}</ul>`;
 }
 
 function updateLoginUI() {
@@ -194,6 +220,8 @@ function renderDetail(order) {
 
   const canShip = !order.bostaDeliveryId && ['pending', 'processing'].includes(order.orderStatus);
   const hasShipment = Boolean(order.bostaDeliveryId || order.bostaTrackingNumber);
+  const itemCount = orderItemsCount(order.items);
+  const pkgDesc = defaultPackageDescription(order);
   const chips = BOSTA_STATES.map(
     (s) =>
       `<button type="button" class="state-chip ${s === selectedWebhookState ? 'sel' : ''}" onclick="pickState('${s}')">${s}</button>`
@@ -207,6 +235,7 @@ function renderDetail(order) {
       <div class="detail-row"><span>Customer</span><span>${order.user?.name || '—'} · ${order.user?.phone || '<em style="color:var(--red)">no phone</em>'}</span></div>
       <div class="detail-row"><span>Payment</span><span>${order.paymentMethod} · ${order.paymentStatus}</span></div>
       <div class="detail-row"><span>Order status</span><span>${statusBadge(order.orderStatus)}</span></div>
+      <div class="detail-row"><span>Items</span><span>${itemCount} pcs</span></div>
       <div class="detail-row"><span>Total</span><span>${order.totalPrice} EGP</span></div>
       <div class="detail-row"><span>Address</span><span>${order.shippingAddress?.governorateName}, ${order.shippingAddress?.districtName}<br>${order.shippingAddress?.addressLine}</span></div>
       <div class="detail-row"><span>Bosta delivery ID</span><span class="mono">${order.bostaDeliveryId || '—'}</span></div>
@@ -215,7 +244,39 @@ function renderDetail(order) {
       <div class="detail-row"><span>Delivered at</span><span>${order.deliveredAt ? new Date(order.deliveredAt).toLocaleString() : '—'}</span></div>
     </div>
 
+    <p class="section-title">Order line items</p>
+    ${renderOrderItemsList(order.items)}
+
     <p class="section-title">1 — Assign API carrier (Bosta)</p>
+    <p class="hint">Bosta specs: packageType, size, and packageDetails (object).</p>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Package type</label>
+        <select class="form-input" id="pkg-type">
+          ${PACKAGE_TYPES.map((t) => `<option value="${t}" ${t === 'Parcel' ? 'selected' : ''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Size</label>
+        <select class="form-input" id="pkg-size">
+          ${PACKAGE_SIZES.map((s) => `<option value="${s}" ${s === 'MEDIUM' ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Items count</label>
+        <input class="form-input" id="pkg-count" type="number" min="1" max="999" value="${itemCount}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">COD (read-only)</label>
+        <input class="form-input" readonly value="${order.paymentMethod === 'cod' ? order.totalPrice : 0} EGP">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Package description</label>
+      <textarea class="form-input form-textarea" id="pkg-desc" rows="2" maxlength="500">${pkgDesc}</textarea>
+    </div>
     <div class="form-group">
       <label class="form-label">Shipment notes (optional)</label>
       <input class="form-input" id="ship-notes" placeholder="e.g. Call before delivery">
@@ -324,7 +385,15 @@ async function refreshSelectedOrder() {
 async function createShipment() {
   if (!selectedOrderId) return;
   const notes = document.getElementById('ship-notes')?.value?.trim() || '';
-  const { ok, json } = await api('POST', `/bosta/orders/${selectedOrderId}/ship`, { notes });
+  const itemsCount = Number(document.getElementById('pkg-count')?.value);
+  const body = {
+    notes,
+    packageType: document.getElementById('pkg-type')?.value || 'Parcel',
+    size: document.getElementById('pkg-size')?.value || 'MEDIUM',
+    itemsCount: Number.isFinite(itemsCount) && itemsCount > 0 ? itemsCount : undefined,
+    description: document.getElementById('pkg-desc')?.value?.trim() || undefined,
+  };
+  const { ok, json } = await api('POST', `/bosta/orders/${selectedOrderId}/ship`, body);
   if (!ok) {
     showToast(json?.message || 'Create shipment failed', 'err');
     return;
