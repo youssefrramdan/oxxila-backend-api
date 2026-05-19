@@ -6,7 +6,7 @@ import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import { getBostaCredentials } from '../utils/carriers/bostaCredentials.js';
 import {
-  buildBostaAddress,
+  buildBostaPickupLocationAddress,
   createBostaPickupLocation,
   updateBostaPickupLocation,
   deleteBostaPickupLocation,
@@ -29,21 +29,14 @@ const assertBostaCarrier = async (carrierId, next) => {
 
 const buildBostaPickupPayload = (body) => {
   const { address } = body;
-  const bostaAddress = buildBostaAddress({
+  const bostaAddress = buildBostaPickupLocationAddress({
     city: address.city,
-    cityId: address.cityId,
-    zone: address.districtName || address.zone || address.city,
     districtId: address.districtId,
-    districtName: address.districtName,
     firstLine: address.firstLine,
     secondLine: address.secondLine,
+    floor: address.floor,
+    apartment: address.apartment,
   });
-  if (address.floor) bostaAddress.floor = address.floor;
-  if (address.apartment) bostaAddress.apartment = address.apartment;
-  // Bosta rejects buildingType unless the API key may update carrier profile fields
-  if (address.buildingType != null && address.buildingType !== '') {
-    bostaAddress.buildingType = address.buildingType;
-  }
 
   return {
     locationName: body.locationName,

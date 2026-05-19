@@ -178,6 +178,26 @@ export const buildBostaAddress = ({
   return addr;
 };
 
+/** Pickup-location create/update — Bosta blocks zone, cityId, buildingType on many API keys. */
+export const buildBostaPickupLocationAddress = ({
+  city,
+  districtId,
+  firstLine,
+  secondLine,
+  floor,
+  apartment,
+} = {}) => {
+  const addr = {
+    city: String(city || "").trim(),
+    firstLine: String(firstLine || "").trim(),
+    districtId: String(districtId || "").trim(),
+  };
+  if (secondLine) addr.secondLine = String(secondLine).trim();
+  if (floor) addr.floor = floor;
+  if (apartment) addr.apartment = apartment;
+  return addr;
+};
+
 export const enrichBostaAddress = async (addr, credentials, hints = {}) => {
   if (!addr) return addr;
 
