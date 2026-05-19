@@ -1,17 +1,17 @@
 // src/controllers/carrierPickup.controller.js
-import asyncHandler from 'express-async-handler';
-import Carrier from '../models/Carrier.js';
-import CarrierPickup from '../models/CarrierPickup.js';
-import ApiError from '../utils/apiError.js';
-import sendResponse from '../utils/apiResponse.js';
-import { getBostaCredentials } from '../utils/carriers/bostaCredentials.js';
+import asyncHandler from "express-async-handler";
+import Carrier from "../models/Carrier.js";
+import CarrierPickup from "../models/CarrierPickup.js";
+import ApiError from "../utils/apiError.js";
+import sendResponse from "../utils/apiResponse.js";
+import { getBostaCredentials } from "../utils/carriers/bostaCredentials.js";
 import {
   createBostaPickupLocation,
   updateBostaPickupLocation,
   deleteBostaPickupLocation,
   setBostaDefaultPickupLocation,
   fetchBostaCityDistricts,
-} from '../utils/carriers/bosta.js';
+} from "../utils/carriers/bosta.js";
 
 const assertBostaCarrier = async (carrierId, next) => {
   const carrier = await Carrier.findById(carrierId);
@@ -19,8 +19,10 @@ const assertBostaCarrier = async (carrierId, next) => {
     next(new ApiError(`No carrier found with id: ${carrierId}`, 404));
     return null;
   }
-  if (carrier.apiProvider !== 'bosta' || carrier.type !== 'api') {
-    next(new ApiError('Pickups are only supported for Bosta API carriers', 400));
+  if (carrier.apiProvider !== "bosta" || carrier.type !== "api") {
+    next(
+      new ApiError("Pickups are only supported for Bosta API carriers", 400),
+    );
     return null;
   }
   return carrier;
@@ -31,18 +33,18 @@ const buildBostaPickupPayload = (body) => ({
   contacts: [
     {
       name: body.contactPerson.name,
-      email: body.contactPerson.email || '',
+      email: body.contactPerson.email || "",
       phone: body.contactPerson.phone,
     },
   ],
   address: {
     firstLine: body.address.firstLine,
-    secondLine: body.address.secondLine || '',
-    floor: body.address.floor || '0',
-    apartment: body.address.apartment || '0',
+    secondLine: body.address.secondLine || "",
+    floor: body.address.floor || "0",
+    apartment: body.address.apartment || "0",
     city: body.address.city,
     districtId: body.address.districtId,
-    buildingType: body.address.buildingType ?? 21,
+    // ❌ buildingType removed — Bosta rejects it
   },
 });
 
@@ -59,7 +61,10 @@ export const getCarrierPickups = asyncHandler(async (req, res, next) => {
     isDefault: -1,
     createdAt: 1,
   });
-  sendResponse(res, { message: 'Pickup locations retrieved successfully', data: pickups });
+  sendResponse(res, {
+    message: "Pickup locations retrieved successfully",
+    data: pickups,
+  });
 });
 
 /**
@@ -73,11 +78,14 @@ export const getBostaDistrictsLookup = asyncHandler(async (req, res, next) => {
 
   const credentials = await getBostaCredentials(carrier);
   if (!credentials) {
-    return next(new ApiError('Bosta API key is not configured', 400));
+    return next(new ApiError("Bosta API key is not configured", 400));
   }
 
   const cities = await fetchBostaCityDistricts(credentials);
-  sendResponse(res, { message: 'Bosta districts retrieved successfully', data: cities });
+  sendResponse(res, {
+    message: "Bosta districts retrieved successfully",
+    data: cities,
+  });
 });
 
 /**
@@ -91,10 +99,13 @@ export const createCarrierPickup = asyncHandler(async (req, res, next) => {
 
   const credentials = await getBostaCredentials(carrier);
   if (!credentials) {
-    return next(new ApiError('Bosta API key is not configured', 400));
+    return next(new ApiError("Bosta API key is not configured", 400));
   }
 
   const bostaPayload = buildBostaPickupPayload(req.body);
+
+  console.log("Bosta Create Payload:", JSON.stringify(bostaPayload, null, 2));
+
   const bostaRes = await createBostaPickupLocation(bostaPayload, credentials);
   const bostaLoc = bostaRes.data ?? bostaRes;
   const bostaLocationId = bostaLoc._id ?? bostaLoc.id;
@@ -118,7 +129,7 @@ export const createCarrierPickup = asyncHandler(async (req, res, next) => {
 
   sendResponse(res, {
     statusCode: 201,
-    message: 'Pickup location created successfully',
+    message: "Pickup location created successfully",
     data: pickup,
   });
 });
@@ -137,15 +148,20 @@ export const updateCarrierPickup = asyncHandler(async (req, res, next) => {
     carrier: req.params.id,
   });
   if (!pickup) {
-    return next(new ApiError(`No pickup found with id: ${req.params.pickupId}`, 404));
+    return next(
+      new ApiError(`No pickup found with id: ${req.params.pickupId}`, 404),
+    );
   }
 
   const credentials = await getBostaCredentials(carrier);
   if (pickup.bostaLocationId && credentials && req.body.address) {
     await updateBostaPickupLocation(
       pickup.bostaLocationId,
-      buildBostaPickupPayload({ ...req.body, contactPerson: req.body.contactPerson ?? pickup.contactPerson }),
-      credentials
+      buildBostaPickupPayload({
+        ...req.body,
+        contactPerson: req.body.contactPerson ?? pickup.contactPerson,
+      }),
+      credentials,
     );
   }
 
@@ -161,7 +177,10 @@ export const updateCarrierPickup = asyncHandler(async (req, res, next) => {
     await setBostaDefaultPickupLocation(pickup.bostaLocationId, credentials);
   }
 
-  sendResponse(res, { message: 'Pickup location updated successfully', data: pickup });
+  sendResponse(res, {
+    message: "Pickup location updated successfully",
+    data: pickup,
+  });
 });
 
 /**
@@ -178,7 +197,9 @@ export const deleteCarrierPickup = asyncHandler(async (req, res, next) => {
     carrier: req.params.id,
   });
   if (!pickup) {
-    return next(new ApiError(`No pickup found with id: ${req.params.pickupId}`, 404));
+    return next(
+      new ApiError(`No pickup found with id: ${req.params.pickupId}`, 404),
+    );
   }
 
   const credentials = await getBostaCredentials(carrier);
@@ -191,7 +212,7 @@ export const deleteCarrierPickup = asyncHandler(async (req, res, next) => {
   }
 
   await pickup.deleteOne();
-  sendResponse(res, { message: 'Pickup location deleted successfully' });
+  sendResponse(res, { message: "Pickup location deleted successfully" });
 });
 
 /**
@@ -208,7 +229,9 @@ export const setDefaultCarrierPickup = asyncHandler(async (req, res, next) => {
     carrier: req.params.id,
   });
   if (!pickup) {
-    return next(new ApiError(`No pickup found with id: ${req.params.pickupId}`, 404));
+    return next(
+      new ApiError(`No pickup found with id: ${req.params.pickupId}`, 404),
+    );
   }
 
   const credentials = await getBostaCredentials(carrier);
@@ -219,5 +242,8 @@ export const setDefaultCarrierPickup = asyncHandler(async (req, res, next) => {
   pickup.isDefault = true;
   await pickup.save();
 
-  sendResponse(res, { message: 'Default pickup location updated successfully', data: pickup });
+  sendResponse(res, {
+    message: "Default pickup location updated successfully",
+    data: pickup,
+  });
 });
