@@ -18,14 +18,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users?page=1&limit=10&sort=-createdAt",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users"],
               "query": [
                 {
                   "key": "page",
@@ -78,14 +72,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users"]
             },
             "description": "Creates any user, including admins. Password is hashed by the User model's pre-save hook."
           },
@@ -98,15 +86,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -135,15 +116,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -162,15 +136,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -189,16 +156,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/activate/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "activate",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "activate", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -226,16 +185,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/changePassword/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "changePassword",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "changePassword", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -293,15 +244,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/register",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "register"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "register"]
                 },
                 "description": "Creates a new account. Response body carries the 15-min access token; the 7-day refresh token is set as an httpOnly cookie. Saves `token` + `userId` to the active environment."
               },
@@ -344,15 +288,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/login",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "login"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "login"]
                 },
                 "description": "Validates credentials. Returns a 15-min access token in the response body and sets a 7-day refresh token as an httpOnly cookie scoped to `/api/v1/auth`. Saves `token` + `userId` to the active environment."
               },
@@ -383,15 +320,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/refresh",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "refresh"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "refresh"]
                 },
                 "description": "Reads the refresh token from the httpOnly cookie (Postman attaches it automatically), verifies it against the DB, rotates it (old is revoked, new one issued), and returns a fresh access token. Using a revoked refresh token revokes every session for the user (reuse detection)."
               },
@@ -407,15 +337,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/logout",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "logout"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "logout"]
                 },
                 "description": "Revokes the current refresh token in DB and clears the cookie. Intentionally unauthenticated so an expired access token can't block logout."
               },
@@ -438,15 +361,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/me",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "me"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "me"]
                 },
                 "description": "`GET /api/v1/auth/me` — returns a minimal public user from the JWT (`publicUser` shape). For the full Mongo profile (`addresses`, `phone`, `avatar`, …) use **Current User → Get Current User** (`GET /api/v1/users/getMe`)."
               },
@@ -477,15 +393,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/forgot-password",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "forgot-password"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "forgot-password"]
                 },
                 "description": "Sends a password-reset link to the user's email. The link points to `${CLIENT_URL}/reset-password/<token>`. Always responds 200 to avoid leaking which emails are registered."
               },
@@ -501,16 +410,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/reset-password/:token",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "reset-password",
-                    ":token"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "reset-password", ":token"],
                   "variable": [
                     {
                       "key": "token",
@@ -557,16 +458,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/reset-password/:token",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "reset-password",
-                    ":token"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "reset-password", ":token"],
                   "variable": [
                     {
                       "key": "token",
@@ -595,15 +488,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/google",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "google"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "google"]
                 },
                 "description": "Browser-only: redirects to Google OAuth. After consent, Google calls **Google — callback** and the API sets refresh cookie + redirects to `CLIENT_URL` with access token. Not practical to complete inside Postman without following redirects manually."
               },
@@ -619,16 +505,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/google/callback?code=&state=",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "google",
-                    "callback"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "google", "callback"],
                   "query": [
                     {
                       "key": "code",
@@ -656,15 +534,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/facebook",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "facebook"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "facebook"]
                 },
                 "description": "Browser-only: redirects to Facebook OAuth. Same pattern as Google."
               },
@@ -680,16 +551,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/auth/facebook/callback?code=",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "auth",
-                    "facebook",
-                    "callback"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "auth", "facebook", "callback"],
                   "query": [
                     {
                       "key": "code",
@@ -743,14 +606,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/categories",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "categories"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "categories"]
                 },
                 "description": "Admin. **multipart** (`form-data`) — `name` (required), optional `isActive`, optional `image` file. Slug is generated from `name`."
               },
@@ -766,14 +623,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/categories",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "categories"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "categories"],
                   "query": [
                     {
                       "key": "keyword",
@@ -802,15 +653,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/categories/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "categories",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "categories", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -853,15 +697,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/categories/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "categories",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "categories", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -880,15 +717,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/categories/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "categories",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "categories", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -935,9 +765,7 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/categories/:categoryId/subcategories",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -967,14 +795,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/subcategories",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "subcategories"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "subcategories"],
                   "query": [
                     {
                       "key": "keyword",
@@ -1002,15 +824,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/subcategories/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "subcategories",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "subcategories", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -1053,9 +868,7 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/categories/:categoryId/subcategories/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -1088,9 +901,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/categories/:categoryId/subcategories/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -1150,9 +961,7 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/categories/69f0d098ced0c590ea79c735/subcategories",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -1175,9 +984,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/categories/69ef910b718b7e51e4a41cd9/subcategories",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -1234,14 +1041,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/brands",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "brands"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "brands"]
             },
             "description": "Admin. **multipart** (`form-data`) — `name` (required 2–50 chars), optional `description`, optional `isActive`, optional `logo` file. **Slug** is generated from `name` (not accepted in body)."
           },
@@ -1257,14 +1058,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/brands",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "brands"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "brands"],
               "query": [
                 {
                   "key": "keyword",
@@ -1293,15 +1088,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/brands/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "brands",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "brands", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -1350,15 +1138,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/brands/69f3ca12780a969d8b9c05a1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "brands",
-                "69f3ca12780a969d8b9c05a1"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "brands", "69f3ca12780a969d8b9c05a1"]
             },
             "description": "Admin. **multipart** — optional `name`, `description`, `isActive`, `logo`. Slug follows `name` on save hooks where applicable."
           },
@@ -1371,15 +1152,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/brands/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "brands",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "brands", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -1407,14 +1181,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/products?page=1&limit=10&sort=-createdAt",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products"],
               "query": [
                 {
                   "key": "page",
@@ -1533,15 +1301,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/products/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -1647,14 +1408,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/products",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products"]
             },
             "description": "**Admin** Bearer. Multipart: required `name`, `price`, `stock`, `category`, `subCategory` (array rules). Optional: `isBestSeller`, `isBundle`, images (max 5), `certificationImage`, `catalog` file (URL saved on `catalog`)."
           },
@@ -1712,15 +1467,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/products/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -1739,16 +1487,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/products/:id/best-seller",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products",
-                ":id",
-                "best-seller"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products", ":id", "best-seller"],
               "variable": [
                 {
                   "key": "id",
@@ -1767,15 +1507,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/products/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -1803,9 +1536,7 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/products/:productId/reviews/stats",
-              "host": [
-                "{{baseUrl}}"
-              ],
+              "host": ["{{baseUrl}}"],
               "path": [
                 "api",
                 "v1",
@@ -1836,16 +1567,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/products/:productId/reviews?page=1&limit=10&sort=-createdAt",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products",
-                ":productId",
-                "reviews"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products", ":productId", "reviews"],
               "query": [
                 {
                   "key": "page",
@@ -1889,16 +1612,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/products/:productId/reviews",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products",
-                ":productId",
-                "reviews"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products", ":productId", "reviews"],
               "variable": [
                 {
                   "key": "productId",
@@ -1921,15 +1636,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/reviews/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "reviews",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "reviews", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -1958,15 +1666,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/reviews/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "reviews",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "reviews", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -1986,15 +1687,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/reviews/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "reviews",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "reviews", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -2014,16 +1708,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/reviews/:id/like",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "reviews",
-                ":id",
-                "like"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "reviews", ":id", "like"],
               "variable": [
                 {
                   "key": "id",
@@ -2052,16 +1738,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/products/:productId/faqs",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products",
-                ":productId",
-                "faqs"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products", ":productId", "faqs"],
               "variable": [
                 {
                   "key": "productId",
@@ -2090,17 +1768,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/products/:productId/faqs/ask",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products",
-                ":productId",
-                "faqs",
-                "ask"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products", ":productId", "faqs", "ask"],
               "variable": [
                 {
                   "key": "productId",
@@ -2129,16 +1798,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/products/:productId/faqs",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "products",
-                ":productId",
-                "faqs"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "products", ":productId", "faqs"],
               "variable": [
                 {
                   "key": "productId",
@@ -2167,15 +1828,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/faqs/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "faqs",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "faqs", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -2195,15 +1849,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/faqs/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "faqs",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "faqs", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -2229,15 +1876,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/browsing-history",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "browsing-history"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "browsing-history"]
             },
             "description": "Last 10 viewed products (populated). History is filled when a logged-in user calls **GET /api/v1/products/:id**."
           },
@@ -2250,15 +1890,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/browsing-history",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "browsing-history"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "browsing-history"]
             },
             "description": "Empties `browsingHistory` for the current user."
           },
@@ -2271,15 +1904,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/recommendations",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "recommendations"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "recommendations"]
             },
             "description": "Products from top categories in your history, excluding already-viewed ids; capped at 20."
           },
@@ -2301,15 +1927,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers/upcoming",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "offers",
-                "upcoming"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "offers", "upcoming"]
             },
             "description": "Nearest future active offer (`startDate` > now). Must be registered **before** `GET /:id` in the router."
           },
@@ -2325,14 +1944,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "offers"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "offers"],
               "query": [
                 {
                   "key": "todayOffers",
@@ -2356,15 +1969,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "offers",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "offers", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -2393,14 +1999,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "offers"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "offers"]
             },
             "description": "**Admin** Bearer. ISO8601 dates; `endDate` after `startDate`. Only one active non-expired offer per product. Syncs product `priceAfterDiscount` / `offerEndsAt`."
           },
@@ -2422,15 +2022,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "offers",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "offers", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -2449,15 +2042,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "offers",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "offers", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -2476,14 +2062,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/offers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "offers"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "offers"]
             },
             "description": "**Admin** Bearer. `DELETE /` with no body — removes every offer and clears `priceAfterDiscount` / `offerEndsAt` on all affected products."
           },
@@ -2505,14 +2085,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/banners",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "banners"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "banners"]
             },
             "description": "Public list of `isActive` banners, newest `createdAt` first."
           },
@@ -2562,14 +2136,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/banners",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "banners"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "banners"]
             },
             "description": "**Admin** Bearer. `image` file required. For `linkType` url use `externalUrl`; for product/category use `linkId`."
           },
@@ -2607,15 +2175,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/banners/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "banners",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "banners", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -2635,15 +2196,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/banners/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "banners",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "banners", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -2671,16 +2225,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/profile/addresses",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "profile",
-                    "addresses"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users", "profile", "addresses"]
                 },
                 "description": "Returns `data.addresses` — use each entry’s `_id` in orders (e.g. dropdown). Phone for delivery is on the user (`GET getMe` / `phone` field), not on each address."
               },
@@ -2702,16 +2248,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/profile/addresses",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "profile",
-                    "addresses"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "users", "profile", "addresses"]
                 },
                 "description": "`POST` with `city` + `address` (required). **Requires** a non-empty `phone` on the user profile (`PATCH updateMe` first) — otherwise `400` with message about adding phone in account settings. Response includes the new subdocument in `data.address` (with `_id`)."
               },
@@ -2733,9 +2271,7 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/profile/addresses/:addressId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -2763,9 +2299,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/profile/addresses/:addressId",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -2796,15 +2330,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/getMe",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "getMe"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "getMe"]
             },
             "description": "Full Mongo user document: `name`, `email`, `phone`, `avatar`, `addresses`, … (vs **Authentication → Get current user (auth /me)**, which returns a minimal `publicUser` shape). Requires Bearer token."
           },
@@ -2826,15 +2353,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/updateMe",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "updateMe"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "updateMe"]
             },
             "description": "Sends any subset: `name`, `email`, `phone` (omit keys you are not changing). **Avatar** is not updated here — use **Upload Profile Image**.\n\n- Google-linked users (`googleId` set) **cannot** change email: send `email` in the body with such an account → `400` `Google-linked accounts cannot change their email`.\n- Add **`phone` on the profile** before using **Add address** (API requires a profile phone to add an address)."
           },
@@ -2858,15 +2378,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/updateMyAvatar",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "updateMyAvatar"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "updateMyAvatar"]
             },
             "description": "Uploads a new avatar image to Cloudinary and replaces the previous one (old asset is destroyed). Send as `multipart/form-data` with a single `avatar` file field — do NOT set Content-Type manually, Postman adds the correct boundary.\n\nErrors:\n- `400` missing file, unsupported format, or larger than 2 MB\n- `401` no / invalid access token"
           },
@@ -2888,15 +2401,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/updateMyPassword",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "updateMyPassword"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "updateMyPassword"]
             },
             "description": "Verifies `oldPassword`, then updates to `newPassword`. On success, `passwordChangedAt` is bumped so other sessions fail on next refresh."
           },
@@ -2909,15 +2415,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/deactivateMe",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "deactivateMe"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "deactivateMe"]
             },
             "description": "Sets `active=false` on the current user. Subsequent auth checks will reject the token with 403."
           },
@@ -2930,15 +2429,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/users/activateMe",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "users",
-                "activateMe"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "users", "activateMe"]
             },
             "description": "Sets `active=true` on the current user."
           },
@@ -2957,14 +2449,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/cart",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "cart"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cart"]
             },
             "description": "**User** Bearer. Returns populated cart with `subtotal`, `discountAmount`, `totalPrice`, and optional `couponCode`. Line `price` is synced from `product.priceAfterDiscount ?? product.price`. Empty cart → `{ items: [], subtotal: 0, discountAmount: 0, totalPrice: 0, couponCode: null }`."
           },
@@ -3000,14 +2486,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/cart",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "cart"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cart"]
             },
             "description": "**User** Bearer. Body `{ productId, quantity? }` — `quantity` defaults to `1`. Creates cart or merges quantity on existing line. `404` inactive/missing product; `400` insufficient stock."
           },
@@ -3029,15 +2509,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/cart/:itemId",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "cart",
-                ":itemId"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cart", ":itemId"],
               "variable": [
                 {
                   "key": "itemId",
@@ -3057,15 +2530,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/cart/:itemId",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "cart",
-                ":itemId"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cart", ":itemId"],
               "variable": [
                 {
                   "key": "itemId",
@@ -3094,15 +2560,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/cart/coupon",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "cart",
-                "coupon"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cart", "coupon"]
             },
             "description": "**User** Bearer. Body `{ code }` — persists coupon on the cart (`couponCode`, `couponId`, `discountAmount`). Validates expiry, usage cap, per-user reuse, and `minOrderAmount` against cart subtotal. Does **not** increment `usageCount` (that runs at order commit). `400` empty cart or invalid coupon."
           },
@@ -3115,15 +2574,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/cart/coupon",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "cart",
-                "coupon"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cart", "coupon"]
             },
             "description": "**User** Bearer. Clears `couponCode`, `couponId`, and `discountAmount` on the cart. `404` if no cart exists."
           },
@@ -3136,14 +2588,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/cart",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "cart"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "cart"]
             },
             "description": "**User** Bearer. Deletes the entire cart document for the current user."
           },
@@ -3186,14 +2632,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "orders"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "orders"]
                 },
                 "description": "**User** Bearer. Non-empty cart required. Validates stock, coupon, and shipping. Creates order immediately with `paymentMethod: cod`, `paymentStatus: paid`, decrements stock, clears cart, commits coupon usage. `districtId` may be a Mongo id or `\"other\"` for governorate fallback. Saves `{{orderId}}`."
               },
@@ -3230,15 +2670,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/payment-session",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "orders",
-                    "payment-session"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "orders", "payment-session"]
                 },
                 "description": "**User** Bearer. Snapshots cart into a `PaymentSession` (24h TTL). Returns `paymentSessionId`, `provider`, `totalPrice`, `expiresAt`, and `url` (Stripe Checkout) — open `url` in a browser to pay. Order is created on Stripe webhook `checkout.session.completed`. Card payments must not use `POST /orders` with `paymentMethod: card`."
               },
@@ -3275,15 +2708,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/payment-session",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "orders",
-                    "payment-session"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "orders", "payment-session"]
                 },
                 "description": "**User** Bearer. Same flow as Stripe but `provider: paymob`. Response includes `paymentSessionId`, `totalPrice`, `expiresAt`, and `iframeUrl` — open the iframe URL in a browser to pay. Fulfillment runs on Paymob processed webhook or redirect callback when `success: true` and HMAC is valid."
               },
@@ -3309,16 +2735,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/payment-session/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "orders",
-                    "payment-session",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "orders", "payment-session", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -3338,15 +2756,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/my-orders?page=1&limit=10&sort=-createdAt",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "orders",
-                    "my-orders"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "orders", "my-orders"],
                   "query": [
                     {
                       "key": "page",
@@ -3383,16 +2794,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/my-orders/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "orders",
-                    "my-orders",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "orders", "my-orders", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -3418,14 +2821,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders?page=1&limit=10&sort=-createdAt",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "orders"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "orders"],
                   "query": [
                     {
                       "key": "page",
@@ -3473,15 +2870,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "orders",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "orders", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -3509,16 +2899,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/:id/status",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "orders",
-                    ":id",
-                    "status"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "orders", ":id", "status"],
                   "variable": [
                     {
                       "key": "id",
@@ -3550,16 +2932,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/:id/refund",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "orders",
-                    ":id",
-                    "refund"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "orders", ":id", "refund"],
                   "variable": [
                     {
                       "key": "id",
@@ -3591,15 +2965,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/returns/eligible-orders",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "returns",
-                    "eligible-orders"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "returns", "eligible-orders"]
                 },
                 "description": "**User** Bearer. Delivered / partially_returned orders within `RETURN_WINDOW_DAYS` (default 14) from `deliveredAt`, with per-line `returnableQuantity` (accounts for pending/approved returns)."
               },
@@ -3668,14 +3035,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/returns",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "returns"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "returns"]
                 },
                 "description": "**User** Bearer. `multipart/form-data`. Order must be `delivered` within return window. Saves `{{returnId}}`."
               },
@@ -3709,14 +3070,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/returns",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "returns"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "returns"]
                 },
                 "description": "**User** Bearer. JSON body without proof images — use for `changed_mind`, `expired_product`, `other`. For damaged/wrong/allergic use multipart with `proofImages`."
               },
@@ -3729,15 +3084,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/returns/my-returns?page=1&limit=10&sort=-createdAt",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "returns",
-                    "my-returns"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "returns", "my-returns"],
                   "query": [
                     {
                       "key": "page",
@@ -3769,16 +3117,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/returns/my-returns/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "returns",
-                    "my-returns",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "returns", "my-returns", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -3803,14 +3143,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/returns?page=1&limit=10&sort=-createdAt",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "returns"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "returns"],
                   "query": [
                     {
                       "key": "page",
@@ -3842,15 +3176,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/returns/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "returns",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "returns", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -3878,16 +3205,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/returns/:id/status",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "returns",
-                    ":id",
-                    "status"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "returns", ":id", "status"],
                   "variable": [
                     {
                       "key": "id",
@@ -3915,16 +3234,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/returns/:id/status",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "returns",
-                    ":id",
-                    "status"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "returns", ":id", "status"],
                   "variable": [
                     {
                       "key": "id",
@@ -3952,16 +3263,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/returns/:id/status",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "returns",
-                    ":id",
-                    "status"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "returns", ":id", "status"],
                   "variable": [
                     {
                       "key": "id",
@@ -3989,16 +3292,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/returns/:id/status",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "returns",
-                    ":id",
-                    "status"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "returns", ":id", "status"],
                   "variable": [
                     {
                       "key": "id",
@@ -4026,16 +3321,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/returns/:id/status",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "returns",
-                    ":id",
-                    "status"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "returns", ":id", "status"],
                   "variable": [
                     {
                       "key": "id",
@@ -4063,14 +3350,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/coupons?page=1&limit=10&sort=-createdAt",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "coupons"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "coupons"],
               "query": [
                 {
                   "key": "page",
@@ -4128,14 +3409,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/coupons",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "coupons"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "coupons"]
             },
             "description": "**Admin** Bearer. `code` uppercased in controller. `discountType`: `percentage` | `fixed`. Optional `maxUsage`, `expiresAt`, `minOrderAmount`, `isActive`."
           },
@@ -4148,15 +3423,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/coupons/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "coupons",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "coupons", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -4185,15 +3453,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/coupons/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "coupons",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "coupons", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -4212,15 +3473,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/coupons/:id",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "coupons",
-                ":id"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "coupons", ":id"],
               "variable": [
                 {
                   "key": "id",
@@ -4248,15 +3502,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/shipping/countries",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "shipping",
-                "countries"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipping", "countries"]
             },
             "description": "Public. Active countries only — `name`, `code`, `flag`, `currency`."
           },
@@ -4272,9 +3519,7 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/shipping/countries/:countryId/governorates",
-              "host": [
-                "{{baseUrl}}"
-              ],
+              "host": ["{{baseUrl}}"],
               "path": [
                 "api",
                 "v1",
@@ -4304,9 +3549,7 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/shipping/governorates/:governorateId/zones",
-              "host": [
-                "{{baseUrl}}"
-              ],
+              "host": ["{{baseUrl}}"],
               "path": [
                 "api",
                 "v1",
@@ -4336,15 +3579,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/shipping/resolve?governorateId={{governorateId}}&districtId={{districtId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "shipping",
-                "resolve"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipping", "resolve"],
               "query": [
                 {
                   "key": "governorateId",
@@ -4372,15 +3608,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/shipping/carriers?governorateId={{governorateId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "shipping",
-                "carriers"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipping", "carriers"],
               "query": [
                 {
                   "key": "governorateId",
@@ -4409,15 +3638,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/countries",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "countries"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "countries"]
                 },
                 "description": "**Admin** Bearer. All countries (including inactive)."
               },
@@ -4451,15 +3673,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/countries",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "countries"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "countries"]
                 },
                 "description": "**Admin** Bearer. `code` must be 2 chars (uppercased on save). `400` if code already exists."
               },
@@ -4481,16 +3696,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/countries/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "countries",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "countries", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -4509,16 +3716,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/countries/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "countries",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "countries", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -4537,9 +3736,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/countries/:countryId/governorates",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -4593,15 +3790,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/governorates",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "governorates"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "governorates"]
                 },
                 "description": "**Admin** Bearer. Body `{ country, name, shippingPrice }`. `shippingPrice` is fallback when no districts or when checkout selects Other."
               },
@@ -4623,16 +3813,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/governorates/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "governorates",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "governorates", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -4651,16 +3833,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/governorates/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "governorates",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "governorates", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -4679,9 +3853,7 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/governorates/:governorateId/districts",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
+                  "host": ["{{baseUrl}}"],
                   "path": [
                     "api",
                     "v1",
@@ -4735,15 +3907,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/districts",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "districts"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "districts"]
                 },
                 "description": "**Admin** Bearer. Body `{ governorate, name, shippingPrice }`. Default `isCovered: true`."
               },
@@ -4765,16 +3930,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/districts/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "districts",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "districts", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -4793,16 +3950,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/districts/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "districts",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "districts", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -4827,15 +3976,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/carriers",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "carriers"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "carriers"]
                 },
                 "description": "**Admin** Bearer. Each carrier includes a `coverage` array of governorate names."
               },
@@ -4869,15 +4011,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/carriers",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "carriers"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "carriers"]
                 },
                 "description": "**Admin** Bearer. Create `known` or `internal` carriers. `type: api` carriers (Mylerz) are seeded by system — prefer not creating via admin."
               },
@@ -4899,16 +4034,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/carriers/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "carriers",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "carriers", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -4927,16 +4054,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/carriers/:id",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "carriers",
-                    ":id"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "carriers", ":id"],
                   "variable": [
                     {
                       "key": "id",
@@ -4955,17 +4074,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/coverage",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "carriers",
-                    ":id",
-                    "coverage"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "carriers", ":id", "coverage"],
                   "variable": [
                     {
                       "key": "id",
@@ -4993,17 +4103,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/coverage",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "carriers",
-                    ":id",
-                    "coverage"
-                  ],
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "carriers", ":id", "coverage"],
                   "variable": [
                     {
                       "key": "id",
@@ -5023,7 +4124,15 @@
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/bosta/sync-zones",
                   "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "admin", "carriers", ":id", "bosta", "sync-zones"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "carriers",
+                    ":id",
+                    "bosta",
+                    "sync-zones"
+                  ],
                   "variable": [{ "key": "id", "value": "{{carrierId}}" }]
                 },
                 "description": "**Admin** Bearer. Bosta carrier only. Syncs zones from Bosta API and replaces CarrierCoverage."
@@ -5049,7 +4158,9 @@
               "name": "Assign Order Shipping",
               "request": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"driverName\": \"\",\n  \"driverPhone\": \"\",\n  \"trackingNumber\": \"\",\n  \"notes\": \"\",\n  \"markShipped\": true\n}"
@@ -5057,7 +4168,15 @@
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/assign",
                   "host": ["{{baseUrl}}"],
-                  "path": ["api", "v1", "admin", "shipping", "orders", ":id", "assign"],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admin",
+                    "shipping",
+                    "orders",
+                    ":id",
+                    "assign"
+                  ],
                   "variable": [{ "key": "id", "value": "{{orderId}}" }]
                 },
                 "description": "**Admin** Bearer. Assign Bosta (creates delivery) or known/internal (manual fulfillment fields)."
@@ -5083,6 +4202,114 @@
           "description": "`/api/v1/admin/carriers` + coverage + Bosta pickups/sync + order assign. Env: `{{carrierId}}`, `{{orderId}}`."
         },
         {
+          "name": "Create Bosta Pickup",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationName\": \"المخزن الرئيسي\",\n  \"isDefault\": true,\n  \"contactPerson\": {\n    \"name\": \"أحمد محمد\",\n    \"phone\": \"01012345678\",\n    \"email\": \"ahmed@oxxila.com\"\n  },\n  \"address\": {\n    \"city\": \"Cairo\",\n    \"firstLine\": \"15 شارع الصناعة\",\n    \"zoneId\": \"\",\n    \"districtId\": \"\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/bosta/pickups",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "carriers",
+                ":id",
+                "bosta",
+                "pickups"
+              ],
+              "variable": [{ "key": "id", "value": "{{carrierId}}" }]
+            },
+            "description": "**Admin** Bearer. Create pickup locally and on Bosta."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Bosta Pickup",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationName\": \"المخزن الرئيسي (updated)\",\n  \"isDefault\": true,\n  \"contactPerson\": {\n    \"name\": \"أحمد محمد\",\n    \"phone\": \"01012345678\",\n    \"email\": \"ahmed@oxxila.com\"\n  },\n  \"address\": {\n    \"city\": \"Cairo\",\n    \"firstLine\": \"15 شارع الصناعة\",\n    \"zoneId\": \"\",\n    \"districtId\": \"\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/bosta/pickups/:pickupId",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "carriers",
+                ":id",
+                "bosta",
+                "pickups",
+                ":pickupId"
+              ],
+              "variable": [
+                { "key": "id", "value": "{{carrierId}}" },
+                { "key": "pickupId", "value": "{{pickupId}}" }
+              ]
+            },
+            "description": "**Admin** Bearer. Update pickup locally and on Bosta."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Bosta Pickup",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/bosta/pickups/:pickupId",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "carriers",
+                ":id",
+                "bosta",
+                "pickups",
+                ":pickupId"
+              ],
+              "variable": [
+                { "key": "id", "value": "{{carrierId}}" },
+                { "key": "pickupId", "value": "{{pickupId}}" }
+              ]
+            },
+            "description": "**Admin** Bearer. Delete pickup locally and from Bosta."
+          },
+          "response": []
+        },
+        {
+          "name": "Bosta Districts Lookup",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/bosta/districts-lookup",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "carriers",
+                ":id",
+                "bosta",
+                "districts-lookup"
+              ],
+              "variable": [{ "key": "id", "value": "{{carrierId}}" }]
+            },
+            "description": "**Admin** Bearer. Resolve local districts to Bosta IDs."
+          },
+          "response": []
+        },
+        {
           "name": "Shipping Settings",
           "item": [
             {
@@ -5092,15 +4319,8 @@
                 "header": [],
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/shipping-settings",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "shipping-settings"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "shipping-settings"]
                 },
                 "description": "**Admin** Bearer. Toggles `api`, `known`, `internal` carrier visibility at checkout. Auto-creates defaults if missing."
               },
@@ -5122,15 +4342,8 @@
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/shipping-settings",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "admin",
-                    "shipping-settings"
-                  ]
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "admin", "shipping-settings"]
                 },
                 "description": "**Admin** Bearer. Send any subset of `api`, `known`, `internal` booleans."
               },
@@ -5169,15 +4382,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/webhooks/stripe",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "webhooks",
-                "stripe"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "webhooks", "stripe"]
             },
             "description": "Public. Raw JSON body + valid `stripe-signature` (server uses `express.raw`). Handles `checkout.session.completed` (fulfills `PaymentSession` → creates order) and `charge.refunded` (syncs refund to DB). **Use Stripe CLI** to forward real signed events — manual Postman calls fail signature verification unless you copy a real payload + header from the CLI."
           },
@@ -5202,15 +4408,8 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/webhooks/paymob",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "webhooks",
-                "paymob"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "webhooks", "paymob"]
             },
             "description": "Public. Paymob **processed** server callback (POST). `type` must be `TRANSACTION`; `obj.success: true` fulfills the payment session. `hmac` must match server-side HMAC of `obj` fields — use Paymob dashboard test callbacks or compute HMAC with `PAYMOB_HMAC_SECRET`. Failed payments set session `failed` when `merchant_order_id` is present."
           },
@@ -5226,15 +4425,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/webhooks/paymob?id=&pending=false&amount_cents=&success=true&is_auth=false&is_capture=false&is_standalone_payment=true&is_voided=false&is_refunded=false&is_3d_secure=false&integration_id=&has_parent_transaction=false&order=&merchant_order_id={{paymentSessionId}}&created_at=&currency=EGP&error_occured=false&owner=&source_data.type=&source_data.pan=&source_data.sub_type=&hmac=",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "webhooks",
-                "paymob"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "webhooks", "paymob"],
               "query": [
                 {
                   "key": "id",
@@ -5350,12 +4542,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                ""
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": [""]
             },
             "description": "No `/api` prefix. Returns `{ success, message: 'Oxxila API is up and running' }` when the server is healthy."
           },
