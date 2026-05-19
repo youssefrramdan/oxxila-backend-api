@@ -171,6 +171,20 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
 .district-row{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:7px;background:var(--card);border:1px solid var(--border);margin-bottom:4px;}
 .cov-badge{font-size:9px;padding:2px 7px;border-radius:12px;font-weight:500;cursor:pointer;flex-shrink:0;}
 .bosta-badge{font-size:9px;padding:2px 6px;border-radius:10px;background:var(--blue-bg);color:var(--blue);border:1px solid rgba(96,165,250,.25);margin-left:6px;}
+.pickups-toolbar{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;}
+.pickups-list-main{flex:1;min-height:36px;font-size:12px;color:var(--muted);}
+.pickups-add-btn{flex-shrink:0;padding:7px 10px;}
+.carrier-info-panel{margin:0 0 10px;padding:12px;background:var(--card);border:1px solid var(--border2);border-radius:9px;font-size:12px;}
+.carrier-info-panel.hidden{display:none;}
+.carrier-info-panel h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:10px 0 6px;}
+.carrier-info-panel h4:first-child{margin-top:0;}
+.carrier-info-readonly{list-style:none;padding:0;margin:0;}
+.carrier-info-readonly li{padding:4px 0;border-bottom:1px solid var(--border);color:var(--text);}
+.carrier-info-readonly li:last-child{border-bottom:none;}
+.pickup-inline-form{margin-top:8px;padding:12px;background:var(--card);border:1px solid var(--accent-border);border-radius:9px;}
+.pickup-inline-form.hidden{display:none;}
+.pickup-inline-actions{display:flex;gap:8px;margin-top:10px;}
+.pickup-inline-actions .btn{flex:1;justify-content:center;}
 .cov-yes{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
 .cov-no{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,.2);}
 .price-inp{width:58px;background:var(--card2);border:1px solid var(--border2);border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--mono);color:var(--text);text-align:center;outline:none;}
@@ -518,11 +532,56 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
         <label class="form-label">API Key</label>
         <input class="form-input" type="password" id="carrier-api-key" placeholder="Paste API key" autocomplete="off">
       </div>
-      <div id="bosta-pickups-section" style="display:none">
+            <div id="bosta-pickups-section" style="display:none">
         <div class="form-divider">Bosta Pickup Locations</div>
-        <div id="pickups-list" style="font-size:12px;margin-bottom:10px;color:var(--muted)">Save carrier with API key to manage pickups</div>
-        <button type="button" class="btn btn-secondary" style="width:100%;margin-bottom:8px" onclick="openAddPickupForm()"><i class="ti ti-plus"></i> Add pickup</button>
-        <button type="button" class="btn btn-secondary" style="width:100%" onclick="syncBostaZones()"><i class="ti ti-refresh"></i> Sync zones from Bosta</button>
+        <div class="pickups-toolbar">
+          <button type="button" class="icon-btn" id="carrier-info-toggle" title="View coverage & pickups (read-only)" onclick="toggleCarrierInfoPanel()">
+            <i class="ti ti-eye"></i>
+          </button>
+          <div id="pickups-list" class="pickups-list-main">Save carrier with API key first</div>
+          <button type="button" class="btn btn-secondary pickups-add-btn" title="Add pickup" onclick="togglePickupInlineForm()">
+            <i class="ti ti-plus"></i>
+          </button>
+        </div>
+        <div id="carrier-info-panel" class="carrier-info-panel hidden"></div>
+        <div id="pickup-inline-form" class="pickup-inline-form hidden">
+          <div class="form-group">
+            <label class="form-label">Location name</label>
+            <input class="form-input" id="pickup-name" placeholder="Warehouse">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Address line</label>
+            <input class="form-input" id="pickup-first-line" placeholder="Street address">
+          </div>
+          <div class="form-group">
+            <label class="form-label">City (Bosta)</label>
+            <select class="form-select" id="pickup-city-sel" onchange="onPickupCityChange()">
+              <option value="">Select city</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">District / zone (Bosta)</label>
+            <select class="form-select" id="pickup-district-sel">
+              <option value="">Select district</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contact name</label>
+            <input class="form-input" id="pickup-contact-name" placeholder="Name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Contact phone</label>
+            <input class="form-input" id="pickup-contact-phone" placeholder="01xxxxxxxxx">
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:8px;cursor:pointer">
+            <input type="checkbox" id="pickup-is-default" checked>
+            Set as default pickup
+          </label>
+          <div class="pickup-inline-actions">
+            <button type="button" class="btn btn-secondary" onclick="togglePickupInlineForm(false)">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitPickupInlineForm()">Save pickup</button>
+          </div>
+        </div>
       </div>
     </div>
 

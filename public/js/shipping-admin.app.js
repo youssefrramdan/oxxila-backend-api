@@ -14,6 +14,11 @@ let coverageOnlyMode = false;
 let orders = [];
 let assigningOrderId = null;
 let assignDetail = null;
+let pickupsReadOnly = [];
+let bostaDistrictsCache = null;
+const BOSTA_DISTRICTS_CACHE_KEY = 'oxxila_bosta_districts';
+const BOSTA_DISTRICTS_CACHE_TS = 'oxxila_bosta_districts_ts';
+const BOSTA_DISTRICTS_TTL_MS = 24 * 60 * 60 * 1000;
 
 const apiBase = () =>
   (document.getElementById('api-base')?.value || localStorage.getItem('oxxila_api_base') || 'http://localhost:3000/api/v1').replace(/\/$/, '');
@@ -230,7 +235,10 @@ async function openEditCarrier(id) {
   if (c.type === 'api' && c.provider === 'bosta') {
     document.getElementById('carrier-api-base-url').value =
       c.apiBaseUrl || localStorage.getItem('oxxila_bosta_default_base') || 'https://app.bosta.co';
+    hideCarrierInfoPanel();
+    hidePickupInlineForm();
     await loadPickups(id);
+    if (c.hasApiKey) ensureBostaDistrictsCache(id, false).catch(() => {});
   }
   openDrawer('carrier-drawer');
 }
@@ -312,6 +320,9 @@ async function saveCarrier() {
     resetCarrierDrawerForm();
     await loadCarriers();
     await loadZones();
+    if (carrierId && document.getElementById('carrier-api-provider')?.value === 'bosta') {
+      await ensureBostaDistrictsCache(carrierId, true).catch(() => {});
+    }
     if (!editingCarrierId && carrierId) toast('Carrier created');
     else if (editingCarrierId) toast('Carrier updated');
   } catch (e) {
@@ -357,6 +368,8 @@ function onCarrierTypeChange() {
     delSec.style.display = hideDays ? 'none' : '';
   }
   onApiProviderChange();
+  hideCarrierInfoPanel();
+  hidePickupInlineForm();
 }
 
 function onApiProviderChange() {
@@ -368,16 +381,178 @@ function onApiProviderChange() {
   }
 }
 
-async function syncBostaZones() {
-  if (!editingCarrierId) return;
+function hideCarrierInfoPanel() {
+  const panel = document.getElementById('carrier-info-panel');
+  if (panel) panel.classList.add('hidden');
+}
+
+function hidePickupInlineForm() {
+  const form = document.getElementById('pickup-inline-form');
+  if (form) form.classList.add('hidden');
+}
+
+async function ensureBostaDistrictsCache(carrierId, forceRefresh = false) {
+  if (!forceRefresh && bostaDistrictsCache?.length) return bostaDistrictsCache;
+
+  if (!forceRefresh) {
+    const ts = localStorage.getItem(BOSTA_DISTRICTS_CACHE_TS);
+    const raw = localStorage.getItem(BOSTA_DISTRICTS_CACHE_KEY);
+    if (raw && ts && Date.now() - Number(ts) < BOSTA_DISTRICTS_TTL_MS) {
+      try {
+        bostaDistrictsCache = JSON.parse(raw);
+        if (bostaDistrictsCache?.length) return bostaDistrictsCache;
+      } catch {
+        /* ignore */
+      }
+    }
+    try {
+      const res = await fetch('/data/bosta-districts.json');
+      if (res.ok) {
+        const fileData = await res.json();
+        if (Array.isArray(fileData) && fileData.length) {
+          bostaDistrictsCache = fileData;
+          return bostaDistrictsCache;
+        }
+      }
+    } catch {
+      /* optional static cache */
+    }
+  }
+
+  const { data } = await api('GET', '/admin/carriers/' + carrierId + '/bosta/districts-lookup');
+  bostaDistrictsCache = Array.isArray(data) ? data : [];
+  localStorage.setItem(BOSTA_DISTRICTS_CACHE_KEY, JSON.stringify(bostaDistrictsCache));
+  localStorage.setItem(BOSTA_DISTRICTS_CACHE_TS, String(Date.now()));
+  return bostaDistrictsCache;
+}
+
+function populatePickupCitySelect() {
+  const sel = document.getElementById('pickup-city-sel');
+  if (!sel) return;
+  const cities = bostaDistrictsCache || [];
+  sel.innerHTML =
+    '<option value="">Select city</option>' +
+    cities
+      .map((c) => {
+        const label = c.cityOtherName ? `${c.cityName} (${c.cityOtherName})` : c.cityName;
+        return `<option value="${esc(c.cityId)}" data-name="${esc(c.cityName)}">${esc(label)}</option>`;
+      })
+      .join('');
+  document.getElementById('pickup-district-sel').innerHTML =
+    '<option value="">Select district</option>';
+}
+
+function onPickupCityChange() {
+  const citySel = document.getElementById('pickup-city-sel');
+  const distSel = document.getElementById('pickup-district-sel');
+  if (!citySel || !distSel) return;
+  const cityId = citySel.value;
+  const city = (bostaDistrictsCache || []).find((c) => c.cityId === cityId);
+  const districts = city?.districts || [];
+  distSel.innerHTML =
+    '<option value="">Select district</option>' +
+    districts
+      .map((d) => {
+        const label = d.districtName || d.zoneName;
+        return `<option value="${esc(d.districtId)}">${esc(label)}</option>`;
+      })
+      .join('');
+}
+
+async function togglePickupInlineForm(show) {
+  const form = document.getElementById('pickup-inline-form');
+  if (!form) return;
+  const shouldShow = show === undefined ? form.classList.contains('hidden') : show;
+  if (!shouldShow) {
+    form.classList.add('hidden');
+    return;
+  }
+  if (!editingCarrierId) {
+    toast('Save carrier with API key first', true);
+    return;
+  }
+  hideCarrierInfoPanel();
   try {
-    const { data } = await api('POST', '/admin/carriers/' + editingCarrierId + '/bosta/sync-zones');
-    toast(`Zones synced — ${data.count ?? 0} governorates in coverage`);
-    await loadZones();
-    await loadCarriers();
+    await ensureBostaDistrictsCache(editingCarrierId);
+    populatePickupCitySelect();
+    form.classList.remove('hidden');
+  } catch (e) {
+    toast(e.message || 'Could not load Bosta districts', true);
+  }
+}
+
+async function submitPickupInlineForm() {
+  if (!editingCarrierId) return;
+  const locationName = document.getElementById('pickup-name')?.value?.trim();
+  const firstLine = document.getElementById('pickup-first-line')?.value?.trim();
+  const citySel = document.getElementById('pickup-city-sel');
+  const distSel = document.getElementById('pickup-district-sel');
+  const cityId = citySel?.value;
+  const cityName = citySel?.selectedOptions?.[0]?.dataset?.name || '';
+  const districtId = distSel?.value;
+  const contactName = document.getElementById('pickup-contact-name')?.value?.trim() || 'Warehouse';
+  const contactPhone = document.getElementById('pickup-contact-phone')?.value?.trim();
+  const isDefault = document.getElementById('pickup-is-default')?.checked;
+
+  if (!locationName || !firstLine || !cityId || !districtId || !contactPhone) {
+    toast('Fill location, address, city, district, and phone', true);
+    return;
+  }
+
+  try {
+    await api('POST', '/admin/carriers/' + editingCarrierId + '/pickups', {
+      locationName,
+      contactPerson: { name: contactName, phone: contactPhone, email: '' },
+      address: {
+        firstLine,
+        city: cityName,
+        cityId,
+        districtId,
+        floor: '0',
+        apartment: '0',
+      },
+      isDefault: !!isDefault,
+    });
+    hidePickupInlineForm();
+    document.getElementById('pickup-name').value = '';
+    document.getElementById('pickup-first-line').value = '';
+    document.getElementById('pickup-contact-phone').value = '';
+    await loadPickups(editingCarrierId);
+    toast('Pickup added');
   } catch (e) {
     toast(e.message, true);
   }
+}
+
+function toggleCarrierInfoPanel() {
+  const panel = document.getElementById('carrier-info-panel');
+  if (!panel) return;
+  if (!panel.classList.contains('hidden')) {
+    panel.classList.add('hidden');
+    return;
+  }
+  hidePickupInlineForm();
+  const c = carriers.find((x) => x.id === editingCarrierId);
+  const coverage = c?.coverage?.length
+    ? c.coverage.map((g) => `<li>${esc(g)}</li>`).join('')
+    : '<li style="color:var(--muted)">No governorates in coverage yet — save API key to sync</li>';
+
+  const pickups =
+    pickupsReadOnly.length > 0
+      ? pickupsReadOnly
+          .map(
+            (p) =>
+              `<li><strong>${esc(p.locationName)}</strong>${p.isDefault ? ' (default)' : ''} — ${esc(p.address?.city || '')}</li>`
+          )
+          .join('')
+      : '<li style="color:var(--muted)">No pickup locations</li>';
+
+  panel.innerHTML = `
+    <h4>Covered governorates (read-only)</h4>
+    <ul class="carrier-info-readonly">${coverage}</ul>
+    <h4>Pickup locations (read-only)</h4>
+    <ul class="carrier-info-readonly">${pickups}</ul>`;
+  panel.classList.remove('hidden');
 }
 
 async function loadPickups(carrierId) {
@@ -385,54 +560,26 @@ async function loadPickups(carrierId) {
   if (!el) return;
   try {
     const { data } = await api('GET', '/admin/carriers/' + carrierId + '/pickups');
-    if (!data?.length) {
-      el.innerHTML = 'No pickup locations yet';
+    pickupsReadOnly = data || [];
+    if (!pickupsReadOnly.length) {
+      el.innerHTML = '<span style="color:var(--muted2)">No pickups yet — use + to add</span>';
       return;
     }
-    el.innerHTML = data
+    el.innerHTML = pickupsReadOnly
       .map(
         (p) => `
-      <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <div><strong>${esc(p.locationName)}</strong>${p.isDefault ? ' <span class="bosta-badge">Default</span>' : ''}<br><span style="color:var(--muted)">${esc(p.address?.city)}</span></div>
-        <div style="display:flex;gap:4px">
-          ${!p.isDefault ? `<button class="btn btn-secondary" style="font-size:10px;padding:4px 8px" onclick="setDefaultPickup('${carrierId}','${p._id}')">Set default</button>` : ''}
-          <button class="btn btn-secondary" style="font-size:10px;padding:4px 8px" onclick="deletePickup('${carrierId}','${p._id}')">Delete</button>
+      <div style="padding:6px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:6px">
+        <div style="min-width:0"><strong style="font-size:12px">${esc(p.locationName)}</strong>${p.isDefault ? ' <span class="bosta-badge">Default</span>' : ''}<br><span style="color:var(--muted);font-size:10px">${esc(p.address?.city)}</span></div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          ${!p.isDefault ? `<button type="button" class="btn btn-secondary" style="font-size:10px;padding:3px 6px" onclick="setDefaultPickup('${carrierId}','${p._id}')">Default</button>` : ''}
+          <button type="button" class="btn btn-secondary" style="font-size:10px;padding:3px 6px" onclick="deletePickup('${carrierId}','${p._id}')">Del</button>
         </div>
       </div>`
       )
       .join('');
   } catch (e) {
     el.textContent = e.message;
-  }
-}
-
-async function openAddPickupForm() {
-  if (!editingCarrierId) return;
-  const name = prompt('Location name');
-  if (!name) return;
-  const firstLine = prompt('Address first line');
-  if (!firstLine) return;
-  const city = prompt('City name (e.g. Cairo)');
-  if (!city) return;
-  const cityId = prompt('Bosta cityId (from districts lookup)') || '';
-  const districtId = prompt('Bosta districtId') || '';
-  const contactName = prompt('Contact name') || 'Warehouse';
-  const contactPhone = prompt('Contact phone') || '';
-  if (!contactPhone) {
-    toast('Phone is required', true);
-    return;
-  }
-  try {
-    await api('POST', '/admin/carriers/' + editingCarrierId + '/pickups', {
-      locationName: name,
-      contactPerson: { name: contactName, phone: contactPhone, email: '' },
-      address: { firstLine, city, cityId, districtId, floor: '0', apartment: '0' },
-      isDefault: true,
-    });
-    await loadPickups(editingCarrierId);
-    toast('Pickup added');
-  } catch (e) {
-    toast(e.message, true);
+    pickupsReadOnly = [];
   }
 }
 
