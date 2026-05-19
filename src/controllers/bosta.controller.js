@@ -67,8 +67,10 @@ export const createShipment = asyncHandler(async (req, res, next) => {
   const dropOffAddress = buildBostaAddress({
     city: shippingAddress.governorateName,
     zone: shippingAddress.districtName || shippingAddress.governorateName,
+    districtName: shippingAddress.districtName,  // ← ضيف السطر ده
     firstLine: shippingAddress.addressLine,
   });
+
 
   let delivery;
   try {
