@@ -42,7 +42,7 @@ const buildBostaPickupPayload = (body) => ({
     apartment: body.address.apartment || '0',
     city: body.address.city,
     districtId: body.address.districtId,
-    buildingType: body.address.buildingType ?? 0,
+    buildingType: body.address.buildingType ?? 21,
   },
 });
 
