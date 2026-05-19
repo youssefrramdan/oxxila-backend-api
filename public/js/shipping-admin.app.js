@@ -490,6 +490,7 @@ async function submitPickupInlineForm() {
   const cityId = citySel?.value;
   const cityName = citySel?.selectedOptions?.[0]?.dataset?.name || '';
   const districtId = distSel?.value;
+  const districtName = distSel?.selectedOptions?.[0]?.textContent?.trim() || '';
   const contactName = document.getElementById('pickup-contact-name')?.value?.trim() || 'Warehouse';
   const contactPhone = document.getElementById('pickup-contact-phone')?.value?.trim();
   const isDefault = document.getElementById('pickup-is-default')?.checked;
@@ -508,8 +509,7 @@ async function submitPickupInlineForm() {
         city: cityName,
         cityId,
         districtId,
-        floor: '0',
-        apartment: '0',
+        districtName,
       },
       isDefault: !!isDefault,
     });
