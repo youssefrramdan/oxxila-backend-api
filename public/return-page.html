@@ -1361,7 +1361,25 @@
             distWrap.style.display = "none";
           }
         } catch (e) {
-          distWrap.style.display = "none";
+          const res = await api("GET", `/shipping/governorates/${govId}/zones`);
+          const zones = res.data; // ← إضافة دي
+          addrHasDistricts = zones.hasDistricts || false;
+          if (addrHasDistricts && zones.districts?.length) {
+            addrDistricts = zones.districts;
+            const opts = [`<option value="">— Select district —</option>`];
+            zones.districts.forEach((d) =>
+              opts.push(`<option value="${d._id}">${esc(d.name)}</option>`),
+            );
+            if (zones.other)
+              opts.push(
+                `<option value="other">${esc(zones.other.label || "Other")}</option>`,
+              );
+            distSel.innerHTML = opts.join("");
+            distSel.disabled = false;
+          } else {
+            addrHasDistricts = false;
+            distWrap.style.display = "none";
+          }
         } finally {
           wrap.classList.remove("loading");
         }
