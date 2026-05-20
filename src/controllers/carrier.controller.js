@@ -252,20 +252,17 @@ export const updateCarrierCoverage = asyncHandler(async (req, res, next) => {
 });
 
 export const getBostaPickupLocations = asyncHandler(async (req, res) => {
-  const carriers = await Carrier.find({
+  const bostaCarriers = await Carrier.find({
     apiProvider: "bosta",
     type: "api",
     isActive: true,
   }).select("_id name");
 
   const pickups = await CarrierPickup.find({
-    carrier: { $in: carriers.map((c) => c._id) },
+    carrier: { $in: bostaCarriers.map((c) => c._id) },
   })
-    .populate("carrier", "name code")
-    .sort({
-      isDefault: -1,
-      locationName: 1,
-    });
+    .populate("carrier", "name")
+    .sort({ isDefault: -1, locationName: 1 });
 
   sendResponse(res, {
     message: "Bosta pickup locations retrieved successfully",
