@@ -1143,6 +1143,7 @@
       let returns = [];
       let statusFilter = "all";
       let currentReturn = null;
+      let bostaPickups = [];
 
       const apiBase = () =>
         (
@@ -1486,18 +1487,18 @@
         renderDrawerFooter(r);
       }
 
-      function renderDrawerFooter(r) {
-        async function loadBostaPickups() {
-          if (bostaPickups.length) return bostaPickups; // cached
-          try {
-            const { data } = await api("GET", "/admin/carriers/bosta-pickups");
-            bostaPickups = data || [];
-          } catch (e) {
-            bostaPickups = [];
-          }
-          return bostaPickups;
+      async function loadBostaPickups() {
+        if (bostaPickups.length) return bostaPickups;
+        try {
+          const { data } = await api("GET", "/admin/carriers/bosta-pickups");
+          bostaPickups = data || [];
+        } catch (e) {
+          bostaPickups = [];
         }
+        return bostaPickups;
+      }
 
+      function renderDrawerFooter(r) {
         const footer = document.getElementById("drawer-footer");
         const status = r.refundStatus;
         const isCod = r.order?.paymentMethod === "cod";
@@ -1602,10 +1603,35 @@
       async function advanceStatus(nextStatus) {
         if (!currentReturn) return;
 
+        // Approve + pickup → must choose warehouse first
+        if (
+          nextStatus === "approved" &&
+          currentReturn.returnMethod === "pickup"
+        ) {
+          const pickups = await loadBostaPickups();
+          if (!pickups.length) {
+            toast("No Bosta pickup locations found", true);
+            return;
+          }
+          showBostaModal(pickups, ({ pickupLocationId, size }) => {
+            _doAdvanceStatus("approved", { pickupLocationId, size });
+          });
+          return;
+        }
+
+        _doAdvanceStatus(nextStatus, {});
+      }
+
+      async function _doAdvanceStatus(nextStatus, extra = {}) {
+        if (!currentReturn) return;
+
         const adminNote = document
           .getElementById("admin-note-input")
           ?.value?.trim();
-        const size = document.getElementById("approve-size")?.value || "MEDIUM";
+        const size =
+          extra.size ||
+          document.getElementById("approve-size")?.value ||
+          "MEDIUM";
         const manualRefundNote = document
           .getElementById("manual-refund-input")
           ?.value?.trim();
@@ -1613,7 +1639,8 @@
         const payload = { refundStatus: nextStatus };
         if (adminNote) payload.adminNote = adminNote;
         if (nextStatus === "approved") payload.size = size;
-        // FIX: ابعت manualRefundNote في كل الـ transitions مش بس refund
+        if (extra.pickupLocationId)
+          payload.pickupLocationId = extra.pickupLocationId;
         if (manualRefundNote) payload.manualRefundNote = manualRefundNote;
 
         document
@@ -1633,7 +1660,9 @@
               ? "Refund processed!"
               : nextStatus === "rejected"
                 ? "Request rejected"
-                : "Status updated",
+                : nextStatus === "approved" && extra.pickupLocationId
+                  ? "Approved — Bosta pickup created!"
+                  : "Status updated",
           );
           await loadReturns();
         } catch (e) {
