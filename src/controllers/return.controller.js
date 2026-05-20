@@ -48,9 +48,8 @@ export const getEligibleReturnOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({
     user: req.user._id,
     orderStatus: { $in: ["delivered", "partially_returned"] },
-    deliveredAt: { $ne: null },
+    deliveredAt: { $ne: null, $exists: true }, // ← أضف $exists
   }).sort({ deliveredAt: -1 });
-
   const eligible = [];
   for (const order of orders) {
     if (!isOrderReturnEligible(order)) continue;
