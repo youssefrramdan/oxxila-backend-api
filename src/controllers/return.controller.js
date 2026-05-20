@@ -374,3 +374,22 @@ export const updateReturnStatus = asyncHandler(async (req, res, next) => {
     data: returnRequest,
   });
 });
+
+
+// controllers/return.controller.js
+export const retryBostaPickup = asyncHandler(async (req, res, next) => {
+  const returnRequest = await ReturnRequest.findById(req.params.id);
+  if (!returnRequest) return next(new ApiError('Not found', 404));
+  if (returnRequest.refundStatus !== 'approved')
+    return next(new ApiError('Return must be approved first', 400));
+  if (returnRequest.returnMethod !== 'pickup')
+    return next(new ApiError('Only pickup returns support Bosta', 400));
+
+  const order = await Order.findById(returnRequest.order)
+    .select('fulfillment user shippingAddress');
+
+  await tryCreateBostaReturnPickup(returnRequest, order, req.body.size || 'MEDIUM');
+  await returnRequest.save();
+
+  sendResponse(res, { message: 'Bosta pickup created', data: returnRequest });
+});

@@ -47,6 +47,8 @@ router.post(
   createReturnValidator,
   createReturnRequest
 );
+router.patch('/:id/bosta-retry', protectedRoutes, restrictTo('admin'), retryBostaPickup);
+
 router.get('/my-returns', getMyReturnRequests);
 router.get('/my-returns/:id', returnIdParamValidator, getMyReturnRequest);
 
