@@ -42,7 +42,12 @@ const parseJsonField = (value, fieldName) => {
  * Attempt to create a Bosta reverse pickup delivery when a return is approved.
  * Non-blocking — failure is logged but does not prevent the status update.
  */
-const tryCreateBostaReturnPickup = async (returnRequest, order, size) => {
+const tryCreateBostaReturnPickup = async (
+  returnRequest,
+  order,
+  size,
+  pickupLocationId,
+) => {
   const isBostaOrder =
     order?.fulfillment?.carrierType === "api" && order?.fulfillment?.carrier;
 
@@ -76,7 +81,16 @@ const tryCreateBostaReturnPickup = async (returnRequest, order, size) => {
     },
   );
 
-  const warehouseAddress = await resolveDeliveryPickupAddress(credentials, {});
+  // ── warehouse address من الـ pickup location المختارة ──
+  const pickupDoc = await CarrierPickup.findById(pickupLocationId);
+  if (!pickupDoc) throw new Error("Pickup location not found");
+
+  const warehouseAddress = {
+    firstLine: pickupDoc.address.firstLine,
+    city: pickupDoc.address.city,
+    districtId: pickupDoc.address.districtId || undefined,
+    districtName: pickupDoc.address.districtName || undefined,
+  };
 
   const user = await User.findById(order.user).select("name phone");
 
@@ -104,7 +118,6 @@ const tryCreateBostaReturnPickup = async (returnRequest, order, size) => {
   returnRequest.bostaReturnState =
     delivery.state?.value ?? delivery.state ?? null;
 };
-
 /**
  * @desc    Delivered orders eligible for return (within window, returnable qty)
  * @route   GET /api/v1/returns/eligible-orders
@@ -375,21 +388,29 @@ export const updateReturnStatus = asyncHandler(async (req, res, next) => {
   });
 });
 
-
-// controllers/return.controller.js
 export const retryBostaPickup = asyncHandler(async (req, res, next) => {
   const returnRequest = await ReturnRequest.findById(req.params.id);
-  if (!returnRequest) return next(new ApiError('Not found', 404));
-  if (returnRequest.refundStatus !== 'approved')
-    return next(new ApiError('Return must be approved first', 400));
-  if (returnRequest.returnMethod !== 'pickup')
-    return next(new ApiError('Only pickup returns support Bosta', 400));
+  if (!returnRequest) return next(new ApiError("Not found", 404));
+  if (returnRequest.refundStatus !== "approved")
+    return next(new ApiError("Return must be approved first", 400));
+  if (returnRequest.returnMethod !== "pickup")
+    return next(new ApiError("Only pickup returns support Bosta", 400));
 
-  const order = await Order.findById(returnRequest.order)
-    .select('fulfillment user shippingAddress');
+  // ← جديد: pickupLocationId مطلوب من الـ body
+  if (!req.body.pickupLocationId)
+    return next(new ApiError("pickupLocationId is required", 400));
 
-  await tryCreateBostaReturnPickup(returnRequest, order, req.body.size || 'MEDIUM');
+  const order = await Order.findById(returnRequest.order).select(
+    "fulfillment user shippingAddress",
+  );
+
+  await tryCreateBostaReturnPickup(
+    returnRequest,
+    order,
+    req.body.size || "MEDIUM",
+    req.body.pickupLocationId, // ← جديد
+  );
   await returnRequest.save();
 
-  sendResponse(res, { message: 'Bosta pickup created', data: returnRequest });
+  sendResponse(res, { message: "Bosta pickup created", data: returnRequest });
 });
