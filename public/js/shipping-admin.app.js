@@ -1,13 +1,13 @@
 ﻿// public/js/shipping-admin.app.js
-let token = localStorage.getItem('oxxila_admin_token') || '';
+let token = localStorage.getItem("oxxila_admin_token") || "";
 let carriers = [];
 let countries = [];
 let governorates = [];
 let districts = [];
 let selCountry = null;
 let selGov = null;
-let carrierFilter = 'all';
-let orderFilter = 'all';
+let carrierFilter = "all";
+let orderFilter = "all";
 let zoneMode = null;
 let editingCarrierId = null;
 let coverageOnlyMode = false;
@@ -15,18 +15,22 @@ let orders = [];
 let assigningOrderId = null;
 let assignDetail = null;
 const apiBase = () =>
-  (document.getElementById('api-base')?.value || localStorage.getItem('oxxila_api_base') || 'http://localhost:3000/api/v1').replace(/\/$/, '');
+  (
+    document.getElementById("api-base")?.value ||
+    localStorage.getItem("oxxila_api_base") ||
+    "http://localhost:3000/api/v1"
+  ).replace(/\/$/, "");
 
 function toast(msg, isErr = false) {
-  const el = document.getElementById('toast');
+  const el = document.getElementById("toast");
   el.textContent = msg;
-  el.className = 'toast show ' + (isErr ? 'err' : 'ok');
-  setTimeout(() => el.classList.remove('show'), 3200);
+  el.className = "toast show " + (isErr ? "err" : "ok");
+  setTimeout(() => el.classList.remove("show"), 3200);
 }
 
 async function api(method, path, body) {
-  const headers = { 'Content-Type': 'application/json' };
-  if (token) headers.Authorization = 'Bearer ' + token;
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = "Bearer " + token;
   const res = await fetch(apiBase() + path, {
     method,
     headers,
@@ -34,7 +38,7 @@ async function api(method, path, body) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.success === false) {
-    const err = new Error(data.message || res.statusText || 'Request failed');
+    const err = new Error(data.message || res.statusText || "Request failed");
     err.data = data;
     throw err;
   }
@@ -42,10 +46,10 @@ async function api(method, path, body) {
 }
 
 function esc(s) {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/"/g, '&quot;');
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/"/g, "&quot;");
 }
 
 function selectedCountry() {
@@ -53,62 +57,71 @@ function selectedCountry() {
 }
 
 function selectedCurrency() {
-  return selectedCountry()?.currency || 'EGP';
+  return selectedCountry()?.currency || "EGP";
 }
 
 // â”€â”€ Auth â”€â”€
 async function doLogin() {
-  const errEl = document.getElementById('login-err');
-  errEl.style.display = 'none';
+  const errEl = document.getElementById("login-err");
+  errEl.style.display = "none";
   try {
-    const base = document.getElementById('api-base').value.trim();
-    localStorage.setItem('oxxila_api_base', base);
-    const bostaBase = document.getElementById('bosta-default-base')?.value?.trim();
-    if (bostaBase) localStorage.setItem('oxxila_bosta_default_base', bostaBase);
-    const data = await api('POST', '/auth/login', {
-      email: document.getElementById('login-email').value,
-      password: document.getElementById('login-pass').value,
+    const base = document.getElementById("api-base").value.trim();
+    localStorage.setItem("oxxila_api_base", base);
+    const bostaBase = document
+      .getElementById("bosta-default-base")
+      ?.value?.trim();
+    if (bostaBase) localStorage.setItem("oxxila_bosta_default_base", bostaBase);
+    const data = await api("POST", "/auth/login", {
+      email: document.getElementById("login-email").value,
+      password: document.getElementById("login-pass").value,
     });
     token = data.data.accessToken;
-    localStorage.setItem('oxxila_admin_token', token);
-    document.getElementById('login-overlay').classList.add('hidden');
+    localStorage.setItem("oxxila_admin_token", token);
+    document.getElementById("login-overlay").classList.add("hidden");
     await loadAll();
-    toast('Logged in');
+    toast("Logged in");
   } catch (e) {
     errEl.textContent = e.message;
-    errEl.style.display = 'block';
+    errEl.style.display = "block";
   }
 }
 
 async function loadAll() {
-  await Promise.all([loadSettings(), loadCarriers(), loadZones(), loadOrders()]);
+  await Promise.all([
+    loadSettings(),
+    loadCarriers(),
+    loadZones(),
+    loadOrders(),
+  ]);
 }
 
 // â”€â”€ Settings â”€â”€
 async function loadSettings() {
-  const { data } = await api('GET', '/admin/shipping-settings');
-  ['api', 'known', 'internal'].forEach((key) => {
-    const card = document.getElementById('method-' + key);
+  const { data } = await api("GET", "/admin/shipping-settings");
+  ["api", "known", "internal"].forEach((key) => {
+    const card = document.getElementById("method-" + key);
     if (!card) return;
     const on = data[key] !== false;
-    card.classList.toggle('on', on);
-    card.querySelector('.toggle')?.classList.toggle('on', on);
+    card.classList.toggle("on", on);
+    card.querySelector(".toggle")?.classList.toggle("on", on);
   });
 }
 
 async function toggleMethodSetting(card) {
   const key = card.dataset.setting;
   if (!key) return;
-  card.classList.toggle('on');
-  card.querySelector('.toggle')?.classList.toggle('on');
+  card.classList.toggle("on");
+  card.querySelector(".toggle")?.classList.toggle("on");
   const payload = {
-    api: document.getElementById('method-api').classList.contains('on'),
-    known: document.getElementById('method-known').classList.contains('on'),
-    internal: document.getElementById('method-internal').classList.contains('on'),
+    api: document.getElementById("method-api").classList.contains("on"),
+    known: document.getElementById("method-known").classList.contains("on"),
+    internal: document
+      .getElementById("method-internal")
+      .classList.contains("on"),
   };
   try {
-    await api('PUT', '/admin/shipping-settings', payload);
-    toast('Settings saved');
+    await api("PUT", "/admin/shipping-settings", payload);
+    toast("Settings saved");
   } catch (e) {
     toast(e.message, true);
     await loadSettings();
@@ -117,17 +130,17 @@ async function toggleMethodSetting(card) {
 
 // â”€â”€ Carriers â”€â”€
 async function loadCarriers() {
-  const { data } = await api('GET', '/admin/carriers');
+  const { data } = await api("GET", "/admin/carriers");
   carriers = (data || []).map((c) => ({
     id: c._id,
     name: c.name,
     code: c.code,
     type: c.type,
     provider: c.apiProvider,
-    days: c.deliveryDays || 'n/a',
+    days: c.deliveryDays || "n/a",
     coverage: c.coverage || [],
     active: c.isActive !== false,
-    apiBaseUrl: c.apiBaseUrl || '',
+    apiBaseUrl: c.apiBaseUrl || "",
     hasApiKey: c.hasApiKey === true,
   }));
   renderCarriers();
@@ -135,65 +148,73 @@ async function loadCarriers() {
 }
 
 function renderCarriers() {
-  const body = document.getElementById('carriers-body');
-  const list = carrierFilter === 'all' ? carriers : carriers.filter((c) => c.type === carrierFilter);
+  const body = document.getElementById("carriers-body");
+  const list =
+    carrierFilter === "all"
+      ? carriers
+      : carriers.filter((c) => c.type === carrierFilter);
   if (!list.length) {
-    body.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">No carriers yet</td></tr>';
+    body.innerHTML =
+      '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:24px">No carriers yet</td></tr>';
     return;
   }
   body.innerHTML = list
     .map(
       (c) => `
     <tr>
-      <td><div class="carrier-name-cell"><div class="carrier-logo">${esc(c.code)}</div><div><div style="font-size:13px;font-weight:500">${esc(c.name)}</div><div style="font-size:10px;color:var(--muted)">${c.type === 'api' ? 'via ' + esc(c.provider || 'API') : c.type === 'internal' ? 'In-house staff' : 'Manual'}</div></div></div></td>
-      <td><span class="type-badge type-${c.type}">${c.type === 'api' ? 'API' : c.type === 'known' ? 'Known' : 'Internal'}</span></td>
-      <td style="font-size:12px;font-family:var(--mono)">${esc(c.days)}${c.days && c.days !== 'n/a' ? ' days' : ''}</td>
-      <td><div class="coverage-tags">${(c.coverage || []).map((z) => `<span class="coverage-tag">${esc(z)}</span>`).join('') || '<span style="color:var(--muted2)">-</span>'}</div></td>
-      <td><span class="status-badge ${c.active ? 'status-active' : 'status-inactive'}">${c.active ? 'Active' : 'Inactive'}</span></td>
+      <td><div class="carrier-name-cell"><div class="carrier-logo">${esc(c.code)}</div><div><div style="font-size:13px;font-weight:500">${esc(c.name)}</div><div style="font-size:10px;color:var(--muted)">${c.type === "api" ? "via " + esc(c.provider || "API") : c.type === "internal" ? "In-house staff" : "Manual"}</div></div></div></td>
+      <td><span class="type-badge type-${c.type}">${c.type === "api" ? "API" : c.type === "known" ? "Known" : "Internal"}</span></td>
+      <td style="font-size:12px;font-family:var(--mono)">${esc(c.days)}${c.days && c.days !== "n/a" ? " days" : ""}</td>
+      <td><div class="coverage-tags">${(c.coverage || []).map((z) => `<span class="coverage-tag">${esc(z)}</span>`).join("") || '<span style="color:var(--muted2)">-</span>'}</div></td>
+      <td><span class="status-badge ${c.active ? "status-active" : "status-inactive"}">${c.active ? "Active" : "Inactive"}</span></td>
       <td><div class="action-btns">
         <div class="icon-btn primary" title="Edit" onclick="openEditCarrier('${c.id}')"><i class="ti ti-pencil"></i></div>
         <div class="icon-btn" title="Coverage" onclick="openCoverageEditor('${c.id}')"><i class="ti ti-map-pin"></i></div>
         <div class="icon-btn danger" title="Delete" onclick="deleteCarrier('${c.id}')"><i class="ti ti-trash"></i></div>
       </div></td>
-    </tr>`
+    </tr>`,
     )
-    .join('');
+    .join("");
 }
 
 function filterCarriers(type, el) {
-  document.querySelectorAll('.filter-tab').forEach((t) => t.classList.remove('active'));
-  el.classList.add('active');
+  document
+    .querySelectorAll(".filter-tab")
+    .forEach((t) => t.classList.remove("active"));
+  el.classList.add("active");
   carrierFilter = type;
   renderCarriers();
 }
 
 function getSelectedDeliveryDays() {
-  const chip = document.querySelector('.day-chip.sel');
-  return chip ? chip.textContent.trim() : '1-2';
+  const chip = document.querySelector(".day-chip.sel");
+  return chip ? chip.textContent.trim() : "1-2";
 }
 
 function openAddCarrier() {
   editingCarrierId = null;
   coverageOnlyMode = false;
-  document.getElementById('carrier-drawer-title').textContent = 'Add Carrier';
-  document.getElementById('carrier-name').value = '';
-  document.getElementById('carrier-code').value = '';
-  document.getElementById('carrier-code').readOnly = false;
-  document.getElementById('carrier-type-sel').value = 'known';
-  document.getElementById('carrier-type-sel').disabled = false;
-  document.getElementById('carrier-api-provider').value = 'bosta';
-  document.getElementById('carrier-api-base-url').value =
-    localStorage.getItem('oxxila_bosta_default_base') || 'https://app.bosta.co';
-  document.getElementById('carrier-api-key').value = '';
-  document.querySelectorAll('.day-chip').forEach((c, i) => c.classList.toggle('sel', i === 0));
-  document.getElementById('carrier-active-toggle').classList.add('on');
-  document.getElementById('coverage-chips').innerHTML = '';
-  document.getElementById('coverage-govs-wrap').style.display = 'none';
-  document.getElementById('coverage-empty-msg').style.display = 'none';
-  document.getElementById('coverage-country-sel').value = '';
+  document.getElementById("carrier-drawer-title").textContent = "Add Carrier";
+  document.getElementById("carrier-name").value = "";
+  document.getElementById("carrier-code").value = "";
+  document.getElementById("carrier-code").readOnly = false;
+  document.getElementById("carrier-type-sel").value = "known";
+  document.getElementById("carrier-type-sel").disabled = false;
+  document.getElementById("carrier-api-provider").value = "bosta";
+  document.getElementById("carrier-api-base-url").value =
+    localStorage.getItem("oxxila_bosta_default_base") || "https://app.bosta.co";
+  document.getElementById("carrier-api-key").value = "";
+  document
+    .querySelectorAll(".day-chip")
+    .forEach((c, i) => c.classList.toggle("sel", i === 0));
+  document.getElementById("carrier-active-toggle").classList.add("on");
+  document.getElementById("coverage-chips").innerHTML = "";
+  document.getElementById("coverage-govs-wrap").style.display = "none";
+  document.getElementById("coverage-empty-msg").style.display = "none";
+  document.getElementById("coverage-country-sel").value = "";
   onCarrierTypeChange();
   populateCoverageCountries();
-  openDrawer('carrier-drawer');
+  openDrawer("carrier-drawer");
 }
 
 async function openEditCarrier(id) {
@@ -201,122 +222,165 @@ async function openEditCarrier(id) {
   if (!c) return;
   editingCarrierId = id;
   coverageOnlyMode = false;
-  document.getElementById('carrier-drawer-title').textContent = 'Edit Carrier';
-  document.getElementById('carrier-name').value = c.name;
-  document.getElementById('carrier-code').value = c.code;
-  document.getElementById('carrier-code').readOnly = true;
-  document.getElementById('carrier-type-sel').value = c.type;
-  document.getElementById('carrier-type-sel').disabled = true;
-  document.getElementById('carrier-api-key').value = '';
-  document.getElementById('carrier-api-key').placeholder =
-    c.type === 'api' ? 'New API key (optional)' : 'Paste API key';
-  if (c.type === 'api' && c.provider) {
-    document.getElementById('carrier-api-provider').value = c.provider;
+  document.getElementById("carrier-drawer-title").textContent = "Edit Carrier";
+  document.getElementById("carrier-name").value = c.name;
+  document.getElementById("carrier-code").value = c.code;
+  document.getElementById("carrier-code").readOnly = true;
+  document.getElementById("carrier-type-sel").value = c.type;
+  document.getElementById("carrier-type-sel").disabled = true;
+  document.getElementById("carrier-api-key").value = "";
+  document.getElementById("carrier-api-key").placeholder =
+    c.type === "api" ? "New API key (optional)" : "Paste API key";
+  if (c.type === "api" && c.provider) {
+    document.getElementById("carrier-api-provider").value = c.provider;
   } else {
-    document.getElementById('carrier-api-provider').value = 'bosta';
+    document.getElementById("carrier-api-provider").value = "bosta";
   }
-  if (c.type === 'api') {
-    document.getElementById('carrier-api-base-url').value =
-      c.apiBaseUrl || localStorage.getItem('oxxila_bosta_default_base') || 'https://app.bosta.co';
+  if (c.type === "api") {
+    document.getElementById("carrier-api-base-url").value =
+      c.apiBaseUrl ||
+      localStorage.getItem("oxxila_bosta_default_base") ||
+      "https://app.bosta.co";
   }
-  document.getElementById('carrier-active-toggle').classList.toggle('on', c.active);
-  document.querySelectorAll('.day-chip').forEach((chip) => {
-    const d = (c.days || '').replace(/\s*days$/i, '').trim();
-    chip.classList.toggle('sel', d ? chip.textContent.trim() === d : chip.textContent.trim() === '1-2');
+  document
+    .getElementById("carrier-active-toggle")
+    .classList.toggle("on", c.active);
+  document.querySelectorAll(".day-chip").forEach((chip) => {
+    const d = (c.days || "").replace(/\s*days$/i, "").trim();
+    chip.classList.toggle(
+      "sel",
+      d ? chip.textContent.trim() === d : chip.textContent.trim() === "1-2",
+    );
   });
   onCarrierTypeChange();
   onApiProviderChange();
-  if (c.type === 'api' && c.provider === 'bosta') {
-    document.getElementById('carrier-api-base-url').value =
-      c.apiBaseUrl || localStorage.getItem('oxxila_bosta_default_base') || 'https://app.bosta.co';
+  if (c.type === "api" && c.provider === "bosta") {
+    document.getElementById("carrier-api-base-url").value =
+      c.apiBaseUrl ||
+      localStorage.getItem("oxxila_bosta_default_base") ||
+      "https://app.bosta.co";
     BostaPickups.hideForm();
     await BostaPickups.load(id);
   }
-  openDrawer('carrier-drawer');
+  openDrawer("carrier-drawer");
 }
 
 async function openCoverageEditor(id) {
   editingCarrierId = id;
   coverageOnlyMode = true;
   const c = carriers.find((x) => x.id === id);
-  document.getElementById('carrier-drawer-title').textContent = 'Coverage - ' + (c?.name || '');
-  document.getElementById('carrier-name').closest('.form-group').style.display = 'none';
-  document.getElementById('carrier-code').closest('.form-group').style.display = 'none';
-  document.getElementById('carrier-type-sel').closest('.form-group').style.display = 'none';
-  document.getElementById('api-section').style.display = 'none';
-  document.getElementById('manual-section').style.display = '';
-  const delSec = document.getElementById('delivery-days-section');
-  if (delSec) delSec.style.display = 'none';
-  const activeGrp = document.querySelector('.toggle-row')?.closest('.form-group');
-  if (activeGrp) activeGrp.style.display = 'none';
+  document.getElementById("carrier-drawer-title").textContent =
+    "Coverage - " + (c?.name || "");
+  document.getElementById("carrier-name").closest(".form-group").style.display =
+    "none";
+  document.getElementById("carrier-code").closest(".form-group").style.display =
+    "none";
+  document
+    .getElementById("carrier-type-sel")
+    .closest(".form-group").style.display = "none";
+  document.getElementById("api-section").style.display = "none";
+  document.getElementById("manual-section").style.display = "";
+  const delSec = document.getElementById("delivery-days-section");
+  if (delSec) delSec.style.display = "none";
+  const activeGrp = document
+    .querySelector(".toggle-row")
+    ?.closest(".form-group");
+  if (activeGrp) activeGrp.style.display = "none";
   populateCoverageCountries();
   onCarrierTypeChange();
-  openDrawer('carrier-drawer');
+  openDrawer("carrier-drawer");
 }
 
 async function saveCarrier() {
   try {
     if (coverageOnlyMode && editingCarrierId) {
-      const govIds = [...document.querySelectorAll('#coverage-chips .cov-chip.sel')].map((c) => c.dataset.id);
-      await api('PUT', '/admin/carriers/' + editingCarrierId + '/coverage', { governorateIds: govIds });
+      const govIds = [
+        ...document.querySelectorAll("#coverage-chips .cov-chip.sel"),
+      ].map((c) => c.dataset.id);
+      await api("PUT", "/admin/carriers/" + editingCarrierId + "/coverage", {
+        governorateIds: govIds,
+      });
       closeAll();
       resetCarrierDrawerForm();
       await loadCarriers();
-      toast('Coverage updated');
+      toast("Coverage updated");
       return;
     }
 
-    const type = document.getElementById('carrier-type-sel').value;
-    const name = document.getElementById('carrier-name').value.trim();
-    const code = document.getElementById('carrier-code').value.trim();
-    const isActive = document.getElementById('carrier-active-toggle').classList.contains('on');
-    const govIds = [...document.querySelectorAll('#coverage-chips .cov-chip.sel')].map((c) => c.dataset.id);
+    const type = document.getElementById("carrier-type-sel").value;
+    const name = document.getElementById("carrier-name").value.trim();
+    const code = document.getElementById("carrier-code").value.trim();
+    const isActive = document
+      .getElementById("carrier-active-toggle")
+      .classList.contains("on");
+    const govIds = [
+      ...document.querySelectorAll("#coverage-chips .cov-chip.sel"),
+    ].map((c) => c.dataset.id);
 
     let carrierId = editingCarrierId;
     if (editingCarrierId) {
       const put = { name, isActive };
-      if (type !== 'api') put.deliveryDays = getSelectedDeliveryDays();
-      const newKey = document.getElementById('carrier-api-key').value.trim();
-      if (type === 'api') {
-        put.apiBaseUrl = document.getElementById('carrier-api-base-url').value.trim();
+      if (type !== "api") put.deliveryDays = getSelectedDeliveryDays();
+      const newKey = document.getElementById("carrier-api-key").value.trim();
+      if (type === "api") {
+        put.apiBaseUrl = document
+          .getElementById("carrier-api-base-url")
+          .value.trim();
         if (newKey) put.apiKey = newKey;
       }
-      const updated = await api('PUT', '/admin/carriers/' + editingCarrierId, put);
+      const updated = await api(
+        "PUT",
+        "/admin/carriers/" + editingCarrierId,
+        put,
+      );
       if (updated.data?.syncSummary) {
         toast(
           `Synced: ${updated.data.syncSummary.count ?? 0} governorates, ` +
-            `${updated.data.syncSummary.districtsCreated ?? 0} new districts`
+            `${updated.data.syncSummary.districtsCreated ?? 0} new districts`,
         );
       }
     } else {
       const payload = { name, code, type, isActive };
-      if (type === 'api') {
-        payload.apiProvider = document.getElementById('carrier-api-provider').value;
-        payload.apiKey = document.getElementById('carrier-api-key').value.trim();
-        payload.apiBaseUrl = document.getElementById('carrier-api-base-url').value.trim();
+      if (type === "api") {
+        payload.apiProvider = document.getElementById(
+          "carrier-api-provider",
+        ).value;
+        payload.apiKey = document
+          .getElementById("carrier-api-key")
+          .value.trim();
+        payload.apiBaseUrl = document
+          .getElementById("carrier-api-base-url")
+          .value.trim();
       } else {
         payload.deliveryDays = getSelectedDeliveryDays();
       }
-      const created = await api('POST', '/admin/carriers', payload);
+      const created = await api("POST", "/admin/carriers", payload);
       carrierId = created.data?.carrier?._id ?? created.data?._id;
       if (created.data?.syncSummary) {
-        toast(`Bosta sync: ${created.data.syncSummary.count ?? 0} governorates covered`);
+        toast(
+          `Bosta sync: ${created.data.syncSummary.count ?? 0} governorates covered`,
+        );
       }
     }
 
-    if (carrierId && govIds.length && type !== 'api') {
-      await api('PUT', '/admin/carriers/' + carrierId + '/coverage', { governorateIds: govIds });
+    if (carrierId && govIds.length && type !== "api") {
+      await api("PUT", "/admin/carriers/" + carrierId + "/coverage", {
+        governorateIds: govIds,
+      });
     }
 
     closeAll();
     resetCarrierDrawerForm();
     await loadCarriers();
     await loadZones();
-    if (carrierId && document.getElementById('carrier-api-provider')?.value === 'bosta') {
+    if (
+      carrierId &&
+      document.getElementById("carrier-api-provider")?.value === "bosta"
+    ) {
       BostaPickups.resetDistrictsCache();
     }
-    if (!editingCarrierId && carrierId) toast('Carrier created');
-    else if (editingCarrierId) toast('Carrier updated');
+    if (!editingCarrierId && carrierId) toast("Carrier created");
+    else if (editingCarrierId) toast("Carrier updated");
   } catch (e) {
     toast(e.message, true);
   }
@@ -325,101 +389,126 @@ async function saveCarrier() {
 function resetCarrierDrawerForm() {
   editingCarrierId = null;
   coverageOnlyMode = false;
-  document.getElementById('carrier-name').closest('.form-group').style.display = '';
-  document.getElementById('carrier-code').closest('.form-group').style.display = '';
-  document.getElementById('carrier-code').readOnly = false;
-  document.getElementById('carrier-type-sel').closest('.form-group').style.display = '';
-  document.getElementById('carrier-type-sel').disabled = false;
-  document.getElementById('carrier-api-key').placeholder = 'Paste API key';
-  const delSec = document.getElementById('delivery-days-section');
-  if (delSec) delSec.style.display = '';
-  const activeGrp = document.querySelector('.toggle-row')?.closest('.form-group');
-  if (activeGrp) activeGrp.style.display = '';
+  document.getElementById("carrier-name").closest(".form-group").style.display =
+    "";
+  document.getElementById("carrier-code").closest(".form-group").style.display =
+    "";
+  document.getElementById("carrier-code").readOnly = false;
+  document
+    .getElementById("carrier-type-sel")
+    .closest(".form-group").style.display = "";
+  document.getElementById("carrier-type-sel").disabled = false;
+  document.getElementById("carrier-api-key").placeholder = "Paste API key";
+  const delSec = document.getElementById("delivery-days-section");
+  if (delSec) delSec.style.display = "";
+  const activeGrp = document
+    .querySelector(".toggle-row")
+    ?.closest(".form-group");
+  if (activeGrp) activeGrp.style.display = "";
   onCarrierTypeChange();
 }
 
 async function deleteCarrier(id) {
-  if (!confirm('Delete this carrier?')) return;
+  if (!confirm("Delete this carrier?")) return;
   try {
-    await api('DELETE', '/admin/carriers/' + id);
+    await api("DELETE", "/admin/carriers/" + id);
     await loadCarriers();
-    toast('Carrier deleted');
+    toast("Carrier deleted");
   } catch (e) {
     toast(e.message, true);
   }
 }
 
 function onCarrierTypeChange() {
-  const v = document.getElementById('carrier-type-sel').value;
-  const isApi = v === 'api';
-  document.getElementById('api-section').style.display = isApi && !coverageOnlyMode ? '' : 'none';
-  document.getElementById('manual-section').style.display = coverageOnlyMode || !isApi ? '' : 'none';
-  const delSec = document.getElementById('delivery-days-section');
+  const v = document.getElementById("carrier-type-sel").value;
+  const isApi = v === "api";
+  document.getElementById("api-section").style.display =
+    isApi && !coverageOnlyMode ? "" : "none";
+  document.getElementById("manual-section").style.display =
+    coverageOnlyMode || !isApi ? "" : "none";
+  const delSec = document.getElementById("delivery-days-section");
   if (delSec) {
     const hideDays = coverageOnlyMode || isApi;
-    delSec.style.display = hideDays ? 'none' : '';
+    delSec.style.display = hideDays ? "none" : "";
   }
   onApiProviderChange();
   BostaPickups.hideForm();
 }
 
 function onApiProviderChange() {
-  const isBosta = document.getElementById('carrier-api-provider')?.value === 'bosta';
+  const isBosta =
+    document.getElementById("carrier-api-provider")?.value === "bosta";
   BostaPickups.setSectionVisible(isBosta && !!editingCarrierId);
 }
 
 function populateCoverageCountries() {
-  const sel = document.getElementById('coverage-country-sel');
+  const sel = document.getElementById("coverage-country-sel");
   if (!sel) return;
   sel.innerHTML =
     '<option value="">- Select a country -</option>' +
-    countries.map((c) => `<option value="${c._id}">${esc(c.name)} (${esc(c.currency)})</option>`).join('');
+    countries
+      .map(
+        (c) =>
+          `<option value="${c._id}">${esc(c.name)} (${esc(c.currency)})</option>`,
+      )
+      .join("");
 }
 
 async function onCoverageCountryChange() {
-  const countryId = document.getElementById('coverage-country-sel').value;
-  const chipsWrap = document.getElementById('coverage-govs-wrap');
-  const emptyMsg = document.getElementById('coverage-empty-msg');
-  const chips = document.getElementById('coverage-chips');
+  const countryId = document.getElementById("coverage-country-sel").value;
+  const chipsWrap = document.getElementById("coverage-govs-wrap");
+  const emptyMsg = document.getElementById("coverage-empty-msg");
+  const chips = document.getElementById("coverage-chips");
 
   if (!countryId) {
-    chipsWrap.style.display = 'none';
-    emptyMsg.style.display = 'none';
-    chips.innerHTML = '';
+    chipsWrap.style.display = "none";
+    emptyMsg.style.display = "none";
+    chips.innerHTML = "";
     return;
   }
 
   try {
-    const { data } = await api('GET', '/admin/countries/' + countryId + '/governorates');
+    const { data } = await api(
+      "GET",
+      "/admin/countries/" + countryId + "/governorates",
+    );
     if (!data.length) {
-      chipsWrap.style.display = 'none';
-      emptyMsg.style.display = '';
-      chips.innerHTML = '';
+      chipsWrap.style.display = "none";
+      emptyMsg.style.display = "";
+      chips.innerHTML = "";
       return;
     }
-    emptyMsg.style.display = 'none';
-    chipsWrap.style.display = '';
+    emptyMsg.style.display = "none";
+    chipsWrap.style.display = "";
     chips.innerHTML = data
-      .map((g) => `<div class="cov-chip" data-id="${g._id}" onclick="this.classList.toggle('sel')">${esc(g.name)}</div>`)
-      .join('');
+      .map(
+        (g) =>
+          `<div class="cov-chip" data-id="${g._id}" onclick="this.classList.toggle('sel')">${esc(g.name)}</div>`,
+      )
+      .join("");
   } catch (e) {
     toast(e.message, true);
   }
 }
 
 function selectDays(el) {
-  document.querySelectorAll('.day-chip').forEach((c) => c.classList.remove('sel'));
-  el.classList.add('sel');
+  document
+    .querySelectorAll(".day-chip")
+    .forEach((c) => c.classList.remove("sel"));
+  el.classList.add("sel");
 }
 
 // â”€â”€ Zones â”€â”€
 async function loadZones() {
-  const { data: countryList } = await api('GET', '/admin/countries');
+  const { data: countryList } = await api("GET", "/admin/countries");
   countries = countryList || [];
   governorates = [];
   districts = [];
   for (const c of countries) {
-    const { data: govs } = await api('GET', '/admin/countries/' + c._id + '/governorates');
+    const { data: govs } = await api(
+      "GET",
+      "/admin/countries/" + c._id + "/governorates",
+    );
     for (const g of govs || []) {
       governorates.push({
         _id: g._id,
@@ -428,7 +517,10 @@ async function loadZones() {
         price: g.shippingPrice,
         bostaApiCovered: g.bostaApiCovered === true,
       });
-      const { data: dists } = await api('GET', '/admin/governorates/' + g._id + '/districts');
+      const { data: dists } = await api(
+        "GET",
+        "/admin/governorates/" + g._id + "/districts",
+      );
       for (const d of dists || []) {
         districts.push({
           _id: d._id,
@@ -447,18 +539,19 @@ async function loadZones() {
 }
 
 function renderCountries() {
-  const el = document.getElementById('countries-col');
+  const el = document.getElementById("countries-col");
   el.innerHTML =
     countries
       .map(
         (c) => `
-    <div class="zone-row ${selCountry === c._id ? 'sel' : ''}" onclick="selectCountry('${c._id}')">
-      <span class="zone-flag">${c.flag || ''}</span>
+    <div class="zone-row ${selCountry === c._id ? "sel" : ""}" onclick="selectCountry('${c._id}')">
+      <span class="zone-flag">${c.flag || ""}</span>
       <div style="flex:1"><div class="zone-name">${esc(c.name)}</div><div class="zone-sub">${esc(c.code)} | ${esc(c.currency)} | ${governorates.filter((g) => g.country === c._id).length} gov</div></div>
       <i class="ti ti-trash zone-del" onclick="event.stopPropagation();deleteCountry('${c._id}')"></i>
-    </div>`
+    </div>`,
       )
-      .join('') + `<div class="add-zone-btn" onclick="openAddCountry()"><i class="ti ti-plus"></i> Add country</div>`;
+      .join("") +
+    `<div class="add-zone-btn" onclick="openAddCountry()"><i class="ti ti-plus"></i> Add country</div>`;
 }
 
 function selectCountry(id) {
@@ -470,30 +563,31 @@ function selectCountry(id) {
 }
 
 function renderGovs() {
-  const el = document.getElementById('govs-col');
-  const lbl = document.getElementById('gov-col-label');
-  const btn = document.getElementById('add-gov-btn');
+  const el = document.getElementById("govs-col");
+  const lbl = document.getElementById("gov-col-label");
+  const btn = document.getElementById("add-gov-btn");
   if (!selCountry) {
     el.innerHTML = '<div class="empty-zone"> Select a country</div>';
-    lbl.textContent = 'Governorates';
-    btn.style.display = 'none';
+    lbl.textContent = "Governorates";
+    btn.style.display = "none";
     return;
   }
   const c = countries.find((x) => x._id === selCountry);
-  lbl.textContent = c?.name || 'Governorates';
-  btn.style.display = '';
+  lbl.textContent = c?.name || "Governorates";
+  btn.style.display = "";
   const govs = governorates.filter((g) => g.country === selCountry);
   el.innerHTML =
     govs
       .map(
         (g) => `
-    <div class="zone-row ${selGov === g._id ? 'sel' : ''}" onclick="selectGov('${g._id}')">
+    <div class="zone-row ${selGov === g._id ? "sel" : ""}" onclick="selectGov('${g._id}')">
       <div style="flex:1"><div class="zone-name">${esc(g.name)}</div><div class="zone-sub">${districts.filter((d) => d.governorate === g._id).length} districts</div></div>
       <span class="zone-price">${g.price} ${esc(selectedCurrency())}</span>
       <i class="ti ti-trash zone-del" onclick="event.stopPropagation();deleteGov('${g._id}')"></i>
-    </div>`
+    </div>`,
       )
-      .join('') + `<div class="add-zone-btn" onclick="openAddGov()"><i class="ti ti-plus"></i> Add governorate</div>`;
+      .join("") +
+    `<div class="add-zone-btn" onclick="openAddGov()"><i class="ti ti-plus"></i> Add governorate</div>`;
 }
 
 function selectGov(id) {
@@ -503,41 +597,41 @@ function selectGov(id) {
 }
 
 function renderDistricts() {
-  const el = document.getElementById('dists-col');
-  const lbl = document.getElementById('dist-col-label');
-  const btn = document.getElementById('add-dist-btn');
+  const el = document.getElementById("dists-col");
+  const lbl = document.getElementById("dist-col-label");
+  const btn = document.getElementById("add-dist-btn");
   if (!selGov) {
     el.innerHTML = '<div class="empty-zone"> Select a governorate</div>';
-    lbl.textContent = 'Districts';
-    btn.style.display = 'none';
+    lbl.textContent = "Districts";
+    btn.style.display = "none";
     return;
   }
   const g = governorates.find((x) => x._id === selGov);
-  lbl.textContent = 'Districts of ' + (g?.name || '');
-  btn.style.display = '';
+  lbl.textContent = "Districts of " + (g?.name || "");
+  btn.style.display = "";
   const dists = districts.filter((d) => d.governorate === selGov);
   const rows = dists
     .map(
       (d) => `
     <div class="district-row">
-      <span class="cov-badge ${d.covered ? 'cov-yes' : 'cov-no'}" onclick="toggleCovered('${d._id}')">${d.covered ? 'Covered' : 'Closed'}</span>
-      <span style="flex:1;font-size:13px">${esc(d.name)}${d.bostaApiCovered ? '<span class="bosta-badge">Bosta API</span>' : ''}</span>
+      <span class="cov-badge ${d.covered ? "cov-yes" : "cov-no"}" onclick="toggleCovered('${d._id}')">${d.covered ? "Covered" : "Closed"}</span>
+      <span style="flex:1;font-size:13px">${esc(d.name)}${d.bostaApiCovered ? '<span class="bosta-badge">Bosta API</span>' : ""}</span>
       <input class="price-inp" type="number" value="${d.price}" onchange="updateDistPrice('${d._id}',this.value)">
       <i class="ti ti-trash zone-del" onclick="deleteDistrict('${d._id}')"></i>
-    </div>`
+    </div>`,
     )
-    .join('');
+    .join("");
   const other = g
     ? `<div class="other-row"><div style="flex:1"><div class="other-label">Other</div><div class="other-sub">All other areas - fallback price</div></div><input class="price-inp" type="number" value="${g.price}" onchange="updateGovPrice('${g._id}',this.value)"></div>`
-    : '';
-  el.innerHTML = rows + (dists.length ? other : '');
+    : "";
+  el.innerHTML = rows + (dists.length ? other : "");
 }
 
 async function toggleCovered(id) {
   const d = districts.find((x) => x._id === id);
   if (!d) return;
   try {
-    await api('PUT', '/admin/districts/' + id, { isCovered: !d.covered });
+    await api("PUT", "/admin/districts/" + id, { isCovered: !d.covered });
     d.covered = !d.covered;
     renderDistricts();
   } catch (e) {
@@ -547,7 +641,7 @@ async function toggleCovered(id) {
 
 async function updateDistPrice(id, v) {
   try {
-    await api('PUT', '/admin/districts/' + id, { shippingPrice: +v });
+    await api("PUT", "/admin/districts/" + id, { shippingPrice: +v });
     const d = districts.find((x) => x._id === id);
     if (d) d.price = +v;
   } catch (e) {
@@ -558,7 +652,7 @@ async function updateDistPrice(id, v) {
 
 async function updateGovPrice(id, v) {
   try {
-    await api('PUT', '/admin/governorates/' + id, { shippingPrice: +v });
+    await api("PUT", "/admin/governorates/" + id, { shippingPrice: +v });
     const g = governorates.find((x) => x._id === id);
     if (g) g.price = +v;
   } catch (e) {
@@ -568,39 +662,39 @@ async function updateGovPrice(id, v) {
 }
 
 async function deleteCountry(id) {
-  if (!confirm('Delete country and all zones?')) return;
+  if (!confirm("Delete country and all zones?")) return;
   try {
-    await api('DELETE', '/admin/countries/' + id);
+    await api("DELETE", "/admin/countries/" + id);
     if (selCountry === id) {
       selCountry = null;
       selGov = null;
     }
     await loadZones();
     await loadCarriers();
-    toast('Country deleted');
+    toast("Country deleted");
   } catch (e) {
     toast(e.message, true);
   }
 }
 
 async function deleteGov(id) {
-  if (!confirm('Delete governorate and districts?')) return;
+  if (!confirm("Delete governorate and districts?")) return;
   try {
-    await api('DELETE', '/admin/governorates/' + id);
+    await api("DELETE", "/admin/governorates/" + id);
     if (selGov === id) selGov = null;
     await loadZones();
-    toast('Governorate deleted');
+    toast("Governorate deleted");
   } catch (e) {
     toast(e.message, true);
   }
 }
 
 async function deleteDistrict(id) {
-  if (!confirm('Delete district?')) return;
+  if (!confirm("Delete district?")) return;
   try {
-    await api('DELETE', '/admin/districts/' + id);
+    await api("DELETE", "/admin/districts/" + id);
     await loadZones();
-    toast('District deleted');
+    toast("District deleted");
   } catch (e) {
     toast(e.message, true);
   }
@@ -609,9 +703,9 @@ async function deleteDistrict(id) {
 // —— Orders ——
 async function loadOrders() {
   try {
-    let path = '/orders?limit=50&sort=-createdAt';
-    if (orderFilter !== 'all') path += '&orderStatus=' + orderFilter;
-    const { data } = await api('GET', path);
+    let path = "/orders?limit=50&sort=-createdAt";
+    if (orderFilter !== "all") path += "&orderStatus=" + orderFilter;
+    const { data } = await api("GET", path);
     orders = data || [];
     updateOrdersBadge();
     renderOrders();
@@ -623,30 +717,33 @@ async function loadOrders() {
 }
 
 function updateOrdersBadge() {
-  const badge = document.querySelector('.nav-item .nav-badge');
+  const badge = document.querySelector(".nav-item .nav-badge");
   if (!badge) return;
   const n = orders.filter(
     (o) =>
-      ['pending', 'processing'].includes(o.orderStatus) && !o.fulfillment?.carrier
+      ["pending", "processing"].includes(o.orderStatus) &&
+      !o.fulfillment?.carrier,
   ).length;
-  badge.textContent = n > 0 ? String(n) : '0';
+  badge.textContent = n > 0 ? String(n) : "0";
 }
 
 function orderStatusClass(status) {
-  if (status === 'shipped') return 'os-shipped';
-  if (status === 'delivered') return 'os-delivered';
-  if (status === 'processing') return 'os-assigned';
-  return 'os-pending';
+  if (status === "shipped") return "os-shipped";
+  if (status === "delivered") return "os-delivered";
+  if (status === "processing") return "os-assigned";
+  return "os-pending";
 }
 
 function shortId(id) {
-  return String(id || '').slice(-6).toUpperCase();
+  return String(id || "")
+    .slice(-6)
+    .toUpperCase();
 }
 
 function renderOrders() {
-  const body = document.getElementById('orders-body');
+  const body = document.getElementById("orders-body");
   let list = orders;
-  if (orderFilter !== 'all') {
+  if (orderFilter !== "all") {
     list = orders.filter((o) => o.orderStatus === orderFilter);
   }
   if (!list.length) {
@@ -657,18 +754,17 @@ function renderOrders() {
   body.innerHTML = list
     .map((o) => {
       const user = o.user || {};
-      const zone = `${o.shippingAddress?.governorateName || ''} / ${o.shippingAddress?.districtName || ''}`;
-      const carrier = o.fulfillment?.carrierName || '—';
+      const zone = `${o.shippingAddress?.governorateName || ""} / ${o.shippingAddress?.districtName || ""}`;
+      const carrier = o.fulfillment?.carrierName || "—";
       const tracking =
-        o.fulfillment?.trackingNumber ||
-        o.fulfillment?.driverName ||
-        '—';
+        o.fulfillment?.trackingNumber || o.fulfillment?.driverName || "—";
       const canAssign =
-        ['pending', 'processing'].includes(o.orderStatus) && !o.fulfillment?.carrier;
+        ["pending", "processing"].includes(o.orderStatus) &&
+        !o.fulfillment?.carrier;
       return `
     <tr>
       <td style="font-family:var(--mono);font-size:12px">#${shortId(o._id)}</td>
-      <td><div style="font-size:13px">${esc(user.name || '—')}</div><div style="font-size:10px;color:var(--muted)">${esc(user.email || '')}</div></td>
+      <td><div style="font-size:13px">${esc(user.name || "—")}</div><div style="font-size:10px;color:var(--muted)">${esc(user.email || "")}</div></td>
       <td style="font-size:12px">${esc(zone)}</td>
       <td style="font-size:12px">${esc(carrier)}</td>
       <td><span class="order-status ${orderStatusClass(o.orderStatus)}">${esc(o.orderStatus)}</span></td>
@@ -680,12 +776,14 @@ function renderOrders() {
       }</td>
     </tr>`;
     })
-    .join('');
+    .join("");
 }
 
 function filterOrders(type, el) {
-  document.querySelectorAll('.order-filter-btn').forEach((b) => b.classList.remove('active'));
-  el.classList.add('active');
+  document
+    .querySelectorAll(".order-filter-btn")
+    .forEach((b) => b.classList.remove("active"));
+  el.classList.add("active");
   orderFilter = type;
   loadOrders();
 }
@@ -693,17 +791,17 @@ function filterOrders(type, el) {
 async function openAssign(orderId) {
   assigningOrderId = orderId;
   try {
-    const { data } = await api('GET', '/admin/shipping/orders/' + orderId);
+    const { data } = await api("GET", "/admin/shipping/orders/" + orderId);
     assignDetail = data;
     renderAssignDrawer();
-    openDrawer('assign-drawer');
+    openDrawer("assign-drawer");
   } catch (e) {
     toast(e.message, true);
   }
 }
 
 function renderAssignDrawer() {
-  const body = document.getElementById('assign-body');
+  const body = document.getElementById("assign-body");
   if (!assignDetail) return;
   const o = assignDetail.order;
   const user = o.user || {};
@@ -711,55 +809,66 @@ function renderAssignDrawer() {
   const bostaWarn =
     assignDetail.districtBosta && !assignDetail.districtBosta.bostaApiCovered
       ? '<p style="color:var(--amber);font-size:11px;margin-top:8px">This district is not Bosta API covered — Bosta assignment may fail.</p>'
-      : '';
+      : "";
 
   const grouped = { api: [], known: [], internal: [] };
   carriersList.forEach((c) => {
     if (c.isActive === false) return;
-    const t = c.type || 'known';
+    const t = c.type || "known";
     if (grouped[t]) grouped[t].push(c);
   });
 
   const renderGroup = (label, list) => {
-    if (!list.length) return '';
+    if (!list.length) return "";
     return `
       <div class="form-divider">${label}</div>
       ${list
         .map((c) => {
           const noCoverage = !c.coversGovernorate;
           const noPickup =
-            c.type === 'api' &&
-            c.apiProvider === 'bosta' &&
+            c.type === "api" &&
+            c.apiProvider === "bosta" &&
             c.hasDefaultPickup === false;
           const disabled = noCoverage || noPickup;
           const id = c._id;
           const hint = noCoverage
-            ? 'not in coverage'
+            ? "not in coverage"
             : noPickup
-              ? 'no default pickup'
-              : '';
+              ? "no default pickup"
+              : "";
           return `
-        <label style="display:flex;align-items:center;gap:8px;padding:8px 0;opacity:${disabled ? 0.45 : 1};cursor:${disabled ? 'not-allowed' : 'pointer'}">
-          <input type="radio" name="assign-carrier" value="${id}" ${disabled ? 'disabled' : ''} onchange="onAssignCarrierChange('${c.type}','${c.apiProvider || ''}')">
+        <label style="display:flex;align-items:center;gap:8px;padding:8px 0;opacity:${disabled ? 0.45 : 1};cursor:${disabled ? "not-allowed" : "pointer"}">
+          <input type="radio" name="assign-carrier" value="${id}" ${disabled ? "disabled" : ""} onchange="onAssignCarrierChange('${c.type}','${c.apiProvider || ""}')">
           <span>${esc(c.name)} <span style="color:var(--muted);font-size:10px">(${esc(c.code)})</span></span>
-          ${hint ? `<span style="font-size:10px;color:var(--muted)">— ${hint}</span>` : ''}
+          ${hint ? `<span style="font-size:10px;color:var(--muted)">— ${hint}</span>` : ""}
         </label>`;
         })
-        .join('')}`;
+        .join("")}`;
   };
 
   body.innerHTML = `
     <div class="assign-order-info">
       <p>Order <strong>#${shortId(o._id)}</strong></p>
-      <p>Customer: <strong>${esc(user.name)}</strong> · ${esc(user.phone || 'no phone')}</p>
+      <p>Customer: <strong>${esc(user.name)}</strong> · ${esc(user.phone || "no phone")}</p>
       <p>Zone: <strong>${esc(o.shippingAddress?.governorateName)} / ${esc(o.shippingAddress?.districtName)}</strong></p>
       <p>Total: <strong>${o.totalPrice} EGP</strong> · ${esc(o.paymentMethod)}</p>
     </div>
     ${bostaWarn}
+
+    <div class="form-group" style="margin-bottom:14px">
+      <label class="form-label">Package size</label>
+      <select class="form-select" id="assign-size">
+        <option value="SMALL">Small</option>
+        <option value="MEDIUM" selected>Medium</option>
+        <option value="LARGE">Large</option>
+        <option value="XLARGE">X-Large</option>
+      </select>
+    </div>
+
     <div id="assign-carriers-list">
-      ${renderGroup('API (Bosta / Mylerz)', grouped.api)}
-      ${renderGroup('Known carriers', grouped.known)}
-      ${renderGroup('Internal delivery', grouped.internal)}
+      ${renderGroup("API (Bosta / Mylerz)", grouped.api)}
+      ${renderGroup("Known carriers", grouped.known)}
+      ${renderGroup("Internal delivery", grouped.internal)}
     </div>
     <div id="manual-assign-fields" style="display:none;margin-top:12px">
       <div class="form-group"><label class="form-label">Driver name</label><input class="form-input" id="assign-driver-name"></div>
@@ -770,35 +879,42 @@ function renderAssignDrawer() {
 }
 
 function onAssignCarrierChange(type, provider) {
-  const manual = document.getElementById('manual-assign-fields');
+  const manual = document.getElementById("manual-assign-fields");
   if (!manual) return;
-  const showManual = type === 'known' || type === 'internal';
-  manual.style.display = showManual ? '' : 'none';
+  const showManual = type === "known" || type === "internal";
+  manual.style.display = showManual ? "" : "none";
 }
 
 async function confirmAssign() {
-  const selected = document.querySelector('input[name="assign-carrier"]:checked');
+  const selected = document.querySelector(
+    'input[name="assign-carrier"]:checked',
+  );
   if (!selected) {
-    toast('Select a carrier', true);
+    toast("Select a carrier", true);
     return;
   }
   const carrierId = selected.value;
   const carrier = assignDetail?.carriers?.find((c) => c._id === carrierId);
   const payload = {
     carrierId,
-    driverName: document.getElementById('assign-driver-name')?.value?.trim(),
-    driverPhone: document.getElementById('assign-driver-phone')?.value?.trim(),
-    trackingNumber: document.getElementById('assign-tracking')?.value?.trim(),
-    notes: document.getElementById('assign-notes')?.value?.trim(),
-    markShipped: carrier?.type === 'api' && carrier?.apiProvider === 'bosta',
+    driverName: document.getElementById("assign-driver-name")?.value?.trim(),
+    driverPhone: document.getElementById("assign-driver-phone")?.value?.trim(),
+    trackingNumber: document.getElementById("assign-tracking")?.value?.trim(),
+    notes: document.getElementById("assign-notes")?.value?.trim(),
+    size: document.getElementById("assign-size")?.value || "MEDIUM", // ← الإضافة
+    markShipped: carrier?.type === "api" && carrier?.apiProvider === "bosta",
   };
   try {
-    await api('POST', '/admin/shipping/orders/' + assigningOrderId + '/assign', payload);
+    await api(
+      "POST",
+      "/admin/shipping/orders/" + assigningOrderId + "/assign",
+      payload,
+    );
     closeAll();
     assigningOrderId = null;
     assignDetail = null;
     await loadOrders();
-    toast('Carrier assigned');
+    toast("Carrier assigned");
   } catch (e) {
     toast(e.message, true);
   }
@@ -806,109 +922,116 @@ async function confirmAssign() {
 
 // â”€â”€ Drawers â”€â”€
 function openDrawer(id) {
-  document.getElementById('overlay').classList.add('open');
-  document.getElementById(id).classList.add('open');
+  document.getElementById("overlay").classList.add("open");
+  document.getElementById(id).classList.add("open");
 }
 
 function closeAll() {
-  document.getElementById('overlay').classList.remove('open');
-  document.querySelectorAll('.drawer').forEach((d) => d.classList.remove('open'));
+  document.getElementById("overlay").classList.remove("open");
+  document
+    .querySelectorAll(".drawer")
+    .forEach((d) => d.classList.remove("open"));
 }
 
 function openAddCountry() {
-  zoneMode = 'country';
-  document.getElementById('zone-drawer-title').textContent = 'Add Country';
-  document.getElementById('zone-drawer-body').innerHTML = `
+  zoneMode = "country";
+  document.getElementById("zone-drawer-title").textContent = "Add Country";
+  document.getElementById("zone-drawer-body").innerHTML = `
     <div class="form-group"><label class="form-label">Country name</label><input class="form-input" placeholder="Egypt" id="zf-name"></div>
     <div class="form-group"><label class="form-label">Country code (ISO 2)</label><input class="form-input" placeholder="EG" maxlength="2" id="zf-code"></div>
     <div class="form-group"><label class="form-label">Currency (ISO 3)</label><input class="form-input" placeholder="EGP" maxlength="3" id="zf-currency"></div>
     <div class="form-group"><label class="form-label">Flag emoji (optional)</label><input class="form-input" placeholder="" id="zf-flag"></div>`;
-  openDrawer('zone-drawer');
+  openDrawer("zone-drawer");
 }
 
 function openAddGov() {
   if (!selCountry) return;
   const c = countries.find((x) => x._id === selCountry);
-  zoneMode = 'gov';
-  document.getElementById('zone-drawer-title').textContent = 'Add Governorate - ' + (c?.name || '');
-  document.getElementById('zone-drawer-body').innerHTML = `
+  zoneMode = "gov";
+  document.getElementById("zone-drawer-title").textContent =
+    "Add Governorate - " + (c?.name || "");
+  document.getElementById("zone-drawer-body").innerHTML = `
     <div class="form-group"><label class="form-label">Governorate name</label><input class="form-input" placeholder="Cairo" id="zf-name"></div>
     <div class="form-group"><label class="form-label">Base shipping price (${esc(selectedCurrency())})</label><input class="form-input" type="number" placeholder="35" id="zf-price"></div>`;
-  openDrawer('zone-drawer');
+  openDrawer("zone-drawer");
 }
 
 function openAddDistrict() {
   if (!selGov) return;
   const g = governorates.find((x) => x._id === selGov);
-  zoneMode = 'district';
-  document.getElementById('zone-drawer-title').textContent = 'Add District - ' + (g?.name || '');
-  document.getElementById('zone-drawer-body').innerHTML = `
+  zoneMode = "district";
+  document.getElementById("zone-drawer-title").textContent =
+    "Add District - " + (g?.name || "");
+  document.getElementById("zone-drawer-body").innerHTML = `
     <div class="form-group"><label class="form-label">District name</label><input class="form-input" placeholder="Nasr City" id="zf-name"></div>
     <div class="form-group"><label class="form-label">Shipping price (${esc(selectedCurrency())})</label><input class="form-input" type="number" placeholder="35" id="zf-price"></div>`;
-  openDrawer('zone-drawer');
+  openDrawer("zone-drawer");
 }
 
 async function saveZoneForm() {
-  const name = document.getElementById('zf-name')?.value?.trim();
+  const name = document.getElementById("zf-name")?.value?.trim();
   if (!name) {
-    toast('Name is required', true);
+    toast("Name is required", true);
     return;
   }
   try {
-    if (zoneMode === 'country') {
-      const code = document.getElementById('zf-code')?.value?.trim();
-      const currency = document.getElementById('zf-currency')?.value?.trim().toUpperCase();
+    if (zoneMode === "country") {
+      const code = document.getElementById("zf-code")?.value?.trim();
+      const currency = document
+        .getElementById("zf-currency")
+        ?.value?.trim()
+        .toUpperCase();
       if (!code || code.length !== 2) {
-        toast('Country code must be 2 letters', true);
+        toast("Country code must be 2 letters", true);
         return;
       }
       if (!currency || currency.length !== 3) {
-        toast('Currency must be a 3-letter ISO code (e.g. EGP)', true);
+        toast("Currency must be a 3-letter ISO code (e.g. EGP)", true);
         return;
       }
-      await api('POST', '/admin/countries', {
+      await api("POST", "/admin/countries", {
         name,
         code,
         currency,
-        flag: document.getElementById('zf-flag')?.value?.trim() || '',
+        flag: document.getElementById("zf-flag")?.value?.trim() || "",
       });
-    } else if (zoneMode === 'gov') {
-      await api('POST', '/admin/governorates', {
+    } else if (zoneMode === "gov") {
+      await api("POST", "/admin/governorates", {
         country: selCountry,
         name,
-        shippingPrice: +(document.getElementById('zf-price')?.value || 35),
+        shippingPrice: +(document.getElementById("zf-price")?.value || 35),
       });
-    } else if (zoneMode === 'district') {
-      await api('POST', '/admin/districts', {
+    } else if (zoneMode === "district") {
+      await api("POST", "/admin/districts", {
         governorate: selGov,
         name,
-        shippingPrice: +(document.getElementById('zf-price')?.value || 35),
+        shippingPrice: +(document.getElementById("zf-price")?.value || 35),
       });
     }
     closeAll();
     await loadZones();
     await loadCarriers();
-    toast('Saved');
+    toast("Saved");
   } catch (e) {
     toast(e.message, true);
   }
 }
 
 // â”€â”€ Init â”€â”€
-document.getElementById('api-section').style.display = 'none';
-document.getElementById('manual-section').style.display = '';
+document.getElementById("api-section").style.display = "none";
+document.getElementById("manual-section").style.display = "";
 onCarrierTypeChange();
 
 if (token) {
-  document.getElementById('login-overlay').classList.add('hidden');
-  const savedBase = localStorage.getItem('oxxila_api_base');
-  if (savedBase) document.getElementById('api-base').value = savedBase;
-  const savedBosta = localStorage.getItem('oxxila_bosta_default_base');
-  const bostaEl = document.getElementById('bosta-default-base');
+  document.getElementById("login-overlay").classList.add("hidden");
+  const savedBase = localStorage.getItem("oxxila_api_base");
+  if (savedBase) document.getElementById("api-base").value = savedBase;
+  const savedBosta = localStorage.getItem("oxxila_bosta_default_base");
+  const bostaEl = document.getElementById("bosta-default-base");
   if (savedBosta && bostaEl) bostaEl.value = savedBosta;
   loadAll().catch(() => {
-    token = '';
-    localStorage.removeItem('oxxila_admin_token');
-    document.getElementById('login-overlay').classList.remove('hidden');
+    token = "";
+    localStorage.removeItem("oxxila_admin_token");
+    document.getElementById("login-overlay").classList.remove("hidden");
   });
 }

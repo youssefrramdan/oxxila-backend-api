@@ -81,6 +81,7 @@ const assignBosta = async (
       packageSpecs: {
         itemsCount: order.items.reduce((s, i) => s + i.quantity, 0),
         description: `Order ${order._id}`,
+        size: options.size || "MEDIUM",
       },
     },
     credentials,

@@ -1,0 +1,1481 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Oxxila — My Returns</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      :root {
+        --bg: #0e0e14;
+        --surface: #14141e;
+        --card: #1a1a26;
+        --card2: #1f1f2e;
+        --border: rgba(255, 255, 255, 0.07);
+        --border2: rgba(255, 255, 255, 0.12);
+        --accent: #c8a96e;
+        --accent2: #e8c98e;
+        --accent-dim: rgba(200, 169, 110, 0.1);
+        --accent-border: rgba(200, 169, 110, 0.25);
+        --text: #f0ede8;
+        --muted: #7a7a96;
+        --muted2: #3a3a52;
+        --green: #5ecea0;
+        --green-bg: rgba(94, 206, 160, 0.08);
+        --green-border: rgba(94, 206, 160, 0.2);
+        --red: #e07070;
+        --red-bg: rgba(224, 112, 112, 0.08);
+        --red-border: rgba(224, 112, 112, 0.2);
+        --amber: #e8c06a;
+        --amber-bg: rgba(232, 192, 106, 0.08);
+        --amber-border: rgba(232, 192, 106, 0.2);
+        --blue: #6aace8;
+        --blue-bg: rgba(106, 172, 232, 0.08);
+        --blue-border: rgba(106, 172, 232, 0.2);
+        --font: "DM Sans", sans-serif;
+        --display: "Syne", sans-serif;
+        --mono: "DM Mono", monospace;
+        --radius: 12px;
+        --radius-lg: 18px;
+      }
+
+      body {
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      /* bg pattern */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(
+          ellipse 80% 50% at 50% -10%,
+          rgba(200, 169, 110, 0.06) 0%,
+          transparent 70%
+        );
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .wrap {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 0 20px;
+        position: relative;
+        z-index: 1;
+      }
+
+      /* NAV */
+      nav {
+        border-bottom: 1px solid var(--border);
+        backdrop-filter: blur(12px);
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: rgba(14, 14, 20, 0.85);
+      }
+      .nav-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 60px;
+      }
+      .brand {
+        font-family: var(--display);
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        color: var(--accent);
+      }
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .nav-link {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        color: var(--muted);
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .nav-link:hover,
+      .nav-link.active {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .nav-link.active {
+        color: var(--accent);
+      }
+
+      /* PAGE HEADER */
+      .page-header {
+        padding: 40px 0 28px;
+      }
+      .page-header h1 {
+        font-family: var(--display);
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 6px;
+      }
+      .page-header p {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      /* TABS */
+      .tabs-row {
+        display: flex;
+        gap: 4px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 4px;
+        width: fit-content;
+        margin-bottom: 24px;
+      }
+      .tab {
+        padding: 7px 16px;
+        border-radius: 7px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        color: var(--muted);
+        transition: all 0.15s;
+      }
+      .tab.active {
+        background: var(--accent);
+        color: #0e0e14;
+        font-weight: 600;
+      }
+
+      /* SECTION */
+      .section-label {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted2);
+        margin-bottom: 12px;
+        padding-left: 2px;
+      }
+
+      /* ELIGIBLE ORDER CARD */
+      .order-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        margin-bottom: 12px;
+        transition: border-color 0.2s;
+      }
+      .order-card:hover {
+        border-color: var(--border2);
+      }
+      .order-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        cursor: pointer;
+      }
+      .order-meta {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .order-id {
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--accent2);
+      }
+      .order-date {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .order-window {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+      }
+      .window-bar-wrap {
+        width: 80px;
+        height: 4px;
+        background: var(--muted2);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      .window-bar {
+        height: 100%;
+        border-radius: 2px;
+        background: var(--green);
+        transition: width 0.3s;
+      }
+      .window-bar.warn {
+        background: var(--amber);
+      }
+      .window-bar.danger {
+        background: var(--red);
+      }
+      .window-label {
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .expand-icon {
+        color: var(--muted);
+        font-size: 18px;
+        transition: transform 0.25s;
+      }
+      .expand-icon.open {
+        transform: rotate(180deg);
+      }
+
+      .order-items {
+        display: none;
+        padding: 0 20px 16px;
+      }
+      .order-items.open {
+        display: block;
+      }
+      .items-grid {
+        display: grid;
+        gap: 8px;
+      }
+
+      .item-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 14px;
+        background: var(--card2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.15s;
+        user-select: none;
+      }
+      .item-row:hover {
+        border-color: var(--accent-border);
+      }
+      .item-row.selected {
+        border-color: var(--accent);
+        background: var(--accent-dim);
+      }
+      .item-check {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        border: 1.5px solid var(--muted2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all 0.15s;
+      }
+      .item-row.selected .item-check {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      .item-check-mark {
+        width: 10px;
+        height: 10px;
+        stroke: var(--bg);
+        display: none;
+      }
+      .item-row.selected .item-check-mark {
+        display: block;
+      }
+      .item-img {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: var(--muted2);
+        overflow: hidden;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+      }
+      .item-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .item-name {
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .item-price {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 1px;
+      }
+      .item-qty-ctrl {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .qty-btn {
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        background: var(--card);
+        border: 1px solid var(--border2);
+        color: var(--text);
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+      }
+      .qty-btn:hover {
+        background: var(--accent-dim);
+        border-color: var(--accent-border);
+      }
+      .qty-val {
+        font-family: var(--mono);
+        font-size: 13px;
+        min-width: 20px;
+        text-align: center;
+      }
+      .item-max {
+        font-size: 10px;
+        color: var(--muted);
+        text-align: center;
+        margin-top: 3px;
+      }
+
+      .order-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px 16px;
+        border-top: 1px solid var(--border);
+      }
+      .selected-count {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .selected-count span {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .return-btn {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 18px;
+        background: var(--accent);
+        color: #0e0e14;
+        border: none;
+        border-radius: 9px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: var(--font);
+        transition: opacity 0.15s;
+      }
+      .return-btn:hover {
+        opacity: 0.88;
+      }
+      .return-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      /* RETURNS LIST */
+      .returns-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .return-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 18px 20px;
+        transition: border-color 0.2s;
+      }
+      .return-card:hover {
+        border-color: var(--border2);
+      }
+      .return-card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+      .return-ref {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .return-status {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 20px;
+      }
+      .rs-pending {
+        background: var(--amber-bg);
+        color: var(--amber);
+        border: 1px solid var(--amber-border);
+      }
+      .rs-approved {
+        background: var(--blue-bg);
+        color: var(--blue);
+        border: 1px solid var(--blue-border);
+      }
+      .rs-picked_up {
+        background: var(--blue-bg);
+        color: var(--blue);
+        border: 1px solid var(--blue-border);
+      }
+      .rs-received {
+        background: var(--accent-dim);
+        color: var(--accent2);
+        border: 1px solid var(--accent-border);
+      }
+      .rs-refunded {
+        background: var(--green-bg);
+        color: var(--green);
+        border: 1px solid var(--green-border);
+      }
+      .rs-rejected {
+        background: var(--red-bg);
+        color: var(--red);
+        border: 1px solid var(--red-border);
+      }
+      .return-items-row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+      .ri-tag {
+        font-size: 11px;
+        padding: 3px 9px;
+        background: var(--card2);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        color: var(--muted);
+      }
+      .return-meta {
+        display: flex;
+        gap: 16px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .return-meta strong {
+        color: var(--text);
+      }
+      .bosta-track {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 10px;
+        padding: 9px 12px;
+        background: var(--blue-bg);
+        border: 1px solid var(--blue-border);
+        border-radius: 8px;
+        font-size: 12px;
+        color: var(--blue);
+      }
+
+      /* STEPPER */
+      .stepper {
+        display: flex;
+        align-items: center;
+        margin-bottom: 18px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+      .step {
+        display: flex;
+        align-items: center;
+        gap: 0;
+      }
+      .step-circle {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        flex-shrink: 0;
+        border: 2px solid var(--muted2);
+        color: var(--muted2);
+        transition: all 0.3s;
+        font-family: var(--mono);
+      }
+      .step.done .step-circle {
+        background: var(--green);
+        border-color: var(--green);
+        color: #0e0e14;
+      }
+      .step.active .step-circle {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #0e0e14;
+      }
+      .step-line {
+        height: 2px;
+        width: 32px;
+        background: var(--muted2);
+        flex-shrink: 0;
+        transition: background 0.3s;
+      }
+      .step.done + .step .step-line,
+      .step.done .step-line {
+        background: var(--green);
+      }
+      .step-label {
+        font-size: 10px;
+        color: var(--muted);
+        white-space: nowrap;
+        display: none;
+      }
+
+      /* MODAL */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 100;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s;
+        backdrop-filter: blur(4px);
+      }
+      .modal-overlay.open {
+        opacity: 1;
+        pointer-events: all;
+      }
+      .modal {
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-radius: 24px 24px 0 0;
+        width: 100%;
+        max-width: 560px;
+        max-height: 90vh;
+        overflow-y: auto;
+        transform: translateY(40px);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .modal-overlay.open .modal {
+        transform: translateY(0);
+      }
+      .modal-handle {
+        width: 36px;
+        height: 4px;
+        background: var(--muted2);
+        border-radius: 2px;
+        margin: 12px auto 0;
+      }
+      .modal-header {
+        padding: 18px 22px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+      .modal-header h3 {
+        font-family: var(--display);
+        font-size: 17px;
+        font-weight: 700;
+      }
+      .modal-header p {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+      .modal-body {
+        padding: 20px 22px;
+      }
+      .modal-footer {
+        padding: 16px 22px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        gap: 10px;
+      }
+
+      /* FORM */
+      .form-group {
+        margin-bottom: 16px;
+      }
+      .form-label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 7px;
+      }
+      .form-input {
+        width: 100%;
+        background: var(--card);
+        border: 1px solid var(--border2);
+        border-radius: 9px;
+        padding: 10px 13px;
+        font-size: 13px;
+        color: var(--text);
+        outline: none;
+        font-family: var(--font);
+        transition: border 0.15s;
+      }
+      .form-input:focus {
+        border-color: var(--accent);
+      }
+      .form-input::placeholder {
+        color: var(--muted2);
+      }
+      .form-select {
+        width: 100%;
+        background: var(--card);
+        border: 1px solid var(--border2);
+        border-radius: 9px;
+        padding: 10px 13px;
+        font-size: 13px;
+        color: var(--text);
+        outline: none;
+        font-family: var(--font);
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a7a96' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 13px center;
+      }
+      .form-select:focus {
+        border-color: var(--accent);
+        outline: none;
+      }
+      .form-select option {
+        background: var(--card2);
+      }
+      .form-textarea {
+        width: 100%;
+        background: var(--card);
+        border: 1px solid var(--border2);
+        border-radius: 9px;
+        padding: 10px 13px;
+        font-size: 13px;
+        color: var(--text);
+        outline: none;
+        font-family: var(--font);
+        resize: vertical;
+        min-height: 80px;
+        transition: border 0.15s;
+      }
+      .form-textarea:focus {
+        border-color: var(--accent);
+      }
+      .form-textarea::placeholder {
+        color: var(--muted2);
+      }
+
+      .method-options {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .method-opt {
+        padding: 12px 14px;
+        background: var(--card);
+        border: 1.5px solid var(--border2);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .method-opt:hover {
+        border-color: var(--accent-border);
+      }
+      .method-opt.sel {
+        border-color: var(--accent);
+        background: var(--accent-dim);
+      }
+      .method-opt-icon {
+        font-size: 20px;
+        margin-bottom: 5px;
+      }
+      .method-opt-title {
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .method-opt-sub {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      .proof-area {
+        border: 1.5px dashed var(--border2);
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.15s;
+      }
+      .proof-area:hover {
+        border-color: var(--accent-border);
+      }
+      .proof-area-icon {
+        font-size: 24px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .proof-area-text {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .proof-required {
+        font-size: 11px;
+        color: var(--amber);
+        margin-top: 6px;
+        display: none;
+      }
+
+      .refund-summary {
+        background: var(--accent-dim);
+        border: 1px solid var(--accent-border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .refund-summary p {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .refund-summary strong {
+        font-size: 20px;
+        font-family: var(--mono);
+        color: var(--accent2);
+      }
+
+      .btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 11px 20px;
+        border-radius: 9px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: var(--font);
+        border: none;
+        transition: all 0.15s;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #0e0e14;
+        flex: 1;
+      }
+      .btn-primary:hover {
+        opacity: 0.88;
+      }
+      .btn-primary:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .btn-ghost {
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--border2);
+      }
+      .btn-ghost:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      /* LOGIN */
+      .login-screen {
+        position: fixed;
+        inset: 0;
+        background: var(--bg);
+        z-index: 200;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .login-screen.hidden {
+        display: none;
+      }
+      .login-card {
+        background: var(--surface);
+        border: 1px solid var(--border2);
+        border-radius: var(--radius-lg);
+        padding: 32px;
+        width: 360px;
+      }
+      .login-card .logo {
+        font-family: var(--display);
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--accent);
+        margin-bottom: 20px;
+      }
+
+      /* TOAST */
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        padding: 11px 18px;
+        border-radius: 10px;
+        font-size: 13px;
+        z-index: 300;
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+        max-width: 320px;
+      }
+      .toast.show {
+        opacity: 1;
+      }
+      .toast.ok {
+        background: var(--green-bg);
+        color: var(--green);
+        border: 1px solid var(--green-border);
+      }
+      .toast.err {
+        background: var(--red-bg);
+        color: var(--red);
+        border: 1px solid var(--red-border);
+      }
+
+      /* EMPTY */
+      .empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--muted);
+      }
+      .empty-icon {
+        font-size: 40px;
+        margin-bottom: 12px;
+        opacity: 0.4;
+      }
+      .empty p {
+        font-size: 14px;
+      }
+
+      /* SPINNER */
+      .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-top-color: #0e0e14;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* UPLOAD PREVIEW */
+      .proof-previews {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .proof-thumb {
+        width: 56px;
+        height: 56px;
+        border-radius: 8px;
+        object-fit: cover;
+        border: 1px solid var(--border2);
+      }
+
+      /* scrollbar */
+      ::-webkit-scrollbar {
+        width: 4px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--muted2);
+        border-radius: 4px;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .order-card,
+      .return-card {
+        animation: fadeUp 0.3s ease both;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- LOGIN -->
+    <div class="login-screen" id="login-screen">
+      <div class="login-card">
+        <div class="logo">Oxxila</div>
+        <div class="form-group">
+          <label class="form-label">API Base URL</label>
+          <input
+            class="form-input"
+            id="api-base"
+            value="http://localhost:3000/api/v1"
+          />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input
+            class="form-input"
+            id="login-email"
+            placeholder="customer@example.com"
+          />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input
+            class="form-input"
+            type="password"
+            id="login-pass"
+            placeholder="••••••••"
+          />
+        </div>
+        <button class="btn btn-primary" style="width: 100%" onclick="doLogin()">
+          Sign in
+        </button>
+        <p
+          id="login-err"
+          style="
+            font-size: 12px;
+            color: var(--red);
+            margin-top: 10px;
+            display: none;
+          "
+        ></p>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- NAV -->
+    <nav>
+      <div class="wrap nav-inner">
+        <div class="brand">Oxxila</div>
+        <div class="nav-links">
+          <div class="nav-link">Orders</div>
+          <div class="nav-link active">Returns</div>
+          <div class="nav-link" onclick="logout()">Sign out</div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="wrap">
+      <div class="page-header">
+        <h1>Returns & Refunds</h1>
+        <p>Request a return on eligible orders or track existing requests</p>
+      </div>
+
+      <div class="tabs-row">
+        <div class="tab active" onclick="switchTab('eligible', this)">
+          New Return
+        </div>
+        <div class="tab" onclick="switchTab('my-returns', this)">
+          My Requests
+        </div>
+      </div>
+
+      <!-- ELIGIBLE ORDERS TAB -->
+      <div id="tab-eligible">
+        <div class="section-label">Eligible orders (within return window)</div>
+        <div id="eligible-list">
+          <div class="empty">
+            <div class="empty-icon">⟳</div>
+            <p>Loading...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- MY RETURNS TAB -->
+      <div id="tab-my-returns" style="display: none">
+        <div class="section-label">Your return requests</div>
+        <div class="returns-list" id="returns-list">
+          <div class="empty">
+            <div class="empty-icon">⟳</div>
+            <p>Loading...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RETURN MODAL -->
+    <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" id="modal">
+        <div class="modal-handle"></div>
+        <div class="modal-header">
+          <h3>Submit Return Request</h3>
+          <p id="modal-subtitle">Select items and fill in the details</p>
+        </div>
+        <div class="modal-body" id="modal-body"></div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          <button
+            class="btn btn-primary"
+            id="modal-submit-btn"
+            onclick="submitReturn()"
+          >
+            <span id="modal-submit-label">Submit Request</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let token = localStorage.getItem('oxxila_customer_token') || '';
+      let currentUser = null;
+      let eligibleOrders = [];
+      let myReturns = [];
+      let selectedOrder = null;
+      let selectedItems = {};
+      let proofFiles = [];
+
+      const REASONS_NEED_PROOF = new Set(['damaged_item','wrong_product','allergic_reaction']);
+      const REASON_LABELS = {
+        damaged_item:'Damaged item',
+        wrong_product:'Wrong product sent',
+        allergic_reaction:'Allergic reaction',
+        expired_product:'Expired product',
+        changed_mind:'Changed my mind',
+        other:'Other'
+      };
+      const STATUS_STEPS = ['pending','approved','picked_up','received','refunded'];
+
+      const apiBase = () => (document.getElementById('api-base')?.value || localStorage.getItem('oxxila_api_base') || 'http://localhost:3000/api/v1').replace(/\/$/,'');
+
+      function toast(msg, isErr=false){
+        const el=document.getElementById('toast');
+        el.textContent=msg;el.className='toast show '+(isErr?'err':'ok');
+        setTimeout(()=>el.classList.remove('show'),3500);
+      }
+
+      async function api(method,path,body){
+        const headers={'Content-Type':'application/json'};
+        if(token) headers.Authorization='Bearer '+token;
+        const res=await fetch(apiBase()+path,{method,headers,body:body!==undefined?JSON.stringify(body):undefined});
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok||data.success===false){const e=new Error(data.message||'Request failed');e.data=data;throw e;}
+        return data;
+      }
+
+      async function apiMultipart(method,path,formData){
+        const headers={};
+        if(token) headers.Authorization='Bearer '+token;
+        const res=await fetch(apiBase()+path,{method,headers,body:formData});
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok||data.success===false){const e=new Error(data.message||'Request failed');e.data=data;throw e;}
+        return data;
+      }
+
+      function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+
+      async function doLogin(){
+        const errEl=document.getElementById('login-err');
+        errEl.style.display='none';
+        try{
+          const base=document.getElementById('api-base').value.trim();
+          localStorage.setItem('oxxila_api_base',base);
+          const data=await api('POST','/auth/login',{
+            email:document.getElementById('login-email').value,
+            password:document.getElementById('login-pass').value
+          });
+          token=data.data.accessToken;
+          localStorage.setItem('oxxila_customer_token',token);
+          document.getElementById('login-screen').classList.add('hidden');
+          await loadAll();
+          toast('Welcome back!');
+        }catch(e){
+          errEl.textContent=e.message;errEl.style.display='block';
+        }
+      }
+
+      function logout(){
+        token='';
+        localStorage.removeItem('oxxila_customer_token');
+        document.getElementById('login-screen').classList.remove('hidden');
+      }
+
+      async function loadAll(){
+        await Promise.all([loadEligible(),loadMyReturns()]);
+      }
+
+      // ── ELIGIBLE ──────────────────────────────────────────────────────────
+      async function loadEligible(){
+        try{
+          const {data}=await api('GET','/returns/eligible-orders');
+          eligibleOrders=data||[];
+          renderEligible();
+        }catch(e){
+          document.getElementById('eligible-list').innerHTML=`<div class="empty"><div class="empty-icon">⚠</div><p>${esc(e.message)}</p></div>`;
+        }
+      }
+
+      function renderEligible(){
+        const el=document.getElementById('eligible-list');
+        if(!eligibleOrders.length){
+          el.innerHTML='<div class="empty"><div class="empty-icon">✓</div><p>No eligible orders for return right now.</p></div>';
+          return;
+        }
+        el.innerHTML=eligibleOrders.map((o,oi)=>{
+          const pct=Math.max(4,Math.round((1-(o.daysSinceDelivery/14))*100));
+          const barClass=pct>50?'':'pct>20' ? 'warn':'danger';
+          const daysLeft=14-o.daysSinceDelivery;
+          return `
+          <div class="order-card" id="oc-${o._id}">
+            <div class="order-card-header" onclick="toggleOrder('${o._id}')">
+              <div class="order-meta">
+                <div class="order-id">#${String(o._id).slice(-6).toUpperCase()}</div>
+                <div class="order-date">${new Date(o.deliveredAt).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div>
+                <div class="order-window">
+                  <div class="window-bar-wrap"><div class="window-bar ${barClass}" style="width:${pct}%"></div></div>
+                  <div class="window-label">${daysLeft}d left</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="font-size:13px;font-family:var(--mono);color:var(--muted)">${o.totalPrice} EGP</div>
+                <svg class="expand-icon" id="ei-${o._id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </div>
+            <div class="order-items" id="oi-${o._id}">
+              <div class="items-grid">
+                ${o.items.map(item=>`
+                <div class="item-row" id="ir-${o._id}-${item.orderItemId}" onclick="toggleItem('${o._id}','${item.orderItemId}',${item.returnableQuantity})">
+                  <div class="item-check">
+                    <svg class="item-check-mark" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 5l2.5 2.5 5-4"/></svg>
+                  </div>
+                  <div class="item-img">${item.image?`<img src="${esc(item.image)}" style="width:100%;height:100%;object-fit:cover">`:'🧴'}</div>
+                  <div class="item-info">
+                    <div class="item-name">${esc(item.name)}</div>
+                    <div class="item-price">${item.price} EGP × ${item.purchasedQuantity}</div>
+                  </div>
+                  <div class="item-qty-ctrl" onclick="event.stopPropagation()">
+                    <button class="qty-btn" onclick="changeQty('${o._id}','${item.orderItemId}',-1,${item.returnableQuantity})">−</button>
+                    <div class="qty-val" id="qv-${o._id}-${item.orderItemId}">1</div>
+                    <button class="qty-btn" onclick="changeQty('${o._id}','${item.orderItemId}',1,${item.returnableQuantity})">+</button>
+                  </div>
+                </div>`).join('')}
+              </div>
+              <div class="order-actions">
+                <div class="selected-count" id="sc-${o._id}"><span>0</span> item(s) selected</div>
+                <button class="return-btn" id="rb-${o._id}" disabled onclick="openReturnModal('${o._id}')">
+                  Request Return →
+                </button>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+      }
+
+      function toggleOrder(orderId){
+        const items=document.getElementById('oi-'+orderId);
+        const icon=document.getElementById('ei-'+orderId);
+        const isOpen=items.classList.contains('open');
+        items.classList.toggle('open',!isOpen);
+        icon.classList.toggle('open',!isOpen);
+      }
+
+      function toggleItem(orderId,itemId,maxQty){
+        if(!selectedItems[orderId]) selectedItems[orderId]={};
+        const cur=selectedItems[orderId][itemId];
+        const row=document.getElementById(`ir-${orderId}-${itemId}`);
+        if(cur){
+          delete selectedItems[orderId][itemId];
+          row.classList.remove('selected');
+        } else {
+          selectedItems[orderId][itemId]=1;
+          row.classList.add('selected');
+        }
+        updateOrderActions(orderId);
+      }
+
+      function changeQty(orderId,itemId,delta,maxQty){
+        if(!selectedItems[orderId]?.[itemId]) return;
+        const cur=selectedItems[orderId][itemId]||1;
+        const nv=Math.min(maxQty,Math.max(1,cur+delta));
+        selectedItems[orderId][itemId]=nv;
+        document.getElementById(`qv-${orderId}-${itemId}`).textContent=nv;
+      }
+
+      function updateOrderActions(orderId){
+        const sel=Object.keys(selectedItems[orderId]||{});
+        const sc=document.getElementById('sc-'+orderId);
+        const rb=document.getElementById('rb-'+orderId);
+        if(sc) sc.querySelector('span').textContent=sel.length;
+        if(rb) rb.disabled=sel.length===0;
+      }
+
+      // ── RETURN MODAL ──────────────────────────────────────────────────────
+      function openReturnModal(orderId){
+        selectedOrder=eligibleOrders.find(o=>o._id===orderId);
+        if(!selectedOrder) return;
+        proofFiles=[];
+
+        const items=Object.entries(selectedItems[orderId]||{}).map(([itemId,qty])=>{
+          const item=selectedOrder.items.find(i=>i.orderItemId===itemId);
+          return item?{...item,qty}:null;
+        }).filter(Boolean);
+
+        const total=items.reduce((s,i)=>s+i.price*i.qty,0);
+
+        document.getElementById('modal-body').innerHTML=`
+          <div class="refund-summary">
+            <div><p>Estimated refund</p><strong>${total.toFixed(2)} EGP</strong></div>
+            <div style="text-align:right"><p>${items.length} item(s) selected</p><p style="font-size:11px;color:var(--muted)">${items.map(i=>`${i.name} ×${i.qty}`).join(', ')}</p></div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Return reason</label>
+            <select class="form-select" id="ret-reason" onchange="onReasonChange()">
+              <option value="">— Select a reason —</option>
+              ${Object.entries(REASON_LABELS).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+            </select>
+          </div>
+
+          <div id="proof-section" style="display:none">
+            <div class="form-group">
+              <label class="form-label">Proof images <span style="color:var(--red)">*required</span></label>
+              <div class="proof-area" onclick="document.getElementById('proof-input').click()">
+                <div class="proof-area-icon">📷</div>
+                <div class="proof-area-text">Click to upload photos (damaged item, wrong product, etc.)</div>
+                <input type="file" id="proof-input" multiple accept="image/*" style="display:none" onchange="onProofChange(this)">
+              </div>
+              <div class="proof-previews" id="proof-previews"></div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Additional note</label>
+            <textarea class="form-textarea" id="ret-note" placeholder="Describe the issue in more detail..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Return method</label>
+            <div class="method-options">
+              <div class="method-opt sel" id="mo-pickup" onclick="selectMethod('pickup')">
+                <div class="method-opt-icon">🚚</div>
+                <div class="method-opt-title">Pickup</div>
+                <div class="method-opt-sub">We'll collect from you</div>
+              </div>
+              <div class="method-opt" id="mo-self_ship" onclick="selectMethod('self_ship')">
+                <div class="method-opt-icon">📦</div>
+                <div class="method-opt-title">Self Ship</div>
+                <div class="method-opt-sub">Drop off at courier</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="pickup-addr-section">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Pickup address</div>
+            <div class="form-group">
+              <label class="form-label">Governorate</label>
+              <input class="form-input" id="ret-gov" placeholder="e.g. Cairo">
+            </div>
+            <div class="form-group">
+              <label class="form-label">City / District</label>
+              <input class="form-input" id="ret-city" placeholder="e.g. Nasr City">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Street address</label>
+              <input class="form-input" id="ret-addr" placeholder="Building, street, apartment...">
+            </div>
+          </div>`;
+
+        document.getElementById('modal-overlay').classList.add('open');
+      }
+
+      function closeModal(e){
+        if(e && e.target!==document.getElementById('modal-overlay')) return;
+        document.getElementById('modal-overlay').classList.remove('open');
+      }
+
+      function onReasonChange(){
+        const v=document.getElementById('ret-reason').value;
+        document.getElementById('proof-section').style.display=REASONS_NEED_PROOF.has(v)?'':'none';
+      }
+
+      function onProofChange(input){
+        proofFiles=Array.from(input.files);
+        const prev=document.getElementById('proof-previews');
+        prev.innerHTML='';
+        proofFiles.forEach(f=>{
+          const img=document.createElement('img');
+          img.className='proof-thumb';
+          img.src=URL.createObjectURL(f);
+          prev.appendChild(img);
+        });
+      }
+
+      function selectMethod(m){
+        document.getElementById('mo-pickup').classList.toggle('sel',m==='pickup');
+        document.getElementById('mo-self_ship').classList.toggle('sel',m==='self_ship');
+        document.getElementById('pickup-addr-section').style.display=m==='pickup'?'':'none';
+      }
+
+      async function submitReturn(){
+        const reason=document.getElementById('ret-reason')?.value;
+        if(!reason){toast('Select a return reason',true);return;}
+        if(REASONS_NEED_PROOF.has(reason)&&proofFiles.length===0){toast('Proof images required for this reason',true);return;}
+
+        const method=document.getElementById('mo-pickup').classList.contains('sel')?'pickup':'self_ship';
+        const gov=document.getElementById('ret-gov')?.value?.trim();
+        const city=document.getElementById('ret-city')?.value?.trim();
+        const addr=document.getElementById('ret-addr')?.value?.trim();
+        if(method==='pickup'&&(!gov||!city||!addr)){toast('Fill in pickup address',true);return;}
+
+        const orderId=selectedOrder._id;
+        const items=Object.entries(selectedItems[orderId]||{}).map(([orderItemId,quantity])=>({orderItemId,quantity}));
+
+        const btn=document.getElementById('modal-submit-btn');
+        const lbl=document.getElementById('modal-submit-label');
+        btn.disabled=true;
+        lbl.innerHTML='<span class="spinner"></span>';
+
+        try{
+          const fd=new FormData();
+          fd.append('order',orderId);
+          fd.append('items',JSON.stringify(items));
+          fd.append('reason',reason);
+          fd.append('note',document.getElementById('ret-note')?.value?.trim()||'');
+          fd.append('returnMethod',method);
+          fd.append('pickupAddress',JSON.stringify({
+            governorate:gov||'N/A',
+            city:city||'N/A',
+            address:addr||'N/A'
+          }));
+          proofFiles.forEach(f=>fd.append('images',f));
+
+          await apiMultipart('POST','/returns',fd);
+          document.getElementById('modal-overlay').classList.remove('open');
+          delete selectedItems[orderId];
+          toast('Return request submitted!');
+          await Promise.all([loadEligible(),loadMyReturns()]);
+          switchTab('my-returns',document.querySelectorAll('.tab')[1]);
+        }catch(e){
+          toast(e.message,true);
+        }finally{
+          btn.disabled=false;
+          lbl.textContent='Submit Request';
+        }
+      }
+
+      // ── MY RETURNS ────────────────────────────────────────────────────────
+      async function loadMyReturns(){
+        try{
+          const {data}=await api('GET','/returns/my-returns?sort=-createdAt');
+          myReturns=data||[];
+          renderMyReturns();
+        }catch(e){
+          document.getElementById('returns-list').innerHTML=`<div class="empty"><p>${esc(e.message)}</p></div>`;
+        }
+      }
+
+      function renderStepper(status){
+        if(status==='rejected') return `<div style="font-size:12px;color:var(--red)">✕ Request rejected</div>`;
+        const steps=['pending','approved','picked_up','received','refunded'];
+        const labels=['Pending','Approved','Picked up','Received','Refunded'];
+        const cur=steps.indexOf(status);
+        return '<div class="stepper">'+steps.map((s,i)=>{
+          const done=i<cur;const active=i===cur;
+          return `<div class="step ${done?'done':active?'active':''}">
+            ${i>0?`<div class="step-line"></div>`:''}
+            <div class="step-circle" title="${labels[i]}">${done?'✓':i+1}</div>
+          </div>`;
+        }).join('')+'</div>';
+      }
+
+      function renderMyReturns(){
+        const el=document.getElementById('returns-list');
+        if(!myReturns.length){
+          el.innerHTML='<div class="empty"><div class="empty-icon">📦</div><p>No return requests yet.</p></div>';
+          return;
+        }
+        el.innerHTML=myReturns.map(r=>`
+          <div class="return-card">
+            <div class="return-card-top">
+              <div>
+                <div class="return-ref">REQ #${String(r._id).slice(-8).toUpperCase()}</div>
+                <div style="font-size:11px;color:var(--muted);margin-top:2px">${new Date(r.createdAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
+              </div>
+              <span class="return-status rs-${r.refundStatus}">${r.refundStatus.replace('_',' ')}</span>
+            </div>
+            ${renderStepper(r.refundStatus)}
+            <div class="return-items-row">
+              ${r.items.map(i=>`<span class="ri-tag">${esc(i.name)} ×${i.quantity}</span>`).join('')}
+            </div>
+            <div class="return-meta">
+              <div>Reason: <strong>${esc(REASON_LABELS[r.reason]||r.reason)}</strong></div>
+              <div>Method: <strong>${r.returnMethod==='pickup'?'Pickup':'Self-ship'}</strong></div>
+              <div>Refund: <strong style="color:var(--accent2)">${r.refundAmount} EGP</strong></div>
+            </div>
+            ${r.bostaReturnTrackingNumber?`
+            <div class="bosta-track">
+              🚚 Bosta tracking: <strong style="font-family:var(--mono)">${esc(r.bostaReturnTrackingNumber)}</strong>
+              ${r.bostaReturnState?`<span style="margin-left:auto;font-size:10px;opacity:.7">${esc(r.bostaReturnState)}</span>`:''}
+            </div>`:''}
+            ${r.adminNote?`<div style="margin-top:10px;padding:10px 12px;background:var(--card2);border-radius:8px;font-size:12px;color:var(--muted)">📋 Admin note: <span style="color:var(--text)">${esc(r.adminNote)}</span></div>`:''}
+          </div>`).join('');
+      }
+
+      // ── TABS ──────────────────────────────────────────────────────────────
+      function switchTab(name,el){
+        document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('tab-eligible').style.display=name==='eligible'?'':'none';
+        document.getElementById('tab-my-returns').style.display=name==='my-returns'?'':'none';
+      }
+
+      // ── INIT ──────────────────────────────────────────────────────────────
+      if(token){
+        document.getElementById('login-screen').classList.add('hidden');
+        const saved=localStorage.getItem('oxxila_api_base');
+        if(saved) document.getElementById('api-base').value=saved;
+        loadAll().catch(()=>{
+          token='';
+          localStorage.removeItem('oxxila_customer_token');
+          document.getElementById('login-screen').classList.remove('hidden');
+        });
+      }
+    </script>
+  </body>
+</html>
