@@ -1,4 +1,5 @@
 // public/js/tracking-ui.js
+import { buildStepper } from "../src/utils/orderTracking.js";
 (function (global) {
   const ORDER_STATUS_LABELS = {
     pending: "Pending",
@@ -42,7 +43,8 @@
       .replace(/"/g, "&quot;");
 
   function orderStatusClass(status) {
-    if (status === "delivered" || status === "partially_returned") return "os-delivered";
+    if (status === "delivered" || status === "partially_returned")
+      return "os-delivered";
     if (status === "shipped") return "os-shipped";
     if (status === "processing") return "os-assigned";
     if (status === "confirmed") return "os-confirmed";
@@ -69,11 +71,7 @@
         const done = step.status === "completed" || (activeIdx < 0 && i < idx);
         const active = step.status === "active" || i === idx;
         const num = String(i + 1).padStart(2, "0");
-        const inner = done
-          ? "✓"
-          : showLabels
-            ? num
-            : String(i + 1);
+        const inner = done ? "✓" : showLabels ? num : String(i + 1);
         const label = showLabels
           ? `<span class="track-step-label">${esc(step.label)}</span>`
           : "";
@@ -128,7 +126,10 @@
   function renderOrderTracker(order) {
     const steps = order?.tracking?.steps?.length
       ? order.tracking.steps
-      : buildStepper(DEFAULT_ORDER_STEPS, order?.tracking?.currentStep || orderStatusToStep(order?.orderStatus));
+      : buildStepper(
+          DEFAULT_ORDER_STEPS,
+          order?.tracking?.currentStep || orderStatusToStep(order?.orderStatus),
+        );
     return renderStepper(steps, { showLabels: true });
   }
 
@@ -167,7 +168,9 @@
     else if (step === "shipping") msg = "Your order is on its way!";
     else if (step === "delivery") msg = "Your order has been delivered.";
 
-    const parts = [`<div class="track-banner"><i class="ti ti-truck-delivery"></i><div>`];
+    const parts = [
+      `<div class="track-banner"><i class="ti ti-truck-delivery"></i><div>`,
+    ];
     parts.push(`<strong>${esc(msg)}</strong>`);
     if (tn) {
       parts.push(
@@ -175,9 +178,7 @@
       );
     }
     if (bosta) {
-      parts.push(
-        `<div class="track-banner-meta">Carrier: ${esc(bosta)}</div>`,
-      );
+      parts.push(`<div class="track-banner-meta">Carrier: ${esc(bosta)}</div>`);
     }
     parts.push("</div></div>");
     return parts.join("");
