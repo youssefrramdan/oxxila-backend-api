@@ -14,10 +14,12 @@ import {
   mapEligibleOrder,
 } from "../utils/returnHelpers.js";
 import { finalizeReturnRefund } from "../utils/returnRefundHelpers.js";
+import { enrichReturnDocument } from "../utils/orderTracking.js";
 import {
   createReturnBostaPickup,
   orderUsesBostaApi,
-} from "../utils/carriers/bostaReturnPickup.js";
+  syncReturnTrackingFromBosta,
+} from "../utils/carriers/bostaFulfillment.js";
 
 const parseJsonField = (value, fieldName) => {
   if (value == null) return value;
@@ -145,7 +147,7 @@ export const createReturnRequest = asyncHandler(async (req, res, next) => {
   sendResponse(res, {
     statusCode: 201,
     message: "Return request submitted successfully",
-    data: returnRequest,
+    data: enrichReturnDocument(returnRequest),
   });
 });
 
@@ -173,7 +175,7 @@ export const getMyReturnRequests = asyncHandler(async (req, res) => {
 
   sendResponse(res, {
     message: "Return requests retrieved successfully",
-    data: returns,
+    data: returns.map(enrichReturnDocument),
     pagination: { ...pagination, results: returns.length },
   });
 });
@@ -197,7 +199,7 @@ export const getMyReturnRequest = asyncHandler(async (req, res, next) => {
 
   sendResponse(res, {
     message: "Return request retrieved successfully",
-    data: returnRequest,
+    data: enrichReturnDocument(returnRequest),
   });
 });
 
@@ -222,7 +224,7 @@ export const getReturnRequests = asyncHandler(async (req, res) => {
 
   sendResponse(res, {
     message: "Return requests retrieved successfully",
-    data: returns,
+    data: returns.map(enrichReturnDocument),
     pagination: { ...pagination, results: returns.length },
   });
 });
@@ -245,7 +247,7 @@ export const getReturnRequest = asyncHandler(async (req, res, next) => {
 
   sendResponse(res, {
     message: "Return request retrieved successfully",
-    data: returnRequest,
+    data: enrichReturnDocument(returnRequest),
   });
 });
 
@@ -273,7 +275,7 @@ export const updateReturnStatus = asyncHandler(async (req, res, next) => {
     const finalized = await finalizeReturnRefund(returnRequest);
     return sendResponse(res, {
       message: "Return refunded successfully",
-      data: finalized,
+      data: enrichReturnDocument(finalized),
     });
   }
 
@@ -314,9 +316,14 @@ export const updateReturnStatus = asyncHandler(async (req, res, next) => {
     returnRequest.manualRefundNote = req.body.manualRefundNote;
   await returnRequest.save();
 
+  let updated = returnRequest;
+  if (returnRequest.bostaReturnTrackingNumber) {
+    updated = await syncReturnTrackingFromBosta(returnRequest);
+  }
+
   sendResponse(res, {
     message: "Return request status updated successfully",
-    data: returnRequest,
+    data: enrichReturnDocument(updated),
   });
 });
 
@@ -357,6 +364,6 @@ export const retryBostaPickup = asyncHandler(async (req, res, next) => {
 
   sendResponse(res, {
     message: "Bosta return pickup created successfully",
-    data: returnRequest,
+    data: enrichReturnDocument(returnRequest),
   });
 });

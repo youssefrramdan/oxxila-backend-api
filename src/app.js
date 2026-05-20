@@ -30,6 +30,7 @@ import {
   stripeWebhook,
   paymobWebhook,
   paymobRedirect,
+  bostaWebhook,
 } from "./controllers/payment.controller.js";
 import { startOfferCron } from "./utils/offerCron.js";
 
@@ -69,6 +70,7 @@ app.post(
 );
 app.get("/api/v1/webhooks/paymob", paymobRedirect);
 app.post("/api/v1/webhooks/paymob", express.json(), paymobWebhook);
+app.post("/api/v1/webhooks/bosta", express.json(), bostaWebhook);
 
 app.use(express.json());
 app.use(cookieParser());

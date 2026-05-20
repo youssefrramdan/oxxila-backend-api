@@ -66,6 +66,7 @@ export const updateOrderStatusValidator = [
     .notEmpty()
     .withMessage('orderStatus is required')
     .isIn([
+      'confirmed',
       'pending',
       'processing',
       'shipped',

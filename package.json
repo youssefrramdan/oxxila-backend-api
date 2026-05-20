@@ -13,6 +13,7 @@
     "seed:shipping": "node src/scripts/seedShippingZones.js",
     "seed:carriers": "node src/scripts/seedCarriers.js",
     "seed:bosta-zones": "node src/scripts/seedBostaZones.js",
+    "migrate:statuses": "node src/scripts/migrateOrderReturnStatuses.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "engines": {

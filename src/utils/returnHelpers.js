@@ -1,6 +1,7 @@
 // src/utils/returnHelpers.js
 import ReturnRequest from '../models/ReturnRequest.js';
 import ApiError from './apiError.js';
+import { buildOrderTrackingPayload } from './orderTracking.js';
 
 export const RETURN_REASONS = [
   'damaged_item',
@@ -158,6 +159,7 @@ export const mapEligibleOrder = async (order) => {
     daysSinceDelivery: Math.floor(
       (Date.now() - new Date(deliveredAt).getTime()) / (24 * 60 * 60 * 1000)
     ),
+    tracking: buildOrderTrackingPayload(order),
     items,
   };
 };

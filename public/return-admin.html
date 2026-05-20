@@ -13,6 +13,7 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"
     />
+    <link rel="stylesheet" href="/css/tracking-ui.css" />
     <style>
       * {
         box-sizing: border-box;
@@ -1138,6 +1139,7 @@
       <div class="drawer-body" id="drawer-body"></div>
       <div class="drawer-footer" id="drawer-footer"></div>
     </div>
+    <script src="/js/tracking-ui.js"></script>
     <script>
       let token = localStorage.getItem("oxxila_admin_token") || "";
       let returns = [];
@@ -1317,7 +1319,7 @@
               ${isCod ? `<div class="cod-chip">💵 COD</div>` : ""}
             </td>
             <td><span style="font-family:var(--mono);font-size:13px">${r.refundAmount} EGP</span></td>
-            <td><span class="status-badge sb-${r.refundStatus}">${r.refundStatus.replace("_", " ")}</span></td>
+            <td><span class="status-badge sb-${r.refundStatus}">${esc(window.OxxilaTracking ? OxxilaTracking.returnStatusLabel(r.refundStatus) : r.refundStatus.replace("_", " "))}</span></td>
             <td style="font-size:12px;color:var(--muted)">${new Date(r.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</td>
           </tr>`;
           })
@@ -1349,8 +1351,15 @@
 
         document.getElementById("dr-title").textContent =
           "Return #" + String(r._id).slice(-8).toUpperCase();
+        const statusLabel = window.OxxilaTracking
+          ? OxxilaTracking.returnStatusLabel(r.refundStatus)
+          : r.refundStatus.replace("_", " ");
         document.getElementById("dr-sub").innerHTML =
-          `<span class="status-badge sb-${r.refundStatus}" style="font-size:10px">${r.refundStatus.replace("_", " ")}</span>`;
+          `<span class="status-badge sb-${r.refundStatus}" style="font-size:10px">${esc(statusLabel)}</span>`;
+
+        const trackerHtml = window.OxxilaTracking
+          ? OxxilaTracking.renderReturnTracker(r)
+          : "";
 
         const proofHtml = r.proofImages?.length
           ? `
@@ -1399,6 +1408,7 @@
           : "";
 
         document.getElementById("drawer-body").innerHTML = `
+          ${trackerHtml ? `<div class="detail-section" style="padding-bottom:0">${trackerHtml}</div>` : ""}
           <!-- CUSTOMER -->
           <div class="detail-section">
             <div class="detail-section-title">Customer</div>

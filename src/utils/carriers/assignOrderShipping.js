@@ -4,9 +4,13 @@ import District from "../../models/District.js";
 import Governorate from "../../models/Governorate.js";
 import User from "../../models/User.js";
 import ApiError from "../apiError.js";
-import { getBostaCredentials } from "./bostaCredentials.js";
-import { createBostaDelivery, enrichBostaAddress } from "./bosta.js";
-import { findDefaultPickup } from "./bostaPickup.js";
+import {
+  getBostaCredentials,
+  createBostaDelivery,
+  enrichBostaAddress,
+  findDefaultPickup,
+} from "./bosta.js";
+import { mapBostaStateToOrderStatus } from "./bostaFulfillment.js";
 
 const BLOCKED_STATUSES = new Set(["cancelled", "delivered", "returned"]);
 
@@ -152,7 +156,11 @@ export const assignOrderToCarrier = async (
     }
 
     await assignBosta(order, carrier, fulfillmentBase, options, credentials);
-    orderStatus = "shipped";
+    orderStatus =
+      mapBostaStateToOrderStatus(
+        fulfillmentBase.bostaState,
+        options.markShipped === false ? "processing" : "processing",
+      ) ?? "processing";
   } else if (carrier.type === "known" || carrier.type === "internal") {
     if (options.markShipped !== true && !fulfillmentBase.trackingNumber) {
       orderStatus = "processing";

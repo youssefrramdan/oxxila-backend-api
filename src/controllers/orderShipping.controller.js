@@ -7,7 +7,8 @@ import District from "../models/District.js";
 import ApiError from "../utils/apiError.js";
 import sendResponse from "../utils/apiResponse.js";
 import { assignOrderToCarrier } from "../utils/carriers/assignOrderShipping.js";
-import { carrierIdsWithDefaultPickup } from "../utils/carriers/bostaPickup.js";
+import { carrierIdsWithDefaultPickup } from "../utils/carriers/bosta.js";
+import { enrichOrderDocument } from "../utils/orderTracking.js";
 
 /**
  * @desc    Order detail + assignable carriers for shipping admin
@@ -45,7 +46,7 @@ export const getOrderShippingDetail = asyncHandler(async (req, res, next) => {
   );
 
   const data = {
-    order,
+    order: enrichOrderDocument(order),
     districtBosta,
     carriers: carriers.map((c) => ({
       ...c.toObject(),
@@ -95,7 +96,7 @@ export const assignOrderShipping = asyncHandler(async (req, res, next) => {
 
     sendResponse(res, {
       message: "Carrier assigned to order successfully",
-      data: updated,
+      data: enrichOrderDocument(updated),
     });
   } catch (err) {
     if (err.statusCode) return next(new ApiError(err.message, err.statusCode));

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -274,6 +274,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
 .toast.err{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,.3);}
 .toast.ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
 </style>
+<link rel="stylesheet" href="/css/tracking-ui.css">
 </head>
 <body>
 
@@ -462,6 +463,8 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
         <div class="order-filter">
           <div class="order-filter-btn active" onclick="filterOrders('all',this)">All</div>
           <div class="order-filter-btn" onclick="filterOrders('pending',this)">Pending</div>
+          <div class="order-filter-btn" onclick="filterOrders('confirmed',this)">Confirmed</div>
+          <div class="order-filter-btn" onclick="filterOrders('processing',this)">Processing</div>
           <div class="order-filter-btn" onclick="filterOrders('shipped',this)">Shipped</div>
           <div class="order-filter-btn" onclick="filterOrders('delivered',this)">Delivered</div>
         </div>
@@ -650,6 +653,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
   </div>
 </div>
 
+<script src="/js/tracking-ui.js"></script>
 <script src="js/shipping-admin.pickups.js"></script>
 <script src="js/shipping-admin.app.js"></script>
 </body>

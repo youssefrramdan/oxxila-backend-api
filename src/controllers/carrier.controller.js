@@ -7,11 +7,11 @@ import Governorate from "../models/Governorate.js";
 import ApiError from "../utils/apiError.js";
 import sendResponse from "../utils/apiResponse.js";
 import {
-  getBostaCredentials,
   normalizeBostaBaseUrl,
-} from "../utils/carriers/bostaCredentials.js";
-import { syncBostaCarrierCoverage } from "../utils/carriers/bostaSync.js";
-import { fetchBostaCityDistricts } from "../utils/carriers/bosta.js";
+  getBostaCredentials,
+  fetchBostaCityDistricts,
+} from "../utils/carriers/bosta.js";
+import { syncBostaCarrierCoverage } from "../utils/carriers/bostaFulfillment.js";
 
 const mapCarrierForAdmin = (c, coverages) => ({
   ...c.toObject(),

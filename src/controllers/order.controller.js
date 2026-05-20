@@ -6,6 +6,7 @@ import sendResponse from '../utils/apiResponse.js';
 import { prepareCheckoutFromCart, fulfillCheckout } from '../utils/checkoutHelpers.js';
 import { queryPaginatedOrders } from '../utils/orderQueryHelpers.js';
 import { processCardOrderRefund } from '../utils/orderRefundHelpers.js';
+import { enrichOrderDocument } from '../utils/orderTracking.js';
 
 const findUserOrder = async (orderId, userId) =>
   Order.findOne({ _id: orderId, user: userId });
@@ -41,7 +42,7 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   sendResponse(res, {
     statusCode: 201,
     message: 'Order created successfully',
-    data: order,
+    data: enrichOrderDocument(order),
   });
 });
 
@@ -55,7 +56,7 @@ export const getMyOrders = asyncHandler(async (req, res) => {
 
   sendResponse(res, {
     message: 'Orders retrieved successfully',
-    data: orders,
+    data: orders.map(enrichOrderDocument),
     pagination,
   });
 });
@@ -69,7 +70,10 @@ export const getMyOrder = asyncHandler(async (req, res, next) => {
   const order = await findUserOrder(req.params.id, req.user._id);
   if (!order) return next(new ApiError(`No order found with id: ${req.params.id}`, 404));
 
-  sendResponse(res, { message: 'Order retrieved successfully', data: order });
+  sendResponse(res, {
+    message: 'Order retrieved successfully',
+    data: enrichOrderDocument(order),
+  });
 });
 
 /**
@@ -82,7 +86,7 @@ export const getOrders = asyncHandler(async (req, res) => {
 
   sendResponse(res, {
     message: 'Orders retrieved successfully',
-    data: orders,
+    data: orders.map(enrichOrderDocument),
     pagination,
   });
 });
@@ -96,7 +100,10 @@ export const getOrder = asyncHandler(async (req, res, next) => {
   const order = await Order.findById(req.params.id).populate('user', 'name email phone');
   if (!order) return next(new ApiError(`No order found with id: ${req.params.id}`, 404));
 
-  sendResponse(res, { message: 'Order retrieved successfully', data: order });
+  sendResponse(res, {
+    message: 'Order retrieved successfully',
+    data: enrichOrderDocument(order),
+  });
 });
 
 /**
@@ -120,7 +127,7 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
 
   sendResponse(res, {
     message: 'Order status updated successfully',
-    data: order,
+    data: enrichOrderDocument(order),
   });
 });
 

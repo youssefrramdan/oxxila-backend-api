@@ -4,8 +4,8 @@ import Carrier from '../models/Carrier.js';
 import CarrierPickup from '../models/CarrierPickup.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
-import { getBostaCredentials } from '../utils/carriers/bostaCredentials.js';
 import {
+  getBostaCredentials,
   buildPickupLocationPayload,
   createBostaPickupLocation,
   deleteBostaPickupLocation,
@@ -15,7 +15,7 @@ import {
   listPickupsFromDb,
   syncPickupsToDb,
   reconcilePickupDefaultsFromBosta,
-} from '../utils/carriers/bostaPickup.js';
+} from '../utils/carriers/bosta.js';
 
 const requireBostaCarrier = async (carrierId, next) => {
   const carrier = await Carrier.findById(carrierId);

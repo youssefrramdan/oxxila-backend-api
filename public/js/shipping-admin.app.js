@@ -1,4 +1,4 @@
-﻿// public/js/shipping-admin.app.js
+// public/js/shipping-admin.app.js
 let token = localStorage.getItem("oxxila_admin_token") || "";
 let carriers = [];
 let countries = [];
@@ -721,17 +721,37 @@ function updateOrdersBadge() {
   if (!badge) return;
   const n = orders.filter(
     (o) =>
-      ["pending", "processing"].includes(o.orderStatus) &&
+      ["confirmed", "pending", "processing"].includes(o.orderStatus) &&
       !o.fulfillment?.carrier,
   ).length;
   badge.textContent = n > 0 ? String(n) : "0";
 }
 
 function orderStatusClass(status) {
+  if (window.OxxilaTracking) return OxxilaTracking.orderStatusClass(status);
   if (status === "shipped") return "os-shipped";
   if (status === "delivered") return "os-delivered";
   if (status === "processing") return "os-assigned";
+  if (status === "confirmed") return "os-confirmed";
   return "os-pending";
+}
+
+function orderStatusLabel(status) {
+  return window.OxxilaTracking
+    ? OxxilaTracking.orderStatusLabel(status)
+    : status;
+}
+
+async function confirmOrder(orderId) {
+  try {
+    await api("PATCH", "/orders/" + orderId + "/status", {
+      orderStatus: "confirmed",
+    });
+    await loadOrders();
+    toast("Order confirmed");
+  } catch (e) {
+    toast(e.message, true);
+  }
 }
 
 function shortId(id) {
@@ -758,22 +778,30 @@ function renderOrders() {
       const carrier = o.fulfillment?.carrierName || "—";
       const tracking =
         o.fulfillment?.trackingNumber || o.fulfillment?.driverName || "—";
-      const canAssign =
-        ["pending", "processing"].includes(o.orderStatus) &&
-        !o.fulfillment?.carrier;
+      const canAssign = window.OxxilaTracking
+        ? OxxilaTracking.canAssignOrder(o)
+        : ["confirmed", "pending", "processing"].includes(o.orderStatus) &&
+          !o.fulfillment?.carrier;
+      const needsConfirm = window.OxxilaTracking?.needsConfirmOrder(o);
+      const actions = [
+        needsConfirm
+          ? `<button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;margin-right:4px" onclick="confirmOrder('${o._id}')">Confirm</button>`
+          : "",
+        canAssign
+          ? `<button class="btn btn-primary" style="font-size:11px;padding:5px 10px" onclick="openAssign('${o._id}')">Assign</button>`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("") || '<span style="color:var(--muted2);font-size:11px">—</span>';
       return `
     <tr>
       <td style="font-family:var(--mono);font-size:12px">#${shortId(o._id)}</td>
       <td><div style="font-size:13px">${esc(user.name || "—")}</div><div style="font-size:10px;color:var(--muted)">${esc(user.email || "")}</div></td>
       <td style="font-size:12px">${esc(zone)}</td>
       <td style="font-size:12px">${esc(carrier)}</td>
-      <td><span class="order-status ${orderStatusClass(o.orderStatus)}">${esc(o.orderStatus)}</span></td>
+      <td><span class="order-status ${orderStatusClass(o.orderStatus)}">${esc(orderStatusLabel(o.orderStatus))}</span></td>
       <td style="font-size:11px;font-family:var(--mono);color:var(--muted)">${esc(tracking)}</td>
-      <td>${
-        canAssign
-          ? `<button class="btn btn-primary" style="font-size:11px;padding:5px 10px" onclick="openAssign('${o._id}')">Assign</button>`
-          : '<span style="color:var(--muted2);font-size:11px">—</span>'
-      }</td>
+      <td style="white-space:nowrap">${actions}</td>
     </tr>`;
     })
     .join("");
@@ -846,13 +874,24 @@ function renderAssignDrawer() {
         .join("")}`;
   };
 
+  const tracker = window.OxxilaTracking
+    ? OxxilaTracking.renderOrderTracker(o)
+    : "";
+  const banner = window.OxxilaTracking
+    ? OxxilaTracking.renderOrderStatusBanner(o)
+    : "";
+
   body.innerHTML = `
     <div class="assign-order-info">
-      <p>Order <strong>#${shortId(o._id)}</strong></p>
+      <p>Order <strong>#${shortId(o._id)}</strong>
+        <span class="order-status ${orderStatusClass(o.orderStatus)}" style="margin-left:8px;font-size:10px">${esc(orderStatusLabel(o.orderStatus))}</span>
+      </p>
       <p>Customer: <strong>${esc(user.name)}</strong> · ${esc(user.phone || "no phone")}</p>
       <p>Zone: <strong>${esc(o.shippingAddress?.governorateName)} / ${esc(o.shippingAddress?.districtName)}</strong></p>
       <p>Total: <strong>${o.totalPrice} EGP</strong> · ${esc(o.paymentMethod)}</p>
     </div>
+    ${tracker}
+    ${banner}
     ${bostaWarn}
 
     <div class="form-group" style="margin-bottom:14px">

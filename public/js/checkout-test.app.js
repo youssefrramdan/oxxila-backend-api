@@ -415,17 +415,26 @@ async function loadMyOrders() {
     box.innerHTML = '<p class="empty-inline">No orders yet</p>';
     return;
   }
+  const T = window.OxxilaTracking;
   box.innerHTML = orders
     .map((o) => {
       const refundBtn = canRefundOrder(o)
         ? `<button type="button" class="btn-refund" onclick="refundOrder('${o._id}', this)"><i class="ti ti-receipt-refund"></i> Refund</button>`
         : '';
       const provider = o.paymentProvider ? ` · ${o.paymentProvider}` : '';
+      const statusLabel = T ? T.orderStatusLabel(o.orderStatus) : o.orderStatus;
+      const tracker = T ? T.renderOrderTracker(o) : '';
+      const banner = T ? T.renderOrderStatusBanner(o) : '';
       return `
     <div class="order-card">
-      <div class="order-top"><span class="order-id">#${o._id.slice(-8)}</span><span class="badge ${o.paymentStatus}">${o.paymentStatus}</span></div>
+      <div class="order-top">
+        <span class="order-id">#${o._id.slice(-8)}</span>
+        <span class="badge order-status-pill ${T ? T.orderStatusClass(o.orderStatus) : ''}">${statusLabel}</span>
+      </div>
+      ${tracker}
+      ${banner}
       <div>${o.items?.length || 0} items · <strong>${o.totalPrice} EGP</strong></div>
-      <div class="order-meta">${o.paymentMethod}${provider} · ${o.orderStatus} · ${new Date(o.createdAt).toLocaleString()}</div>
+      <div class="order-meta">${o.paymentMethod}${provider} · ${new Date(o.createdAt).toLocaleString()}</div>
       ${refundBtn}
     </div>`;
     })

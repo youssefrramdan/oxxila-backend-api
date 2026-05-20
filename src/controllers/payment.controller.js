@@ -12,6 +12,7 @@ import {
   processPaymobTransaction,
 } from '../utils/payment/paymob.js';
 import { constructStripeEvent, handleStripeWebhookEvent } from '../utils/payment/stripe.js';
+import { handleBostaWebhookPayload } from '../utils/carriers/bostaFulfillment.js';
 
 /**
  * @desc    Start card checkout — order is created on provider webhook success
@@ -137,5 +138,36 @@ export const getPaymentSessionStatus = asyncHandler(async (req, res, next) => {
       totalPrice: paymentSession.totalPrice,
       order: paymentSession.order,
     },
+  });
+});
+
+const verifyBostaWebhook = (req) => {
+  const secret = process.env.BOSTA_WEBHOOK_SECRET?.trim();
+  if (!secret) return;
+
+  const header =
+    req.headers['x-bosta-signature'] ||
+    req.headers['x-webhook-secret'] ||
+    req.headers.authorization;
+
+  if (header !== secret && header !== `Bearer ${secret}`) {
+    throw new ApiError('Invalid Bosta webhook signature', 401);
+  }
+};
+
+/**
+ * @desc    Bosta delivery state webhook
+ * @route   POST /api/v1/webhooks/bosta
+ */
+export const bostaWebhook = asyncHandler(async (req, res) => {
+  verifyBostaWebhook(req);
+
+  const result = await handleBostaWebhookPayload(req.body);
+
+  sendResponse(res, {
+    message: result.handled
+      ? 'Bosta webhook processed successfully'
+      : 'Bosta webhook received (no matching record)',
+    data: result,
   });
 });
