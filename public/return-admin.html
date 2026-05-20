@@ -1362,15 +1362,20 @@
           </div>`
           : "";
 
+        const bm = r.bostaReturnMeta || {};
         const bostaHtml = isBosta
           ? `
           <div class="detail-section">
-            <div class="detail-section-title">Bosta reverse pickup</div>
+            <div class="detail-section-title">Bosta return pickup (CRP)</div>
             <div class="bosta-info">
-              <div class="bi-label">Delivery ID</div>
-              <div class="bi-val">${esc(r.bostaReturnDeliveryId)}</div>
-              ${r.bostaReturnTrackingNumber ? `<div class="bi-label" style="margin-top:10px">Tracking number</div><div class="bi-val">${esc(r.bostaReturnTrackingNumber)}</div>` : ""}
+              ${r.bostaReturnTrackingNumber ? `<div class="bi-label">Tracking number</div><div class="bi-val">${esc(r.bostaReturnTrackingNumber)}</div>` : ""}
               ${r.bostaReturnState ? `<div class="bi-label" style="margin-top:10px">State</div><div class="bi-val" style="font-size:12px">${esc(r.bostaReturnState)}</div>` : ""}
+              <div class="bi-label" style="margin-top:10px">Delivery ID</div>
+              <div class="bi-val" style="font-size:11px">${esc(r.bostaReturnDeliveryId)}</div>
+              ${bm.customerFullName ? `<div class="bi-label" style="margin-top:10px">Customer (Bosta)</div><div class="bi-val">${esc(bm.customerFullName)} · ${esc(bm.customerPhone || "")}</div>` : ""}
+              ${bm.customerAddressSummary ? `<div class="bi-label" style="margin-top:10px">Pickup from</div><div class="bi-val" style="font-size:12px">${esc(bm.customerAddressSummary)}</div>` : ""}
+              ${bm.warehouseLocationName ? `<div class="bi-label" style="margin-top:10px">Warehouse</div><div class="bi-val" style="font-size:12px">${esc(bm.warehouseLocationName)}${bm.warehouseAddressSummary ? " — " + esc(bm.warehouseAddressSummary) : ""}</div>` : ""}
+              ${bm.returnPackageDescription ? `<div class="bi-label" style="margin-top:10px">Return package</div><div class="bi-val" style="font-size:12px">${esc(bm.returnPackageDescription)}${bm.itemsCount ? " · " + bm.itemsCount + " pcs" : ""}</div>` : ""}
             </div>
           </div>`
           : "";
@@ -1603,10 +1608,12 @@
       async function advanceStatus(nextStatus) {
         if (!currentReturn) return;
 
-        // Approve + pickup → must choose warehouse first
+        // Approve + pickup on Bosta-shipped order → choose warehouse for CRP
         if (
           nextStatus === "approved" &&
-          currentReturn.returnMethod === "pickup"
+          currentReturn.returnMethod === "pickup" &&
+          !currentReturn.bostaReturnDeliveryId &&
+          currentReturn.order?.fulfillment?.carrierType === "api"
         ) {
           const pickups = await loadBostaPickups();
           if (!pickups.length) {

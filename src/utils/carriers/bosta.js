@@ -257,38 +257,6 @@ export const createBostaDelivery = async (params, credentials) => {
   );
 };
 
-// type 25 = Return delivery:
-// - pickupAddress = customer address (Bosta picks up from here)
-// - dropOffAddress = warehouse address (Bosta delivers to here)
-// - receiver = business contact (warehouse)
-// - cod always 0 — no cash collected on returns
-export const createBostaReturnDelivery = async (params, credentials) => {
-  const { firstName, lastName } = splitBostaContactName(
-    params.businessContactName,
-  );
-  const specs = buildBostaSpecs(params.packageSpecs);
-
-  return bostaRequest(
-    "POST",
-    "/api/v2/deliveries?apiVersion=1",
-    {
-      type: 25,
-      specs,
-      receiver: {
-        firstName,
-        lastName,
-        phone: params.businessPhone,
-      },
-      pickupAddress: params.customerAddress,
-      dropOffAddress: params.warehouseAddress,
-      cod: 0,
-      businessReference: params.businessReference,
-      notes: params.notes ?? "",
-    },
-    credentials,
-  );
-};
-
 export const trackBostaDelivery = async (trackingNumber, credentials) =>
   bostaRequest(
     "GET",

@@ -15,6 +15,7 @@ import {
   createReturnValidator,
   returnIdParamValidator,
   updateReturnStatusValidator,
+  retryBostaPickupValidator,
 } from "../validators/return.validator.js";
 import { protectedRoutes, allowTo } from "../middlewares/auth.middleware.js";
 import ApiError from "../utils/apiError.js";
@@ -49,7 +50,12 @@ router.post(
   createReturnValidator,
   createReturnRequest,
 );
-router.patch("/:id/bosta-retry", allowTo("admin"), retryBostaPickup);
+router.patch(
+  "/:id/bosta-retry",
+  allowTo("admin"),
+  retryBostaPickupValidator,
+  retryBostaPickup,
+);
 
 router.get("/my-returns", getMyReturnRequests);
 router.get("/my-returns/:id", returnIdParamValidator, getMyReturnRequest);

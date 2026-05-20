@@ -76,6 +76,18 @@ export const returnIdParamValidator = [
   validate,
 ];
 
+const bostaPickupFields = [
+  body("pickupLocationId")
+    .optional()
+    .isMongoId()
+    .withMessage("Invalid pickupLocationId"),
+
+  body("size")
+    .optional()
+    .isIn(["SMALL", "MEDIUM", "LARGE", "XLARGE", "Light Bulky", "Heavy Bulky"])
+    .withMessage("Invalid Bosta package size"),
+];
+
 export const updateReturnStatusValidator = [
   param("id").isMongoId().withMessage("Invalid return request ID"),
 
@@ -92,6 +104,25 @@ export const updateReturnStatusValidator = [
     .trim()
     .isLength({ max: 500 })
     .withMessage("manualRefundNote is for COD manual payout notes"),
+
+  ...bostaPickupFields,
+
+  validate,
+];
+
+export const retryBostaPickupValidator = [
+  param("id").isMongoId().withMessage("Invalid return request ID"),
+
+  body("pickupLocationId")
+    .notEmpty()
+    .withMessage("pickupLocationId is required")
+    .isMongoId()
+    .withMessage("Invalid pickupLocationId"),
+
+  body("size")
+    .optional()
+    .isIn(["SMALL", "MEDIUM", "LARGE", "XLARGE", "Light Bulky", "Heavy Bulky"])
+    .withMessage("Invalid Bosta package size"),
 
   validate,
 ];

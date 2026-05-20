@@ -16,6 +16,21 @@ const returnItemSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const bostaReturnMetaSchema = new mongoose.Schema(
+  {
+    customerFullName: { type: String, default: null },
+    customerPhone: { type: String, default: null },
+    customerAddressSummary: { type: String, default: null },
+    warehouseLocationName: { type: String, default: null },
+    warehouseAddressSummary: { type: String, default: null },
+    packageDescription: { type: String, default: null },
+    returnPackageDescription: { type: String, default: null },
+    itemsCount: { type: Number, default: null },
+    bostaType: { type: String, default: null },
+  },
+  { _id: false },
+);
+
 const pickupAddressSchema = new mongoose.Schema(
   {
     city: { type: String, required: true, trim: true, maxlength: 100 },
@@ -95,11 +110,11 @@ const returnRequestSchema = new mongoose.Schema(
     restocked: { type: Boolean, default: false },
     refundedAt: { type: Date, default: null },
 
-    // Bosta reverse pickup — populated on approve when returnMethod === 'pickup'
-    // and the original order was shipped via a Bosta carrier
+    // Bosta Customer Return Pickup (type 30) — set when admin approves pickup returns
     bostaReturnDeliveryId: { type: String, default: null },
     bostaReturnTrackingNumber: { type: String, default: null },
     bostaReturnState: { type: String, default: null },
+    bostaReturnMeta: { type: bostaReturnMetaSchema, default: null },
   },
   { timestamps: true },
 );
