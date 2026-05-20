@@ -1342,27 +1342,7 @@
         distWrap.style.display = "";
         try {
           const res = await api("GET", `/shipping/governorates/${govId}/zones`);
-          addrHasDistricts = res.hasDistricts || false;
-          if (addrHasDistricts && res.districts?.length) {
-            addrDistricts = res.districts;
-            const opts = [`<option value="">— Select district —</option>`];
-            res.districts.forEach((d) =>
-              opts.push(`<option value="${d._id}">${esc(d.name)}</option>`),
-            );
-            if (res.other)
-              opts.push(
-                `<option value="other">${esc(res.other.label || "Other")}</option>`,
-              );
-            distSel.innerHTML = opts.join("");
-            distSel.disabled = false;
-          } else {
-            // no districts — governorate level only
-            addrHasDistricts = false;
-            distWrap.style.display = "none";
-          }
-        } catch (e) {
-          const res = await api("GET", `/shipping/governorates/${govId}/zones`);
-          const zones = res.data; // ← إضافة دي
+          const zones = res.data; // ← الـ data جوا res.data
           addrHasDistricts = zones.hasDistricts || false;
           if (addrHasDistricts && zones.districts?.length) {
             addrDistricts = zones.districts;
@@ -1380,6 +1360,8 @@
             addrHasDistricts = false;
             distWrap.style.display = "none";
           }
+        } catch (e) {
+          distWrap.style.display = "none"; // ← بس كده، مش API call تاني
         } finally {
           wrap.classList.remove("loading");
         }
