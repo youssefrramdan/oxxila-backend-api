@@ -47,7 +47,6 @@
         --radius: 12px;
         --radius-lg: 18px;
       }
-
       body {
         font-family: var(--font);
         background: var(--bg);
@@ -56,8 +55,6 @@
         font-size: 14px;
         line-height: 1.6;
       }
-
-      /* bg pattern */
       body::before {
         content: "";
         position: fixed;
@@ -70,7 +67,6 @@
         pointer-events: none;
         z-index: 0;
       }
-
       .wrap {
         max-width: 900px;
         margin: 0 auto;
@@ -78,8 +74,6 @@
         position: relative;
         z-index: 1;
       }
-
-      /* NAV */
       nav {
         border-bottom: 1px solid var(--border);
         backdrop-filter: blur(12px);
@@ -122,8 +116,6 @@
       .nav-link.active {
         color: var(--accent);
       }
-
-      /* PAGE HEADER */
       .page-header {
         padding: 40px 0 28px;
       }
@@ -138,8 +130,6 @@
         color: var(--muted);
         font-size: 14px;
       }
-
-      /* TABS */
       .tabs-row {
         display: flex;
         gap: 4px;
@@ -164,8 +154,6 @@
         color: #0e0e14;
         font-weight: 600;
       }
-
-      /* SECTION */
       .section-label {
         font-size: 11px;
         font-weight: 500;
@@ -175,8 +163,6 @@
         margin-bottom: 12px;
         padding-left: 2px;
       }
-
-      /* ELIGIBLE ORDER CARD */
       .order-card {
         background: var(--card);
         border: 1px solid var(--border);
@@ -184,6 +170,7 @@
         overflow: hidden;
         margin-bottom: 12px;
         transition: border-color 0.2s;
+        animation: fadeUp 0.3s ease both;
       }
       .order-card:hover {
         border-color: var(--border2);
@@ -241,13 +228,11 @@
       }
       .expand-icon {
         color: var(--muted);
-        font-size: 18px;
         transition: transform 0.25s;
       }
       .expand-icon.open {
         transform: rotate(180deg);
       }
-
       .order-items {
         display: none;
         padding: 0 20px 16px;
@@ -259,7 +244,6 @@
         display: grid;
         gap: 8px;
       }
-
       .item-row {
         display: flex;
         align-items: center;
@@ -361,13 +345,6 @@
         min-width: 20px;
         text-align: center;
       }
-      .item-max {
-        font-size: 10px;
-        color: var(--muted);
-        text-align: center;
-        margin-top: 3px;
-      }
-
       .order-actions {
         display: flex;
         align-items: center;
@@ -405,8 +382,6 @@
         opacity: 0.4;
         cursor: not-allowed;
       }
-
-      /* RETURNS LIST */
       .returns-list {
         display: flex;
         flex-direction: column;
@@ -418,6 +393,7 @@
         border-radius: var(--radius-lg);
         padding: 18px 20px;
         transition: border-color 0.2s;
+        animation: fadeUp 0.3s ease both;
       }
       .return-card:hover {
         border-color: var(--border2);
@@ -504,8 +480,6 @@
         font-size: 12px;
         color: var(--blue);
       }
-
-      /* STEPPER */
       .stepper {
         display: flex;
         align-items: center;
@@ -516,7 +490,6 @@
       .step {
         display: flex;
         align-items: center;
-        gap: 0;
       }
       .step-circle {
         width: 28px;
@@ -550,18 +523,9 @@
         flex-shrink: 0;
         transition: background 0.3s;
       }
-      .step.done + .step .step-line,
       .step.done .step-line {
         background: var(--green);
       }
-      .step-label {
-        font-size: 10px;
-        color: var(--muted);
-        white-space: nowrap;
-        display: none;
-      }
-
-      /* MODAL */
       .modal-overlay {
         position: fixed;
         inset: 0;
@@ -623,8 +587,6 @@
         display: flex;
         gap: 10px;
       }
-
-      /* FORM */
       .form-group {
         margin-bottom: 16px;
       }
@@ -637,6 +599,32 @@
         color: var(--muted);
         margin-bottom: 7px;
       }
+
+      /* ── select wrapper with spinner (same pattern as checkout) ── */
+      .sel-wrap {
+        position: relative;
+      }
+      .sel-spin {
+        display: none;
+        position: absolute;
+        right: 36px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 13px;
+        height: 13px;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        pointer-events: none;
+      }
+      .sel-wrap.loading .sel-spin {
+        display: block;
+      }
+      .sel-wrap.loading select {
+        opacity: 0.5;
+      }
+
       .form-input {
         width: 100%;
         background: var(--card);
@@ -655,6 +643,10 @@
       .form-input::placeholder {
         color: var(--muted2);
       }
+      .form-input:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
       .form-select {
         width: 100%;
         background: var(--card);
@@ -670,10 +662,16 @@
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a7a96' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
         background-repeat: no-repeat;
         background-position: right 13px center;
+        padding-right: 34px;
+        transition: border 0.15s;
       }
       .form-select:focus {
         border-color: var(--accent);
         outline: none;
+      }
+      .form-select:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
       }
       .form-select option {
         background: var(--card2);
@@ -698,7 +696,6 @@
       .form-textarea::placeholder {
         color: var(--muted2);
       }
-
       .method-options {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -732,7 +729,6 @@
         color: var(--muted);
         margin-top: 2px;
       }
-
       .proof-area {
         border: 1.5px dashed var(--border2);
         border-radius: 10px;
@@ -753,13 +749,6 @@
         font-size: 12px;
         color: var(--muted);
       }
-      .proof-required {
-        font-size: 11px;
-        color: var(--amber);
-        margin-top: 6px;
-        display: none;
-      }
-
       .refund-summary {
         background: var(--accent-dim);
         border: 1px solid var(--accent-border);
@@ -778,6 +767,19 @@
         font-size: 20px;
         font-family: var(--mono);
         color: var(--accent2);
+      }
+
+      /* addr section divider */
+      .addr-divider {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 12px;
+        padding-top: 4px;
+        border-top: 1px solid var(--border);
+        padding-top: 14px;
       }
 
       .btn {
@@ -815,8 +817,6 @@
         color: var(--text);
         background: rgba(255, 255, 255, 0.04);
       }
-
-      /* LOGIN */
       .login-screen {
         position: fixed;
         inset: 0;
@@ -843,8 +843,6 @@
         color: var(--accent);
         margin-bottom: 20px;
       }
-
-      /* TOAST */
       .toast {
         position: fixed;
         bottom: 24px;
@@ -871,8 +869,6 @@
         color: var(--red);
         border: 1px solid var(--red-border);
       }
-
-      /* EMPTY */
       .empty {
         text-align: center;
         padding: 60px 20px;
@@ -883,11 +879,6 @@
         margin-bottom: 12px;
         opacity: 0.4;
       }
-      .empty p {
-        font-size: 14px;
-      }
-
-      /* SPINNER */
       .spinner {
         display: inline-block;
         width: 16px;
@@ -897,13 +888,6 @@
         border-radius: 50%;
         animation: spin 0.6s linear infinite;
       }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      /* UPLOAD PREVIEW */
       .proof-previews {
         display: flex;
         flex-wrap: wrap;
@@ -917,8 +901,6 @@
         object-fit: cover;
         border: 1px solid var(--border2);
       }
-
-      /* scrollbar */
       ::-webkit-scrollbar {
         width: 4px;
       }
@@ -926,7 +908,11 @@
         background: var(--muted2);
         border-radius: 4px;
       }
-
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
       @keyframes fadeUp {
         from {
           opacity: 0;
@@ -936,10 +922,6 @@
           opacity: 1;
           transform: none;
         }
-      }
-      .order-card,
-      .return-card {
-        animation: fadeUp 0.3s ease both;
       }
     </style>
   </head>
@@ -953,7 +935,7 @@
           <input
             class="form-input"
             id="api-base"
-            value="http://localhost:3000/api/v1"
+            value="https://oxxila-api-01ced6342147.herokuapp.com/api/v1"
           />
         </div>
         <div class="form-group">
@@ -990,7 +972,6 @@
 
     <div class="toast" id="toast"></div>
 
-    <!-- NAV -->
     <nav>
       <div class="wrap nav-inner">
         <div class="brand">Oxxila</div>
@@ -1004,10 +985,9 @@
 
     <div class="wrap">
       <div class="page-header">
-        <h1>Returns & Refunds</h1>
+        <h1>Returns &amp; Refunds</h1>
         <p>Request a return on eligible orders or track existing requests</p>
       </div>
-
       <div class="tabs-row">
         <div class="tab active" onclick="switchTab('eligible', this)">
           New Return
@@ -1016,8 +996,6 @@
           My Requests
         </div>
       </div>
-
-      <!-- ELIGIBLE ORDERS TAB -->
       <div id="tab-eligible">
         <div class="section-label">Eligible orders (within return window)</div>
         <div id="eligible-list">
@@ -1027,8 +1005,6 @@
           </div>
         </div>
       </div>
-
-      <!-- MY RETURNS TAB -->
       <div id="tab-my-returns" style="display: none">
         <div class="section-label">Your return requests</div>
         <div class="returns-list" id="returns-list">
@@ -1063,417 +1039,697 @@
     </div>
 
     <script>
-      let token = localStorage.getItem('oxxila_customer_token') || '';
-      let currentUser = null;
+      // ── state ─────────────────────────────────────────────────────────────────
+      let token = localStorage.getItem("oxxila_customer_token") || "";
       let eligibleOrders = [];
       let myReturns = [];
       let selectedOrder = null;
       let selectedItems = {};
       let proofFiles = [];
 
-      const REASONS_NEED_PROOF = new Set(['damaged_item','wrong_product','allergic_reaction']);
+      // address dropdown state (inside modal)
+      let addrCountries = [];
+      let addrGovernorates = [];
+      let addrDistricts = [];
+      let addrSelectedGovId = null;
+      let addrSelectedGovName = "";
+      let addrSelectedDistrictId = null;
+      let addrSelectedDistrictName = "";
+      let addrHasDistricts = false;
+
+      const REASONS_NEED_PROOF = new Set([
+        "damaged_item",
+        "wrong_product",
+        "allergic_reaction",
+      ]);
       const REASON_LABELS = {
-        damaged_item:'Damaged item',
-        wrong_product:'Wrong product sent',
-        allergic_reaction:'Allergic reaction',
-        expired_product:'Expired product',
-        changed_mind:'Changed my mind',
-        other:'Other'
+        damaged_item: "Damaged item",
+        wrong_product: "Wrong product sent",
+        allergic_reaction: "Allergic reaction",
+        expired_product: "Expired product",
+        changed_mind: "Changed my mind",
+        other: "Other",
       };
-      const STATUS_STEPS = ['pending','approved','picked_up','received','refunded'];
 
-      const apiBase = () => (document.getElementById('api-base')?.value || localStorage.getItem('oxxila_api_base') || 'http://localhost:3000/api/v1').replace(/\/$/,'');
+      // ── helpers ───────────────────────────────────────────────────────────────
+      const apiBase = () =>
+        (
+          document.getElementById("api-base")?.value ||
+          localStorage.getItem("oxxila_api_base") ||
+          "http://localhost:3000/api/v1"
+        ).replace(/\/$/, "");
+      const esc = (s) =>
+        String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/"/g, "&quot;");
 
-      function toast(msg, isErr=false){
-        const el=document.getElementById('toast');
-        el.textContent=msg;el.className='toast show '+(isErr?'err':'ok');
-        setTimeout(()=>el.classList.remove('show'),3500);
+      function toast(msg, isErr = false) {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.className = "toast show " + (isErr ? "err" : "ok");
+        setTimeout(() => el.classList.remove("show"), 3500);
       }
 
-      async function api(method,path,body){
-        const headers={'Content-Type':'application/json'};
-        if(token) headers.Authorization='Bearer '+token;
-        const res=await fetch(apiBase()+path,{method,headers,body:body!==undefined?JSON.stringify(body):undefined});
-        const data=await res.json().catch(()=>({}));
-        if(!res.ok||data.success===false){const e=new Error(data.message||'Request failed');e.data=data;throw e;}
+      async function api(method, path, body) {
+        const headers = { "Content-Type": "application/json" };
+        if (token) headers.Authorization = "Bearer " + token;
+        const res = await fetch(apiBase() + path, {
+          method,
+          headers,
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success === false) {
+          const e = new Error(data.message || "Request failed");
+          e.data = data;
+          throw e;
+        }
         return data;
       }
 
-      async function apiMultipart(method,path,formData){
-        const headers={};
-        if(token) headers.Authorization='Bearer '+token;
-        const res=await fetch(apiBase()+path,{method,headers,body:formData});
-        const data=await res.json().catch(()=>({}));
-        if(!res.ok||data.success===false){const e=new Error(data.message||'Request failed');e.data=data;throw e;}
+      async function apiMultipart(method, path, formData) {
+        const headers = {};
+        if (token) headers.Authorization = "Bearer " + token;
+        const res = await fetch(apiBase() + path, {
+          method,
+          headers,
+          body: formData,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success === false) {
+          const e = new Error(data.message || "Request failed");
+          e.data = data;
+          throw e;
+        }
         return data;
       }
 
-      function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
-
-      async function doLogin(){
-        const errEl=document.getElementById('login-err');
-        errEl.style.display='none';
-        try{
-          const base=document.getElementById('api-base').value.trim();
-          localStorage.setItem('oxxila_api_base',base);
-          const data=await api('POST','/auth/login',{
-            email:document.getElementById('login-email').value,
-            password:document.getElementById('login-pass').value
+      // ── auth ──────────────────────────────────────────────────────────────────
+      async function doLogin() {
+        const errEl = document.getElementById("login-err");
+        errEl.style.display = "none";
+        try {
+          const base = document.getElementById("api-base").value.trim();
+          localStorage.setItem("oxxila_api_base", base);
+          const data = await api("POST", "/auth/login", {
+            email: document.getElementById("login-email").value,
+            password: document.getElementById("login-pass").value,
           });
-          token=data.data.accessToken;
-          localStorage.setItem('oxxila_customer_token',token);
-          document.getElementById('login-screen').classList.add('hidden');
+          token = data.data.accessToken;
+          localStorage.setItem("oxxila_customer_token", token);
+          document.getElementById("login-screen").classList.add("hidden");
           await loadAll();
-          toast('Welcome back!');
-        }catch(e){
-          errEl.textContent=e.message;errEl.style.display='block';
+          toast("Welcome back!");
+        } catch (e) {
+          errEl.textContent = e.message;
+          errEl.style.display = "block";
         }
       }
-
-      function logout(){
-        token='';
-        localStorage.removeItem('oxxila_customer_token');
-        document.getElementById('login-screen').classList.remove('hidden');
+      function logout() {
+        token = "";
+        localStorage.removeItem("oxxila_customer_token");
+        document.getElementById("login-screen").classList.remove("hidden");
+      }
+      async function loadAll() {
+        await Promise.all([loadEligible(), loadMyReturns()]);
       }
 
-      async function loadAll(){
-        await Promise.all([loadEligible(),loadMyReturns()]);
-      }
-
-      // ── ELIGIBLE ──────────────────────────────────────────────────────────
-      async function loadEligible(){
-        try{
-          const {data}=await api('GET','/returns/eligible-orders');
-          eligibleOrders=data||[];
+      // ── eligible orders ───────────────────────────────────────────────────────
+      async function loadEligible() {
+        try {
+          const { data } = await api("GET", "/returns/eligible-orders");
+          eligibleOrders = data || [];
           renderEligible();
-        }catch(e){
-          document.getElementById('eligible-list').innerHTML=`<div class="empty"><div class="empty-icon">⚠</div><p>${esc(e.message)}</p></div>`;
+        } catch (e) {
+          document.getElementById("eligible-list").innerHTML =
+            `<div class="empty"><div class="empty-icon">⚠</div><p>${esc(e.message)}</p></div>`;
         }
       }
 
-      function renderEligible(){
-        const el=document.getElementById('eligible-list');
-        if(!eligibleOrders.length){
-          el.innerHTML='<div class="empty"><div class="empty-icon">✓</div><p>No eligible orders for return right now.</p></div>';
+      function renderEligible() {
+        const el = document.getElementById("eligible-list");
+        if (!eligibleOrders.length) {
+          el.innerHTML =
+            '<div class="empty"><div class="empty-icon">✓</div><p>No eligible orders for return right now.</p></div>';
           return;
         }
-        el.innerHTML=eligibleOrders.map((o,oi)=>{
-          const pct=Math.max(4,Math.round((1-(o.daysSinceDelivery/14))*100));
-          const barClass=pct>50?'':'pct>20' ? 'warn':'danger';
-          const daysLeft=14-o.daysSinceDelivery;
-          return `
-          <div class="order-card" id="oc-${o._id}">
-            <div class="order-card-header" onclick="toggleOrder('${o._id}')">
-              <div class="order-meta">
-                <div class="order-id">#${String(o._id).slice(-6).toUpperCase()}</div>
-                <div class="order-date">${new Date(o.deliveredAt).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div>
-                <div class="order-window">
-                  <div class="window-bar-wrap"><div class="window-bar ${barClass}" style="width:${pct}%"></div></div>
-                  <div class="window-label">${daysLeft}d left</div>
-                </div>
-              </div>
-              <div style="display:flex;align-items:center;gap:10px">
-                <div style="font-size:13px;font-family:var(--mono);color:var(--muted)">${o.totalPrice} EGP</div>
-                <svg class="expand-icon" id="ei-${o._id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="m6 9 6 6 6-6"/></svg>
-              </div>
+        el.innerHTML = eligibleOrders
+          .map((o) => {
+            const daysLeft = 14 - o.daysSinceDelivery;
+            const pct = Math.max(4, Math.round((daysLeft / 14) * 100));
+            const barClass = pct > 50 ? "" : pct > 20 ? "warn" : "danger";
+            return `
+    <div class="order-card" id="oc-${o._id}">
+      <div class="order-card-header" onclick="toggleOrder('${o._id}')">
+        <div class="order-meta">
+          <div class="order-id">#${String(o._id).slice(-6).toUpperCase()}</div>
+          <div class="order-date">${new Date(o.deliveredAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</div>
+          <div class="order-window">
+            <div class="window-bar-wrap"><div class="window-bar ${barClass}" style="width:${pct}%"></div></div>
+            <div class="window-label">${daysLeft}d left</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="font-size:13px;font-family:var(--mono);color:var(--muted)">${o.totalPrice} EGP</div>
+          <svg class="expand-icon" id="ei-${o._id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+      <div class="order-items" id="oi-${o._id}">
+        <div class="items-grid">
+          ${o.items
+            .map(
+              (item) => `
+          <div class="item-row" id="ir-${o._id}-${item.orderItemId}" onclick="toggleItem('${o._id}','${item.orderItemId}',${item.returnableQuantity})">
+            <div class="item-check">
+              <svg class="item-check-mark" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 5l2.5 2.5 5-4"/></svg>
             </div>
-            <div class="order-items" id="oi-${o._id}">
-              <div class="items-grid">
-                ${o.items.map(item=>`
-                <div class="item-row" id="ir-${o._id}-${item.orderItemId}" onclick="toggleItem('${o._id}','${item.orderItemId}',${item.returnableQuantity})">
-                  <div class="item-check">
-                    <svg class="item-check-mark" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2"><path d="M1.5 5l2.5 2.5 5-4"/></svg>
-                  </div>
-                  <div class="item-img">${item.image?`<img src="${esc(item.image)}" style="width:100%;height:100%;object-fit:cover">`:'🧴'}</div>
-                  <div class="item-info">
-                    <div class="item-name">${esc(item.name)}</div>
-                    <div class="item-price">${item.price} EGP × ${item.purchasedQuantity}</div>
-                  </div>
-                  <div class="item-qty-ctrl" onclick="event.stopPropagation()">
-                    <button class="qty-btn" onclick="changeQty('${o._id}','${item.orderItemId}',-1,${item.returnableQuantity})">−</button>
-                    <div class="qty-val" id="qv-${o._id}-${item.orderItemId}">1</div>
-                    <button class="qty-btn" onclick="changeQty('${o._id}','${item.orderItemId}',1,${item.returnableQuantity})">+</button>
-                  </div>
-                </div>`).join('')}
-              </div>
-              <div class="order-actions">
-                <div class="selected-count" id="sc-${o._id}"><span>0</span> item(s) selected</div>
-                <button class="return-btn" id="rb-${o._id}" disabled onclick="openReturnModal('${o._id}')">
-                  Request Return →
-                </button>
-              </div>
+            <div class="item-img">${item.image ? `<img src="${esc(item.image)}" style="width:100%;height:100%;object-fit:cover">` : "🧴"}</div>
+            <div class="item-info">
+              <div class="item-name">${esc(item.name)}</div>
+              <div class="item-price">${item.price} EGP &times; ${item.purchasedQuantity} <span style="color:var(--muted2)">(max returnable: ${item.returnableQuantity})</span></div>
             </div>
-          </div>`;
-        }).join('');
+            <div class="item-qty-ctrl" onclick="event.stopPropagation()">
+              <button class="qty-btn" onclick="changeQty('${o._id}','${item.orderItemId}',-1,${item.returnableQuantity})">−</button>
+              <div class="qty-val" id="qv-${o._id}-${item.orderItemId}">1</div>
+              <button class="qty-btn" onclick="changeQty('${o._id}','${item.orderItemId}',1,${item.returnableQuantity})">+</button>
+            </div>
+          </div>`,
+            )
+            .join("")}
+        </div>
+        <div class="order-actions">
+          <div class="selected-count" id="sc-${o._id}"><span>0</span> item(s) selected</div>
+          <button class="return-btn" id="rb-${o._id}" disabled onclick="openReturnModal('${o._id}')">Request Return →</button>
+        </div>
+      </div>
+    </div>`;
+          })
+          .join("");
       }
 
-      function toggleOrder(orderId){
-        const items=document.getElementById('oi-'+orderId);
-        const icon=document.getElementById('ei-'+orderId);
-        const isOpen=items.classList.contains('open');
-        items.classList.toggle('open',!isOpen);
-        icon.classList.toggle('open',!isOpen);
+      function toggleOrder(id) {
+        document.getElementById("oi-" + id).classList.toggle("open");
+        document.getElementById("ei-" + id).classList.toggle("open");
       }
-
-      function toggleItem(orderId,itemId,maxQty){
-        if(!selectedItems[orderId]) selectedItems[orderId]={};
-        const cur=selectedItems[orderId][itemId];
-        const row=document.getElementById(`ir-${orderId}-${itemId}`);
-        if(cur){
+      function toggleItem(orderId, itemId, maxQty) {
+        if (!selectedItems[orderId]) selectedItems[orderId] = {};
+        const cur = selectedItems[orderId][itemId];
+        const row = document.getElementById(`ir-${orderId}-${itemId}`);
+        if (cur) {
           delete selectedItems[orderId][itemId];
-          row.classList.remove('selected');
+          row.classList.remove("selected");
         } else {
-          selectedItems[orderId][itemId]=1;
-          row.classList.add('selected');
+          selectedItems[orderId][itemId] = 1;
+          row.classList.add("selected");
         }
         updateOrderActions(orderId);
       }
-
-      function changeQty(orderId,itemId,delta,maxQty){
-        if(!selectedItems[orderId]?.[itemId]) return;
-        const cur=selectedItems[orderId][itemId]||1;
-        const nv=Math.min(maxQty,Math.max(1,cur+delta));
-        selectedItems[orderId][itemId]=nv;
-        document.getElementById(`qv-${orderId}-${itemId}`).textContent=nv;
+      function changeQty(orderId, itemId, delta, maxQty) {
+        if (!selectedItems[orderId]?.[itemId]) return;
+        const nv = Math.min(
+          maxQty,
+          Math.max(1, (selectedItems[orderId][itemId] || 1) + delta),
+        );
+        selectedItems[orderId][itemId] = nv;
+        document.getElementById(`qv-${orderId}-${itemId}`).textContent = nv;
+      }
+      function updateOrderActions(orderId) {
+        const sel = Object.keys(selectedItems[orderId] || {});
+        const sc = document.getElementById("sc-" + orderId);
+        const rb = document.getElementById("rb-" + orderId);
+        if (sc) sc.querySelector("span").textContent = sel.length;
+        if (rb) rb.disabled = sel.length === 0;
       }
 
-      function updateOrderActions(orderId){
-        const sel=Object.keys(selectedItems[orderId]||{});
-        const sc=document.getElementById('sc-'+orderId);
-        const rb=document.getElementById('rb-'+orderId);
-        if(sc) sc.querySelector('span').textContent=sel.length;
-        if(rb) rb.disabled=sel.length===0;
+      // ── address dropdowns (inside modal) ─────────────────────────────────────
+      async function loadAddrCountries() {
+        const sel = document.getElementById("addr-country");
+        const wrap = document.getElementById("wrap-addr-country");
+        wrap.classList.add("loading");
+        try {
+          const { data } = await api("GET", "/shipping/countries");
+          addrCountries = data || [];
+          sel.innerHTML =
+            '<option value="">— Select country —</option>' +
+            addrCountries
+              .map((c) => `<option value="${c._id}">${esc(c.name)}</option>`)
+              .join("");
+          sel.disabled = false;
+        } catch (e) {
+          sel.innerHTML = "<option>Failed to load</option>";
+        } finally {
+          wrap.classList.remove("loading");
+        }
       }
 
-      // ── RETURN MODAL ──────────────────────────────────────────────────────
-      function openReturnModal(orderId){
-        selectedOrder=eligibleOrders.find(o=>o._id===orderId);
-        if(!selectedOrder) return;
-        proofFiles=[];
+      async function onAddrCountryChange() {
+        const countryId = document.getElementById("addr-country").value;
+        const govSel = document.getElementById("addr-gov");
+        const distSel = document.getElementById("addr-district");
+        const distWrap = document.getElementById("addr-district-group");
 
-        const items=Object.entries(selectedItems[orderId]||{}).map(([itemId,qty])=>{
-          const item=selectedOrder.items.find(i=>i.orderItemId===itemId);
-          return item?{...item,qty}:null;
-        }).filter(Boolean);
+        // reset downstream
+        addrSelectedGovId = null;
+        addrSelectedGovName = "";
+        addrSelectedDistrictId = null;
+        addrSelectedDistrictName = "";
+        govSel.innerHTML = '<option value="">— Select governorate —</option>';
+        govSel.disabled = true;
+        distSel.innerHTML = '<option value="">— Select district —</option>';
+        distSel.disabled = true;
+        distWrap.style.display = "none";
 
-        const total=items.reduce((s,i)=>s+i.price*i.qty,0);
-
-        document.getElementById('modal-body').innerHTML=`
-          <div class="refund-summary">
-            <div><p>Estimated refund</p><strong>${total.toFixed(2)} EGP</strong></div>
-            <div style="text-align:right"><p>${items.length} item(s) selected</p><p style="font-size:11px;color:var(--muted)">${items.map(i=>`${i.name} ×${i.qty}`).join(', ')}</p></div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Return reason</label>
-            <select class="form-select" id="ret-reason" onchange="onReasonChange()">
-              <option value="">— Select a reason —</option>
-              ${Object.entries(REASON_LABELS).map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
-            </select>
-          </div>
-
-          <div id="proof-section" style="display:none">
-            <div class="form-group">
-              <label class="form-label">Proof images <span style="color:var(--red)">*required</span></label>
-              <div class="proof-area" onclick="document.getElementById('proof-input').click()">
-                <div class="proof-area-icon">📷</div>
-                <div class="proof-area-text">Click to upload photos (damaged item, wrong product, etc.)</div>
-                <input type="file" id="proof-input" multiple accept="image/*" style="display:none" onchange="onProofChange(this)">
-              </div>
-              <div class="proof-previews" id="proof-previews"></div>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Additional note</label>
-            <textarea class="form-textarea" id="ret-note" placeholder="Describe the issue in more detail..."></textarea>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Return method</label>
-            <div class="method-options">
-              <div class="method-opt sel" id="mo-pickup" onclick="selectMethod('pickup')">
-                <div class="method-opt-icon">🚚</div>
-                <div class="method-opt-title">Pickup</div>
-                <div class="method-opt-sub">We'll collect from you</div>
-              </div>
-              <div class="method-opt" id="mo-self_ship" onclick="selectMethod('self_ship')">
-                <div class="method-opt-icon">📦</div>
-                <div class="method-opt-title">Self Ship</div>
-                <div class="method-opt-sub">Drop off at courier</div>
-              </div>
-            </div>
-          </div>
-
-          <div id="pickup-addr-section">
-            <div style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Pickup address</div>
-            <div class="form-group">
-              <label class="form-label">Governorate</label>
-              <input class="form-input" id="ret-gov" placeholder="e.g. Cairo">
-            </div>
-            <div class="form-group">
-              <label class="form-label">City / District</label>
-              <input class="form-input" id="ret-city" placeholder="e.g. Nasr City">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Street address</label>
-              <input class="form-input" id="ret-addr" placeholder="Building, street, apartment...">
-            </div>
-          </div>`;
-
-        document.getElementById('modal-overlay').classList.add('open');
+        if (!countryId) return;
+        const wrap = document.getElementById("wrap-addr-gov");
+        wrap.classList.add("loading");
+        try {
+          const { data } = await api(
+            "GET",
+            `/shipping/countries/${countryId}/governorates`,
+          );
+          addrGovernorates = data || [];
+          govSel.innerHTML =
+            '<option value="">— Select governorate —</option>' +
+            addrGovernorates
+              .map((g) => `<option value="${g._id}">${esc(g.name)}</option>`)
+              .join("");
+          govSel.disabled = false;
+        } catch (e) {
+          govSel.innerHTML = "<option>Failed to load</option>";
+        } finally {
+          wrap.classList.remove("loading");
+        }
       }
 
-      function closeModal(e){
-        if(e && e.target!==document.getElementById('modal-overlay')) return;
-        document.getElementById('modal-overlay').classList.remove('open');
+      async function onAddrGovChange() {
+        const govId = document.getElementById("addr-gov").value;
+        const gov = addrGovernorates.find((g) => g._id === govId);
+        addrSelectedGovId = govId || null;
+        addrSelectedGovName = gov?.name || "";
+        addrSelectedDistrictId = null;
+        addrSelectedDistrictName = "";
+
+        const distSel = document.getElementById("addr-district");
+        const distWrap = document.getElementById("addr-district-group");
+        distSel.innerHTML = '<option value="">— Select district —</option>';
+        distSel.disabled = true;
+        distWrap.style.display = "none";
+        if (!govId) return;
+
+        const wrap = document.getElementById("wrap-addr-district");
+        wrap.classList.add("loading");
+        distWrap.style.display = "";
+        try {
+          const res = await api("GET", `/shipping/governorates/${govId}/zones`);
+          addrHasDistricts = res.hasDistricts || false;
+          if (addrHasDistricts && res.districts?.length) {
+            addrDistricts = res.districts;
+            const opts = [`<option value="">— Select district —</option>`];
+            res.districts.forEach((d) =>
+              opts.push(`<option value="${d._id}">${esc(d.name)}</option>`),
+            );
+            if (res.other)
+              opts.push(
+                `<option value="other">${esc(res.other.label || "Other")}</option>`,
+              );
+            distSel.innerHTML = opts.join("");
+            distSel.disabled = false;
+          } else {
+            // no districts — governorate level only
+            addrHasDistricts = false;
+            distWrap.style.display = "none";
+          }
+        } catch (e) {
+          distWrap.style.display = "none";
+        } finally {
+          wrap.classList.remove("loading");
+        }
       }
 
-      function onReasonChange(){
-        const v=document.getElementById('ret-reason').value;
-        document.getElementById('proof-section').style.display=REASONS_NEED_PROOF.has(v)?'':'none';
+      function onAddrDistrictChange() {
+        const distId = document.getElementById("addr-district").value;
+        if (!distId) {
+          addrSelectedDistrictId = null;
+          addrSelectedDistrictName = "";
+          return;
+        }
+        if (distId === "other") {
+          addrSelectedDistrictId = null;
+          addrSelectedDistrictName = "Other";
+          return;
+        }
+        const dist = addrDistricts.find((d) => d._id === distId);
+        addrSelectedDistrictId = distId;
+        addrSelectedDistrictName = dist?.name || "";
       }
 
-      function onProofChange(input){
-        proofFiles=Array.from(input.files);
-        const prev=document.getElementById('proof-previews');
-        prev.innerHTML='';
-        proofFiles.forEach(f=>{
-          const img=document.createElement('img');
-          img.className='proof-thumb';
-          img.src=URL.createObjectURL(f);
+      // ── modal ─────────────────────────────────────────────────────────────────
+      function openReturnModal(orderId) {
+        selectedOrder = eligibleOrders.find((o) => o._id === orderId);
+        if (!selectedOrder) return;
+        proofFiles = [];
+        addrSelectedGovId = null;
+        addrSelectedGovName = "";
+        addrSelectedDistrictId = null;
+        addrSelectedDistrictName = "";
+
+        const items = Object.entries(selectedItems[orderId] || {})
+          .map(([itemId, qty]) => {
+            const item = selectedOrder.items.find(
+              (i) => i.orderItemId === itemId,
+            );
+            return item ? { ...item, qty } : null;
+          })
+          .filter(Boolean);
+        const total = items.reduce((s, i) => s + i.price * i.qty, 0);
+
+        document.getElementById("modal-body").innerHTML = `
+    <div class="refund-summary">
+      <div><p>Estimated refund</p><strong>${total.toFixed(2)} EGP</strong></div>
+      <div style="text-align:right"><p>${items.length} item(s)</p><p style="font-size:11px;color:var(--muted)">${items.map((i) => `${i.name} ×${i.qty}`).join(", ")}</p></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Return reason</label>
+      <select class="form-select" id="ret-reason" onchange="onReasonChange()">
+        <option value="">— Select a reason —</option>
+        ${Object.entries(REASON_LABELS)
+          .map(([v, l]) => `<option value="${v}">${l}</option>`)
+          .join("")}
+      </select>
+    </div>
+
+    <div id="proof-section" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Proof images <span style="color:var(--red)">* required</span></label>
+        <div class="proof-area" onclick="document.getElementById('proof-input').click()">
+          <div class="proof-area-icon">📷</div>
+          <div class="proof-area-text">Click to upload photos</div>
+          <input type="file" id="proof-input" multiple accept="image/*" style="display:none" onchange="onProofChange(this)">
+        </div>
+        <div class="proof-previews" id="proof-previews"></div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Additional note</label>
+      <textarea class="form-textarea" id="ret-note" placeholder="Describe the issue..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Return method</label>
+      <div class="method-options">
+        <div class="method-opt sel" id="mo-pickup" onclick="selectMethod('pickup')">
+          <div class="method-opt-icon">🚚</div>
+          <div class="method-opt-title">Pickup</div>
+          <div class="method-opt-sub">We'll collect from you</div>
+        </div>
+        <div class="method-opt" id="mo-self_ship" onclick="selectMethod('self_ship')">
+          <div class="method-opt-icon">📦</div>
+          <div class="method-opt-title">Self Ship</div>
+          <div class="method-opt-sub">Drop off at courier</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="pickup-addr-section">
+      <div class="addr-divider">Pickup address</div>
+
+      <div class="form-group">
+        <label class="form-label">Country</label>
+        <div class="sel-wrap" id="wrap-addr-country">
+          <div class="sel-spin"></div>
+          <select class="form-select" id="addr-country" disabled onchange="onAddrCountryChange()">
+            <option>Loading...</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Governorate</label>
+        <div class="sel-wrap" id="wrap-addr-gov">
+          <div class="sel-spin"></div>
+          <select class="form-select" id="addr-gov" disabled onchange="onAddrGovChange()">
+            <option value="">— Select country first —</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" id="addr-district-group" style="display:none">
+        <label class="form-label">District</label>
+        <div class="sel-wrap" id="wrap-addr-district">
+          <div class="sel-spin"></div>
+          <select class="form-select" id="addr-district" disabled onchange="onAddrDistrictChange()">
+            <option value="">— Select district —</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Street address</label>
+        <input class="form-input" id="ret-addr" placeholder="Building, street, apartment...">
+      </div>
+    </div>`;
+
+        document.getElementById("modal-overlay").classList.add("open");
+        loadAddrCountries();
+      }
+
+      function closeModal(e) {
+        if (e && e.target !== document.getElementById("modal-overlay")) return;
+        document.getElementById("modal-overlay").classList.remove("open");
+      }
+      function onReasonChange() {
+        const v = document.getElementById("ret-reason").value;
+        document.getElementById("proof-section").style.display =
+          REASONS_NEED_PROOF.has(v) ? "" : "none";
+      }
+      function onProofChange(input) {
+        proofFiles = Array.from(input.files);
+        const prev = document.getElementById("proof-previews");
+        prev.innerHTML = "";
+        proofFiles.forEach((f) => {
+          const img = document.createElement("img");
+          img.className = "proof-thumb";
+          img.src = URL.createObjectURL(f);
           prev.appendChild(img);
         });
       }
-
-      function selectMethod(m){
-        document.getElementById('mo-pickup').classList.toggle('sel',m==='pickup');
-        document.getElementById('mo-self_ship').classList.toggle('sel',m==='self_ship');
-        document.getElementById('pickup-addr-section').style.display=m==='pickup'?'':'none';
+      function selectMethod(m) {
+        document
+          .getElementById("mo-pickup")
+          .classList.toggle("sel", m === "pickup");
+        document
+          .getElementById("mo-self_ship")
+          .classList.toggle("sel", m === "self_ship");
+        document.getElementById("pickup-addr-section").style.display =
+          m === "pickup" ? "" : "none";
       }
 
-      async function submitReturn(){
-        const reason=document.getElementById('ret-reason')?.value;
-        if(!reason){toast('Select a return reason',true);return;}
-        if(REASONS_NEED_PROOF.has(reason)&&proofFiles.length===0){toast('Proof images required for this reason',true);return;}
-
-        const method=document.getElementById('mo-pickup').classList.contains('sel')?'pickup':'self_ship';
-        const gov=document.getElementById('ret-gov')?.value?.trim();
-        const city=document.getElementById('ret-city')?.value?.trim();
-        const addr=document.getElementById('ret-addr')?.value?.trim();
-        if(method==='pickup'&&(!gov||!city||!addr)){toast('Fill in pickup address',true);return;}
-
-        const orderId=selectedOrder._id;
-        const items=Object.entries(selectedItems[orderId]||{}).map(([orderItemId,quantity])=>({orderItemId,quantity}));
-
-        const btn=document.getElementById('modal-submit-btn');
-        const lbl=document.getElementById('modal-submit-label');
-        btn.disabled=true;
-        lbl.innerHTML='<span class="spinner"></span>';
-
-        try{
-          const fd=new FormData();
-          fd.append('order',orderId);
-          fd.append('items',JSON.stringify(items));
-          fd.append('reason',reason);
-          fd.append('note',document.getElementById('ret-note')?.value?.trim()||'');
-          fd.append('returnMethod',method);
-          fd.append('pickupAddress',JSON.stringify({
-            governorate:gov||'N/A',
-            city:city||'N/A',
-            address:addr||'N/A'
-          }));
-          proofFiles.forEach(f=>fd.append('images',f));
-
-          await apiMultipart('POST','/returns',fd);
-          document.getElementById('modal-overlay').classList.remove('open');
-          delete selectedItems[orderId];
-          toast('Return request submitted!');
-          await Promise.all([loadEligible(),loadMyReturns()]);
-          switchTab('my-returns',document.querySelectorAll('.tab')[1]);
-        }catch(e){
-          toast(e.message,true);
-        }finally{
-          btn.disabled=false;
-          lbl.textContent='Submit Request';
-        }
-      }
-
-      // ── MY RETURNS ────────────────────────────────────────────────────────
-      async function loadMyReturns(){
-        try{
-          const {data}=await api('GET','/returns/my-returns?sort=-createdAt');
-          myReturns=data||[];
-          renderMyReturns();
-        }catch(e){
-          document.getElementById('returns-list').innerHTML=`<div class="empty"><p>${esc(e.message)}</p></div>`;
-        }
-      }
-
-      function renderStepper(status){
-        if(status==='rejected') return `<div style="font-size:12px;color:var(--red)">✕ Request rejected</div>`;
-        const steps=['pending','approved','picked_up','received','refunded'];
-        const labels=['Pending','Approved','Picked up','Received','Refunded'];
-        const cur=steps.indexOf(status);
-        return '<div class="stepper">'+steps.map((s,i)=>{
-          const done=i<cur;const active=i===cur;
-          return `<div class="step ${done?'done':active?'active':''}">
-            ${i>0?`<div class="step-line"></div>`:''}
-            <div class="step-circle" title="${labels[i]}">${done?'✓':i+1}</div>
-          </div>`;
-        }).join('')+'</div>';
-      }
-
-      function renderMyReturns(){
-        const el=document.getElementById('returns-list');
-        if(!myReturns.length){
-          el.innerHTML='<div class="empty"><div class="empty-icon">📦</div><p>No return requests yet.</p></div>';
+      // ── submit ────────────────────────────────────────────────────────────────
+      async function submitReturn() {
+        const reason = document.getElementById("ret-reason")?.value;
+        if (!reason) {
+          toast("Select a return reason", true);
           return;
         }
-        el.innerHTML=myReturns.map(r=>`
-          <div class="return-card">
-            <div class="return-card-top">
-              <div>
-                <div class="return-ref">REQ #${String(r._id).slice(-8).toUpperCase()}</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:2px">${new Date(r.createdAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
-              </div>
-              <span class="return-status rs-${r.refundStatus}">${r.refundStatus.replace('_',' ')}</span>
-            </div>
-            ${renderStepper(r.refundStatus)}
-            <div class="return-items-row">
-              ${r.items.map(i=>`<span class="ri-tag">${esc(i.name)} ×${i.quantity}</span>`).join('')}
-            </div>
-            <div class="return-meta">
-              <div>Reason: <strong>${esc(REASON_LABELS[r.reason]||r.reason)}</strong></div>
-              <div>Method: <strong>${r.returnMethod==='pickup'?'Pickup':'Self-ship'}</strong></div>
-              <div>Refund: <strong style="color:var(--accent2)">${r.refundAmount} EGP</strong></div>
-            </div>
-            ${r.bostaReturnTrackingNumber?`
-            <div class="bosta-track">
-              🚚 Bosta tracking: <strong style="font-family:var(--mono)">${esc(r.bostaReturnTrackingNumber)}</strong>
-              ${r.bostaReturnState?`<span style="margin-left:auto;font-size:10px;opacity:.7">${esc(r.bostaReturnState)}</span>`:''}
-            </div>`:''}
-            ${r.adminNote?`<div style="margin-top:10px;padding:10px 12px;background:var(--card2);border-radius:8px;font-size:12px;color:var(--muted)">📋 Admin note: <span style="color:var(--text)">${esc(r.adminNote)}</span></div>`:''}
-          </div>`).join('');
+        if (REASONS_NEED_PROOF.has(reason) && proofFiles.length === 0) {
+          toast("Proof images required for this reason", true);
+          return;
+        }
+
+        const method = document
+          .getElementById("mo-pickup")
+          .classList.contains("sel")
+          ? "pickup"
+          : "self_ship";
+
+        if (method === "pickup") {
+          if (!addrSelectedGovId) {
+            toast("Select a governorate", true);
+            return;
+          }
+          if (
+            addrHasDistricts &&
+            !addrSelectedDistrictId &&
+            addrSelectedDistrictName !== "Other"
+          ) {
+            toast("Select a district", true);
+            return;
+          }
+          const addr = document.getElementById("ret-addr")?.value?.trim();
+          if (!addr) {
+            toast("Enter street address", true);
+            return;
+          }
+        }
+
+        const orderId = selectedOrder._id;
+        const items = Object.entries(selectedItems[orderId] || {}).map(
+          ([orderItemId, quantity]) => ({ orderItemId, quantity }),
+        );
+
+        const btn = document.getElementById("modal-submit-btn");
+        const lbl = document.getElementById("modal-submit-label");
+        btn.disabled = true;
+        lbl.innerHTML = '<span class="spinner"></span>';
+
+        try {
+          const fd = new FormData();
+          fd.append("order", orderId);
+          fd.append("items", JSON.stringify(items));
+          fd.append("reason", reason);
+          fd.append(
+            "note",
+            document.getElementById("ret-note")?.value?.trim() || "",
+          );
+          fd.append("returnMethod", method);
+
+          // ── pickupAddress: بنبعت governorate (name), city (district name),
+          //    address (street), + governorateId و districtId للـ Bosta matching
+          const addrStreet =
+            document.getElementById("ret-addr")?.value?.trim() || "";
+          fd.append(
+            "pickupAddress",
+            JSON.stringify({
+              governorate: addrSelectedGovName,
+              city: addrSelectedDistrictName || addrSelectedGovName,
+              address: addrStreet,
+              governorateId: addrSelectedGovId || null,
+              districtId: addrSelectedDistrictId || null,
+            }),
+          );
+
+          // ── FIX: field name هو proofImages مش images ──
+          proofFiles.forEach((f) => fd.append("proofImages", f));
+
+          await apiMultipart("POST", "/returns", fd);
+          document.getElementById("modal-overlay").classList.remove("open");
+          delete selectedItems[orderId];
+          toast("Return request submitted!");
+          await Promise.all([loadEligible(), loadMyReturns()]);
+          switchTab("my-returns", document.querySelectorAll(".tab")[1]);
+        } catch (e) {
+          toast(e.message, true);
+        } finally {
+          btn.disabled = false;
+          lbl.textContent = "Submit Request";
+        }
       }
 
-      // ── TABS ──────────────────────────────────────────────────────────────
-      function switchTab(name,el){
-        document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-        el.classList.add('active');
-        document.getElementById('tab-eligible').style.display=name==='eligible'?'':'none';
-        document.getElementById('tab-my-returns').style.display=name==='my-returns'?'':'none';
+      // ── my returns ────────────────────────────────────────────────────────────
+      async function loadMyReturns() {
+        try {
+          const { data } = await api(
+            "GET",
+            "/returns/my-returns?sort=-createdAt",
+          );
+          myReturns = data || [];
+          renderMyReturns();
+        } catch (e) {
+          document.getElementById("returns-list").innerHTML =
+            `<div class="empty"><p>${esc(e.message)}</p></div>`;
+        }
       }
 
-      // ── INIT ──────────────────────────────────────────────────────────────
-      if(token){
-        document.getElementById('login-screen').classList.add('hidden');
-        const saved=localStorage.getItem('oxxila_api_base');
-        if(saved) document.getElementById('api-base').value=saved;
-        loadAll().catch(()=>{
-          token='';
-          localStorage.removeItem('oxxila_customer_token');
-          document.getElementById('login-screen').classList.remove('hidden');
+      function renderStepper(status) {
+        if (status === "rejected")
+          return `<div style="font-size:12px;color:var(--red);margin-bottom:14px">✕ Request rejected</div>`;
+        const steps = [
+          "pending",
+          "approved",
+          "picked_up",
+          "received",
+          "refunded",
+        ];
+        const labels = [
+          "Pending",
+          "Approved",
+          "Picked up",
+          "Received",
+          "Refunded",
+        ];
+        const cur = steps.indexOf(status);
+        return (
+          '<div class="stepper">' +
+          steps
+            .map((s, i) => {
+              const done = i < cur;
+              const active = i === cur;
+              return `<div class="step ${done ? "done" : active ? "active" : ""}">
+      ${i > 0 ? `<div class="step-line"></div>` : ""}
+      <div class="step-circle" title="${labels[i]}">${done ? "✓" : i + 1}</div>
+    </div>`;
+            })
+            .join("") +
+          "</div>"
+        );
+      }
+
+      function renderMyReturns() {
+        const el = document.getElementById("returns-list");
+        if (!myReturns.length) {
+          el.innerHTML =
+            '<div class="empty"><div class="empty-icon">📦</div><p>No return requests yet.</p></div>';
+          return;
+        }
+        el.innerHTML = myReturns
+          .map(
+            (r) => `
+    <div class="return-card">
+      <div class="return-card-top">
+        <div>
+          <div class="return-ref">REQ #${String(r._id).slice(-8).toUpperCase()}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${new Date(r.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</div>
+        </div>
+        <span class="return-status rs-${r.refundStatus}">${r.refundStatus.replace("_", " ")}</span>
+      </div>
+      ${renderStepper(r.refundStatus)}
+      <div class="return-items-row">
+        ${r.items.map((i) => `<span class="ri-tag">${esc(i.name)} ×${i.quantity}</span>`).join("")}
+      </div>
+      <div class="return-meta">
+        <div>Reason: <strong>${esc(REASON_LABELS[r.reason] || r.reason)}</strong></div>
+        <div>Method: <strong>${r.returnMethod === "pickup" ? "Pickup" : "Self-ship"}</strong></div>
+        <div>Refund: <strong style="color:var(--accent2)">${r.refundAmount} EGP</strong></div>
+      </div>
+      ${
+        r.bostaReturnTrackingNumber
+          ? `
+      <div class="bosta-track">
+        🚚 Bosta tracking: <strong style="font-family:var(--mono)">${esc(r.bostaReturnTrackingNumber)}</strong>
+        ${r.bostaReturnState ? `<span style="margin-left:auto;font-size:10px;opacity:.7">${esc(r.bostaReturnState)}</span>` : ""}
+      </div>`
+          : ""
+      }
+      ${r.adminNote ? `<div style="margin-top:10px;padding:10px 12px;background:var(--card2);border-radius:8px;font-size:12px;color:var(--muted)">📋 Admin note: <span style="color:var(--text)">${esc(r.adminNote)}</span></div>` : ""}
+    </div>`,
+          )
+          .join("");
+      }
+
+      // ── tabs ──────────────────────────────────────────────────────────────────
+      function switchTab(name, el) {
+        document
+          .querySelectorAll(".tab")
+          .forEach((t) => t.classList.remove("active"));
+        el.classList.add("active");
+        document.getElementById("tab-eligible").style.display =
+          name === "eligible" ? "" : "none";
+        document.getElementById("tab-my-returns").style.display =
+          name === "my-returns" ? "" : "none";
+      }
+
+      // ── init ──────────────────────────────────────────────────────────────────
+      if (token) {
+        document.getElementById("login-screen").classList.add("hidden");
+        const saved = localStorage.getItem("oxxila_api_base");
+        if (saved) document.getElementById("api-base").value = saved;
+        loadAll().catch(() => {
+          token = "";
+          localStorage.removeItem("oxxila_customer_token");
+          document.getElementById("login-screen").classList.remove("hidden");
         });
       }
     </script>
