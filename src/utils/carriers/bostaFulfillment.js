@@ -774,7 +774,7 @@ const assertBostaOrderCarrier = async (order) => {
 //       "Bosta return pickup is only available for orders shipped via a Bosta API carrier",
 //       400,
 //     );
-  }
+//   }
 
   const carrier = await Carrier.findById(order.fulfillment.carrier);
   if (!carrier || carrier.apiProvider !== "bosta") {
