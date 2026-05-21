@@ -769,11 +769,11 @@ export const orderUsesBostaApi = async (order) => {
 };
 
 const assertBostaOrderCarrier = async (order) => {
-  if (order?.fulfillment?.carrierType !== "api" || !order?.fulfillment?.carrier) {
-    throw new ApiError(
-      "Bosta return pickup is only available for orders shipped via a Bosta API carrier",
-      400,
-    );
+//   if (order?.fulfillment?.carrierType !== "api" || !order?.fulfillment?.carrier) {
+//     throw new ApiError(
+//       "Bosta return pickup is only available for orders shipped via a Bosta API carrier",
+//       400,
+//     );
   }
 
   const carrier = await Carrier.findById(order.fulfillment.carrier);
