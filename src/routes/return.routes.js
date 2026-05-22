@@ -1,69 +1,50 @@
 // src/routes/return.routes.js
-import { Router } from "express";
-import createUploader from "../middlewares/cloudnairyMiddleware.js";
+import { Router } from 'express';
+import createUploader from '../middlewares/cloudnairyMiddleware.js';
+import { parseReturnBody } from '../middlewares/parseReturnBody.middleware.js';
+import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
 import {
   getEligibleReturnOrders,
   createReturnRequest,
-  getMyReturnRequests,
-  getMyReturnRequest,
-  getReturnRequests,
-  getReturnRequest,
+  getMyReturns,
+  getMyReturn,
+  getReturns,
+  getReturn,
   updateReturnStatus,
-  retryBostaPickup,
-} from "../controllers/return.controller.js";
+  scheduleBostaReturn,
+} from '../controllers/return.controller.js';
 import {
   createReturnValidator,
   returnIdParamValidator,
   updateReturnStatusValidator,
-  retryBostaPickupValidator,
-} from "../validators/return.validator.js";
-import { protectedRoutes, allowTo } from "../middlewares/auth.middleware.js";
-import ApiError from "../utils/apiError.js";
+  listReturnsQueryValidator,
+} from '../validators/return.validator.js';
 
 const router = Router();
 
-const prepareReturnBody = (req, res, next) => {
-  try {
-    if (typeof req.body.items === "string")
-      req.body.items = JSON.parse(req.body.items);
-    if (typeof req.body.pickupAddress === "string") {
-      req.body.pickupAddress = JSON.parse(req.body.pickupAddress);
-    }
-    next();
-  } catch {
-    next(new ApiError("Invalid JSON in items or pickupAddress", 400));
-  }
-};
-
-const proofUpload = createUploader("oxxila/returns/proof", {
-  allowedFormats: ["jpeg", "jpg", "png", "webp"],
-  maxFileSizeMB: 10,
+const returnUpload = createUploader('oxxila/returns', {
+  allowedFormats: ['jpeg', 'jpg', 'png', 'webp'],
+  maxFileSizeMB: 5,
 });
 
 router.use(protectedRoutes);
 
-router.get("/eligible-orders", getEligibleReturnOrders);
+router.get('/eligible-orders', getEligibleReturnOrders);
 router.post(
-  "/",
-  proofUpload.array("proofImages", 5),
-  prepareReturnBody,
+  '/',
+  returnUpload.fields([{ name: 'proofImages', maxCount: 5 }]),
+  parseReturnBody,
   createReturnValidator,
-  createReturnRequest,
+  createReturnRequest
 );
-router.patch(
-  "/:id/bosta-retry",
-  allowTo("admin"),
-  retryBostaPickupValidator,
-  retryBostaPickup,
-);
+router.get('/my-returns', listReturnsQueryValidator, getMyReturns);
+router.get('/my-returns/:id', returnIdParamValidator, getMyReturn);
 
-router.get("/my-returns", getMyReturnRequests);
-router.get("/my-returns/:id", returnIdParamValidator, getMyReturnRequest);
+router.use(allowTo('admin'));
 
-router.use(allowTo("admin"));
-
-router.get("/", getReturnRequests);
-router.patch("/:id/status", updateReturnStatusValidator, updateReturnStatus);
-router.get("/:id", returnIdParamValidator, getReturnRequest);
+router.get('/', listReturnsQueryValidator, getReturns);
+router.patch('/:id/status', updateReturnStatusValidator, updateReturnStatus);
+router.post('/:id/bosta/schedule', returnIdParamValidator, scheduleBostaReturn);
+router.get('/:id', returnIdParamValidator, getReturn);
 
 export default router;

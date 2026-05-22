@@ -14,7 +14,6 @@ import {
   fetchBostaDistricts,
   listPickupsFromDb,
   syncPickupsToDb,
-  reconcilePickupDefaultsFromBosta,
 } from '../utils/carriers/bosta.js';
 
 const requireBostaCarrier = async (carrierId, next) => {
@@ -56,17 +55,7 @@ export const getCarrierPickups = asyncHandler(async (req, res, next) => {
   const ctx = await requireBostaCarrier(req.params.id, next);
   if (!ctx) return;
 
-  let pickups = await listPickupsFromDb(ctx.carrier._id);
-  try {
-    if (!pickups.length) {
-      await syncPickupsToDb(ctx.carrier._id, ctx.credentials);
-    } else {
-      await reconcilePickupDefaultsFromBosta(ctx.carrier._id, ctx.credentials);
-    }
-    pickups = await listPickupsFromDb(ctx.carrier._id);
-  } catch {
-    /* keep last known DB state */
-  }
+  const pickups = await listPickupsFromDb(ctx.carrier._id);
 
   sendResponse(res, { message: 'Pickup locations retrieved successfully', data: pickups });
 });
@@ -182,5 +171,27 @@ export const setDefaultCarrierPickup = asyncHandler(async (req, res, next) => {
   sendResponse(res, {
     message: 'Default pickup location updated successfully',
     data: updated ?? pickup,
+  });
+});
+
+/**
+ * @desc    Import pickup locations from Bosta into DB (one-time / manual)
+ * @route   POST /api/v1/admin/carriers/:id/bosta/sync-pickups
+ * @access  Admin
+ */
+export const syncBostaPickupsForCarrier = asyncHandler(async (req, res, next) => {
+  const ctx = await requireBostaCarrier(req.params.id, next);
+  if (!ctx) return;
+
+  try {
+    await syncPickupsToDb(ctx.carrier._id, ctx.credentials);
+  } catch (err) {
+    return next(bostaApiError(err, 'Failed to sync pickups from Bosta'));
+  }
+
+  const pickups = await listPickupsFromDb(ctx.carrier._id);
+  sendResponse(res, {
+    message: 'Pickup locations synced from Bosta successfully',
+    data: pickups,
   });
 });

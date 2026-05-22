@@ -6,17 +6,9 @@ import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
 import { addToBrowsingHistory } from '../utils/browsingHistory.js';
+import { productPopulate, productSelect } from '../utils/populate/productPopulate.js';
 
 const activeFilter = { isActive: true };
-
-const productPopulate = [
-  { path: 'category', select: 'name slug' },
-  { path: 'subCategory', select: 'name slug' },
-  { path: 'brand', select: 'name slug logo' },
-];
-
-const productSelect =
-  'name slug images price priceAfterDiscount offerEndsAt stock soldCount isBestSeller isBundle concerns isSensitiveSkin isCertified  advantages composition certificationImage isActive views ratingsAverage ratingsQuantity category subCategory brand createdAt updatedAt';
 
 const buildFilter = (query) => {
   const filter = { ...activeFilter };
@@ -100,11 +92,11 @@ export const getAllProducts = asyncHandler(async (req, res) => {
 
   await features.paginate();
 
-  const products = await features.mongooseQuery;
+  const products = await features.mongooseQuery.lean();
 
   sendResponse(res, {
     message: 'Products retrieved successfully',
-    pagination: features.getPaginationResult(),
+    pagination: { ...features.getPaginationResult(), results: products.length },
     data: products,
   });
 });

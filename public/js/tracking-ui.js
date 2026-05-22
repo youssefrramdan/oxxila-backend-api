@@ -1,213 +1,203 @@
 // public/js/tracking-ui.js
-import { buildStepper } from "../src/utils/orderTracking.js";
 (function (global) {
   const ORDER_STATUS_LABELS = {
-    pending: "Pending",
-    confirmed: "Confirmed",
-    processing: "Processing",
-    shipped: "Shipped",
-    delivered: "Delivered",
-    partially_returned: "Partially returned",
-    returned: "Returned",
-    cancelled: "Cancelled",
+    pending: 'Pending',
+    confirmed: 'Confirmed',
+    processing: 'Processing',
+    shipped: 'Shipped',
+    delivered: 'Delivered',
+    partially_returned: 'Partially returned',
+    returned: 'Returned',
+    cancelled: 'Cancelled',
   };
 
-  const RETURN_STATUS_LABELS = {
-    pending: "Request sent",
-    approved: "Approval",
-    picked_up: "Picked up",
-    received: "Received",
-    refunded: "Refunded",
-    rejected: "Rejected",
+  const PHASE_LABELS = {
+    placed: 'Order placed',
+    handed_over: 'Picked up',
+    in_transit: 'On the way',
+    out_for_delivery: 'On the way',
+    delivered: 'Delivered',
+    cancelled: 'Cancelled',
   };
 
   const DEFAULT_ORDER_STEPS = [
-    { key: "pending", label: "Pending", status: "upcoming" },
-    { key: "confirmed", label: "Confirmed", status: "upcoming" },
-    { key: "processing", label: "Processing", status: "upcoming" },
-    { key: "shipping", label: "Shipping", status: "upcoming" },
-    { key: "delivery", label: "Delivery", status: "upcoming" },
+    { key: 'placed', label: 'Order placed', status: 'upcoming' },
+    { key: 'handed_over', label: 'Picked up', status: 'upcoming' },
+    { key: 'in_transit', label: 'On the way', status: 'upcoming' },
+    { key: 'delivered', label: 'Delivered', status: 'upcoming' },
   ];
+
+  const RETURN_STATUS_LABELS = {
+    pending: 'Pending review',
+    approved: 'Approved',
+    picked_up: 'Picked up',
+    received: 'Received',
+    refunded: 'Refunded',
+    rejected: 'Rejected',
+  };
 
   const DEFAULT_RETURN_STEPS = [
-    { key: "request_sent", label: "Request Sent", status: "upcoming" },
-    { key: "approval", label: "Approval", status: "upcoming" },
-    { key: "pickup", label: "Pickup", status: "upcoming" },
-    { key: "refund", label: "Refund", status: "upcoming" },
+    { key: 'pending', label: 'Submitted' },
+    { key: 'approved', label: 'Approved' },
+    { key: 'picked_up', label: 'Picked up' },
+    { key: 'received', label: 'Received' },
+    { key: 'refunded', label: 'Refunded' },
   ];
 
+  const RETURN_STATUS_INDEX = {
+    pending: 0,
+    approved: 1,
+    picked_up: 2,
+    received: 3,
+    refunded: 4,
+  };
+
   const esc = (s) =>
-    String(s ?? "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/"/g, "&quot;");
+    String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/"/g, '&quot;');
 
   function orderStatusClass(status) {
-    if (status === "delivered" || status === "partially_returned")
-      return "os-delivered";
-    if (status === "shipped") return "os-shipped";
-    if (status === "processing") return "os-assigned";
-    if (status === "confirmed") return "os-confirmed";
-    return "os-pending";
+    if (status === 'delivered') return 'os-delivered';
+    if (status === 'partially_returned') return 'os-partial-return';
+    if (status === 'returned') return 'os-product-returned';
+    if (status === 'shipped') return 'os-shipped';
+    if (status === 'processing') return 'os-assigned';
+    if (status === 'confirmed') return 'os-confirmed';
+    return 'os-pending';
   }
 
-  function returnStatusClass(status) {
-    return `rs-${status || "pending"}`;
+  function buildStepper(steps, activeKey) {
+    const activeOrder =
+      steps.find((s) => s.key === activeKey)?.order ??
+      DEFAULT_ORDER_STEPS.find((s) => s.key === activeKey)?.order ??
+      99;
+    return (steps.length ? steps : DEFAULT_ORDER_STEPS).map((step, i) => {
+      const order = step.order ?? i + 1;
+      const done = step.status === 'completed';
+      const active = step.status === 'active';
+      return { ...step, order, status: done ? 'completed' : active ? 'active' : 'upcoming' };
+    });
   }
 
-  /**
-   * Horizontal stepper — prefers API tracking.steps; falls back to status mapping.
-   */
-  function renderStepper(steps, { rejected = false, showLabels = true } = {}) {
-    if (rejected) {
-      return `<div class="track-rejected">Request rejected</div>`;
-    }
+  function renderStepper(steps, { showLabels = true } = {}) {
     const list = steps?.length ? steps : DEFAULT_ORDER_STEPS;
-    const activeIdx = list.findIndex((s) => s.status === "active");
+    const activeIdx = list.findIndex((s) => s.status === 'active');
     const idx = activeIdx >= 0 ? activeIdx : 0;
 
     const nodes = list
       .map((step, i) => {
-        const done = step.status === "completed" || (activeIdx < 0 && i < idx);
-        const active = step.status === "active" || i === idx;
-        const num = String(i + 1).padStart(2, "0");
-        const inner = done ? "✓" : showLabels ? num : String(i + 1);
+        const done = step.status === 'completed' || (activeIdx < 0 && i < idx);
+        const active = step.status === 'active' || i === idx;
+        const num = String(i + 1).padStart(2, '0');
+        const inner = done ? '✓' : showLabels ? num : String(i + 1);
         const label = showLabels
           ? `<span class="track-step-label">${esc(step.label)}</span>`
-          : "";
-        return `<div class="track-step ${done ? "done" : active ? "active" : ""}">
-        ${i > 0 ? '<div class="track-step-line"></div>' : ""}
+          : '';
+        return `<div class="track-step ${done ? 'done' : active ? 'active' : ''}">
+        ${i > 0 ? '<div class="track-step-line"></div>' : ''}
         <div class="track-step-node">
           <div class="track-step-circle" title="${esc(step.label)}">${inner}</div>
           ${label}
         </div>
       </div>`;
       })
-      .join("");
+      .join('');
 
     return `<div class="track-stepper">${nodes}</div>`;
   }
 
-  function refundStatusToStep(status) {
-    switch (status) {
-      case "pending":
-        return "request_sent";
-      case "approved":
-        return "approval";
-      case "picked_up":
-      case "received":
-        return "pickup";
-      case "refunded":
-        return "refund";
-      default:
-        return "request_sent";
-    }
-  }
-
-  function orderStatusToStep(status) {
-    switch (status) {
-      case "pending":
-        return "pending";
-      case "confirmed":
-        return "confirmed";
-      case "processing":
-        return "processing";
-      case "shipped":
-        return "shipping";
-      case "delivered":
-      case "partially_returned":
-      case "returned":
-        return "delivery";
-      default:
-        return "pending";
-    }
-  }
-
   function renderOrderTracker(order) {
-    const steps = order?.tracking?.steps?.length
-      ? order.tracking.steps
-      : buildStepper(
-          DEFAULT_ORDER_STEPS,
-          order?.tracking?.currentStep || orderStatusToStep(order?.orderStatus),
-        );
+    const steps = order?.tracking?.steps?.length ? order.tracking.steps : DEFAULT_ORDER_STEPS;
     return renderStepper(steps, { showLabels: true });
   }
 
-  function renderReturnTracker(returnRequest) {
-    const rejected = returnRequest?.refundStatus === "rejected";
-    const steps = returnRequest?.tracking?.steps?.length
-      ? returnRequest.tracking.steps
-      : buildStepper(
-          DEFAULT_RETURN_STEPS,
-          returnRequest?.tracking?.currentStep ||
-            refundStatusToStep(returnRequest?.refundStatus),
-        );
-    return renderStepper(steps, { rejected, showLabels: true });
-  }
-
   function orderStatusLabel(status) {
-    return ORDER_STATUS_LABELS[status] || status || "—";
+    return ORDER_STATUS_LABELS[status] || status || '—';
   }
 
-  function returnStatusLabel(status) {
-    return RETURN_STATUS_LABELS[status] || (status || "").replace(/_/g, " ");
-  }
-
-  /** Banner under stepper (shipping message + tracking number). */
   function renderOrderStatusBanner(order) {
-    const step = order?.tracking?.currentStep;
-    const tn =
-      order?.tracking?.trackingNumber ||
-      order?.fulfillment?.trackingNumber ||
-      null;
-    const bosta = order?.tracking?.bostaState || order?.fulfillment?.bostaState;
+    const phase = order?.tracking?.phase;
+    const tn = order?.tracking?.trackingNumber ?? null;
+    const carrierLabel = order?.tracking?.carrierStatusLabel;
+    const payLabel = order?.paymentStatusLabel;
+    const isPaid = order?.isPaid === true;
 
-    let msg = "We're preparing your order.";
-    if (step === "confirmed") msg = "Your order is confirmed.";
-    else if (step === "processing") msg = "Your order is being prepared.";
-    else if (step === "shipping") msg = "Your order is on its way!";
-    else if (step === "delivery") msg = "Your order has been delivered.";
+    const msg =
+      order?.orderStatusLabel ||
+      order?.tracking?.phaseLabel ||
+      PHASE_LABELS[phase] ||
+      "We're preparing your order.";
 
     const parts = [
       `<div class="track-banner"><i class="ti ti-truck-delivery"></i><div>`,
     ];
     parts.push(`<strong>${esc(msg)}</strong>`);
-    if (tn) {
+    if (payLabel) {
       parts.push(
-        `<div class="track-banner-meta">Tracking: <span class="track-mono">${esc(tn)}</span></div>`,
+        `<div class="track-banner-meta"><span class="pay-badge ${isPaid ? 'pay-paid' : 'pay-unpaid'}">${esc(payLabel)}</span></div>`
       );
     }
-    if (bosta) {
-      parts.push(`<div class="track-banner-meta">Carrier: ${esc(bosta)}</div>`);
+    if (tn) {
+      parts.push(
+        `<div class="track-banner-meta">Tracking: <span class="track-mono">${esc(tn)}</span></div>`
+      );
     }
-    parts.push("</div></div>");
-    return parts.join("");
+    if (carrierLabel) {
+      parts.push(`<div class="track-banner-meta">${esc(carrierLabel)}</div>`);
+    }
+    parts.push('</div></div>');
+    return parts.join('');
   }
 
   function canAssignOrder(order) {
+    const hasCarrier = order?.shipment?.carrier || order?.shipment?.carrierName;
     return (
-      ["pending", "confirmed", "processing"].includes(order?.orderStatus) &&
-      !order?.fulfillment?.carrier
+      ['pending', 'confirmed', 'processing'].includes(order?.orderStatus) && !hasCarrier
     );
   }
 
   function needsConfirmOrder(order) {
-    return order?.orderStatus === "pending";
+    return order?.orderStatus === 'pending';
+  }
+
+  function returnStatusLabel(status) {
+    return RETURN_STATUS_LABELS[status] || status || '—';
+  }
+
+  function returnStepsFromStatus(refundStatus) {
+    if (refundStatus === 'rejected') {
+      return [{ key: 'rejected', label: 'Rejected', status: 'active' }];
+    }
+    if (refundStatus === 'refunded') {
+      return DEFAULT_RETURN_STEPS.map((step) => ({ ...step, status: 'completed' }));
+    }
+    const idx = RETURN_STATUS_INDEX[refundStatus] ?? 0;
+    return DEFAULT_RETURN_STEPS.map((step, i) => ({
+      ...step,
+      status: i < idx ? 'completed' : i === idx ? 'active' : 'upcoming',
+    }));
+  }
+
+  function renderReturnTracker(returnRequest) {
+    const steps = returnStepsFromStatus(returnRequest?.refundStatus || 'pending');
+    return renderStepper(steps, { showLabels: true });
   }
 
   global.OxxilaTracking = {
     ORDER_STATUS_LABELS,
-    RETURN_STATUS_LABELS,
+    PHASE_LABELS,
     esc,
     orderStatusClass,
-    returnStatusClass,
     orderStatusLabel,
-    returnStatusLabel,
     renderStepper,
     renderOrderTracker,
-    renderReturnTracker,
     renderOrderStatusBanner,
     canAssignOrder,
     needsConfirmOrder,
+    RETURN_STATUS_LABELS,
+    returnStatusLabel,
+    renderReturnTracker,
   };
-})(typeof window !== "undefined" ? window : globalThis);
+})(typeof window !== 'undefined' ? window : globalThis);

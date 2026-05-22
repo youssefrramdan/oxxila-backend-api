@@ -1,3 +1,4 @@
+// src/controllers/category.controller.js
 import asyncHandler from 'express-async-handler';
 import Category from '../models/Category.js';
 import SubCategory from '../models/SubCategory.js';
@@ -25,8 +26,14 @@ const populateSubcategories = {
       .search(['name'])
       .sort();
 
-    const categories = await features.mongooseQuery;
-    sendResponse(res, { message: 'Categories retrieved successfully', data: categories });
+    await features.paginate();
+
+    const categories = await features.mongooseQuery.lean();
+    sendResponse(res, {
+      message: 'Categories retrieved successfully',
+      data: categories,
+      pagination: { ...features.getPaginationResult(), results: categories.length },
+    });
   });
 
 export const getCategory = asyncHandler(async (req, res, next) => {

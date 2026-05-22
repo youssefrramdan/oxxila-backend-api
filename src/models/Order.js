@@ -11,20 +11,12 @@ const orderItemSchema = new mongoose.Schema(
   },
 );
 
-const fulfillmentSchema = new mongoose.Schema(
+const shippingSelectionSchema = new mongoose.Schema(
   {
-    carrier: { type: mongoose.Schema.Types.ObjectId, ref: 'Carrier', default: null },
-    carrierName: { type: String, default: null },
-    carrierCode: { type: String, default: null },
-    carrierType: { type: String, enum: ['api', 'known', 'internal'], default: null },
-    assignedAt: { type: Date, default: null },
-    assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-    trackingNumber: { type: String, default: null },
-    externalDeliveryId: { type: String, default: null },
-    driverName: { type: String, default: null },
-    driverPhone: { type: String, default: null },
-    notes: { type: String, default: null },
-    bostaState: { type: String, default: null },
+    methodCode: { type: String, default: 'standard' },
+    methodName: { type: String, default: 'Standard delivery' },
+    price: { type: Number, min: 0, default: 0 },
+    quotedAt: { type: Date, default: null },
   },
   { _id: false }
 );
@@ -43,6 +35,14 @@ const shippingAddressSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const fulfillmentSchema = new mongoose.Schema(
+  {
+    attempts: { type: Number, default: 0, min: 0 },
+    exceptionReason: { type: String, default: null },
+  },
+  { _id: false }
+);
+
 const orderSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
@@ -54,6 +54,8 @@ const orderSchema = new mongoose.Schema(
       },
     },
     shippingAddress: { type: shippingAddressSchema, required: true },
+    shipping: { type: shippingSelectionSchema, default: () => ({}) },
+    fulfillment: { type: fulfillmentSchema, default: () => ({ attempts: 0 }) },
     subtotal: { type: Number, required: true, min: 0 },
     shippingPrice: { type: Number, required: true, min: 0 },
     discountAmount: { type: Number, default: 0, min: 0 },
@@ -68,28 +70,32 @@ const orderSchema = new mongoose.Schema(
       enum: ['pending', 'paid', 'refunded'],
       default: 'pending',
     },
+    codCollectedAt: { type: Date, default: null },
     orderStatus: {
       type: String,
       enum: [
-        'confirmed',
         'pending',
+        'confirmed',
         'processing',
         'shipped',
-        'delivered',
-        'partially_returned',
+        'out_for_delivery',
+        'failed_attempt',
         'returned',
+        'partially_returned',
+        'delivered',
         'cancelled',
       ],
       default: 'pending',
     },
     deliveredAt: { type: Date, default: null, index: true },
-    fulfillment: { type: fulfillmentSchema, default: () => ({}) },
+    cancelledAt: { type: Date, default: null },
+    cancellationReason: { type: String, default: null },
+    cancelledBy: { type: String, enum: ['user', 'admin'], default: null },
   },
   { timestamps: true }
 );
 
 orderSchema.index({ user: 1, createdAt: -1 });
-orderSchema.index({ 'fulfillment.carrier': 1 });
 orderSchema.index({ paymentStatus: 1 });
 orderSchema.index({ orderStatus: 1 });
 orderSchema.index({ user: 1, orderStatus: 1, deliveredAt: -1 });

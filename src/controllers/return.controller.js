@@ -1,164 +1,113 @@
 // src/controllers/return.controller.js
-import asyncHandler from "express-async-handler";
-import Order from "../models/Order.js";
-import ReturnRequest from "../models/ReturnRequest.js";
-import ApiError from "../utils/apiError.js";
-import sendResponse from "../utils/apiResponse.js";
-import ApiFeatures from "../utils/apiFeatures.js";
+import asyncHandler from 'express-async-handler';
+import Order from '../models/Order.js';
+import ReturnRequest from '../models/ReturnRequest.js';
+import ApiError from '../utils/apiError.js';
+import ApiFeatures from '../utils/apiFeatures.js';
+import sendResponse from '../utils/apiResponse.js';
 import {
-  REASONS_REQUIRING_PROOF,
-  isOrderReturnEligible,
-  buildReturnLineItems,
+  assertOrderReturnEligible,
+  assertProofForReason,
+  buildReturnItems,
   calculateRefundAmount,
-  assertReturnStatusTransition,
-  mapEligibleOrder,
-} from "../utils/returnHelpers.js";
-import { finalizeReturnRefund } from "../utils/returnRefundHelpers.js";
-import { enrichReturnDocument } from "../utils/orderTracking.js";
+  collectProofImages,
+  formatEligibleOrder,
+  computeReturnableQuantitiesBatch,
+  getReturnWindowEnd,
+  RETURN_WINDOW_DAYS,
+  parseReturnCreateBody,
+  resolveLogisticsOnApprove,
+  validateStatusTransition,
+} from '../utils/returnHelpers.js';
+import { finalizeReturnRefund } from '../utils/returnRefundHelpers.js';
+import { createBostaReturnForReturnRequest } from '../utils/carriers/bosta/returns.js';
 import {
-  createReturnBostaPickup,
-  orderUsesBostaApi,
-  syncReturnTrackingFromBosta,
-} from "../utils/carriers/bostaFulfillment.js";
+  returnPopulate,
+  returnListPopulate,
+  returnMyListPopulate,
+  returnAdminDetailPopulate,
+} from '../utils/populate/returnPopulate.js';
 
-const parseJsonField = (value, fieldName) => {
-  if (value == null) return value;
-  if (typeof value === "object") return value;
-  if (typeof value === "string") {
-    try {
-      return JSON.parse(value);
-    } catch {
-      throw new ApiError(`Invalid JSON for ${fieldName}`, 400);
-    }
-  }
-  throw new ApiError(`Invalid ${fieldName}`, 400);
-};
+const findUserReturn = (id, userId) =>
+  ReturnRequest.findOne({ _id: id, user: userId });
 
-const shouldCreateBostaOnApprove = (returnRequest, nextStatus) =>
-  nextStatus === "approved" &&
-  returnRequest.returnMethod === "pickup" &&
-  !returnRequest.bostaReturnDeliveryId;
-
-/**
- * @desc    Delivered orders eligible for return (within window, returnable qty)
- * @route   GET /api/v1/returns/eligible-orders
- * @access  Private
- */
 export const getEligibleReturnOrders = asyncHandler(async (req, res) => {
-  const orders = await Order.find({
+  const windowCutoff = new Date();
+  windowCutoff.setDate(windowCutoff.getDate() - RETURN_WINDOW_DAYS);
+
+  const mongoFilter = {
     user: req.user._id,
-    orderStatus: { $in: ["delivered", "partially_returned"] },
-    deliveredAt: { $ne: null, $exists: true }, // ← أضف $exists
-  }).sort({ deliveredAt: -1 });
-  const eligible = [];
-  for (const order of orders) {
-    if (!isOrderReturnEligible(order)) continue;
-    const mapped = await mapEligibleOrder(order);
-    if (mapped) eligible.push(mapped);
-  }
+    orderStatus: { $in: ['delivered', 'partially_returned'] },
+    deliveredAt: { $ne: null, $gte: windowCutoff },
+    paymentStatus: { $ne: 'refunded' },
+  };
+
+  const features = new ApiFeatures(
+    Order.find(mongoFilter).select(
+      'orderStatus deliveredAt totalPrice paymentMethod paymentStatus items'
+    ),
+    req.query
+  ).sort();
+
+  await features.paginate();
+
+  const orders = await features.mongooseQuery.lean();
+  const returnableByOrder = await computeReturnableQuantitiesBatch(orders);
+  const now = Date.now();
+
+  const eligible = orders
+    .filter((order) => now <= getReturnWindowEnd(order.deliveredAt).getTime())
+    .map((order) => formatEligibleOrder(order, returnableByOrder.get(String(order._id)) ?? {}))
+    .filter((formatted) => formatted.items.length > 0);
 
   sendResponse(res, {
-    message: "Eligible return orders retrieved successfully",
+    message: 'Eligible return orders retrieved successfully',
     data: eligible,
+    pagination: { ...features.getPaginationResult(), results: eligible.length },
   });
 });
 
-/**
- * @desc    Submit a return request
- * @route   POST /api/v1/returns
- * @access  Private
- */
 export const createReturnRequest = asyncHandler(async (req, res, next) => {
-  const orderId = req.body.order;
-  const items = parseJsonField(req.body.items, "items");
-  const pickupAddress = parseJsonField(
-    req.body.pickupAddress,
-    "pickupAddress",
-  ) ?? {
-    city: req.body["pickupAddress.city"],
-    governorate: req.body["pickupAddress.governorate"],
-    address: req.body["pickupAddress.address"],
-    governorateId: req.body["pickupAddress.governorateId"] ?? null,
-    districtId: req.body["pickupAddress.districtId"] ?? null,
-  };
+  const body = parseReturnCreateBody(req);
+  req.body = body;
 
-  if (
-    !pickupAddress?.city ||
-    !pickupAddress?.governorate ||
-    !pickupAddress?.address
-  ) {
-    return next(
-      new ApiError(
-        "pickupAddress with city, governorate, and address is required",
-        400,
-      ),
-    );
-  }
+  const order = await Order.findOne({ _id: body.order, user: req.user._id });
+  if (!order) return next(new ApiError(`No order found with id: ${body.order}`, 404));
 
-  const order = await Order.findOne({ _id: orderId, user: req.user._id });
-  if (!order)
-    return next(new ApiError(`No order found with id: ${orderId}`, 404));
+  assertOrderReturnEligible(order);
 
-  if (!isOrderReturnEligible(order)) {
-    return next(
-      new ApiError(
-        "Order is not eligible for return. It must be delivered within the return window.",
-        400,
-      ),
-    );
-  }
+  const proofImages = collectProofImages(req);
+  assertProofForReason(body.reason, proofImages);
 
-  if (REASONS_REQUIRING_PROOF.has(req.body.reason)) {
-    const proofCount = req.files?.length ?? 0;
-    if (proofCount === 0) {
-      return next(
-        new ApiError(
-          "Proof images are required for damaged, wrong product, or allergic reaction returns",
-          400,
-        ),
-      );
-    }
-  }
+  const returnItems = await buildReturnItems(order, body.items);
+  const refundAmount = calculateRefundAmount(order, returnItems);
 
-  const returnItems = await buildReturnLineItems(order, items);
-  const refundAmount = calculateRefundAmount(returnItems);
-  const proofImages = (req.files ?? []).map((f) => f.path).filter(Boolean);
-
-  const returnRequest = await ReturnRequest.create({
+  const doc = await ReturnRequest.create({
     order: order._id,
     user: req.user._id,
     items: returnItems,
-    reason: req.body.reason,
-    note: req.body.note?.trim() ?? "",
+    reason: body.reason,
+    note: body.note?.trim() || '',
     proofImages,
-    pickupAddress: {
-      city: pickupAddress.city,
-      governorate: pickupAddress.governorate,
-      address: pickupAddress.address,
-      governorateId: pickupAddress.governorateId ?? null,
-      districtId: pickupAddress.districtId ?? null,
-    },
-    returnMethod: req.body.returnMethod,
+    pickupAddress: body.pickupAddress,
+    contactPhone: body.contactPhone?.trim() || req.user.phone || null,
     refundAmount,
-    refundStatus: "pending",
+    refundStatus: 'pending',
   });
+
+  const populated = await ReturnRequest.findById(doc._id).populate(returnPopulate).lean();
 
   sendResponse(res, {
     statusCode: 201,
-    message: "Return request submitted successfully",
-    data: enrichReturnDocument(returnRequest),
+    message: 'Return request created successfully',
+    data: populated,
   });
 });
 
-/**
- * @desc    List current user's return requests
- * @route   GET /api/v1/returns/my-returns
- * @access  Private
- */
-export const getMyReturnRequests = asyncHandler(async (req, res) => {
+export const getMyReturns = asyncHandler(async (req, res) => {
   const features = new ApiFeatures(
     ReturnRequest.find({ user: req.user._id }),
-    req.query,
+    req.query
   )
     .filter()
     .sort()
@@ -166,48 +115,26 @@ export const getMyReturnRequests = asyncHandler(async (req, res) => {
 
   await features.paginate();
 
-  const returns = await features.mongooseQuery.populate(
-    "order",
-    "orderStatus totalPrice deliveredAt",
-  );
-  const pagination = features.getPaginationResult();
+  const returns = await features.mongooseQuery.populate(returnMyListPopulate).lean();
 
   sendResponse(res, {
-    message: "Return requests retrieved successfully",
-    data: returns.map(enrichReturnDocument),
-    pagination: { ...pagination, results: returns.length },
+    message: 'Return requests retrieved successfully',
+    data: returns,
+    pagination: { ...features.getPaginationResult(), results: returns.length },
   });
 });
 
-/**
- * @desc    Get one return request for current user
- * @route   GET /api/v1/returns/my-returns/:id
- * @access  Private
- */
-export const getMyReturnRequest = asyncHandler(async (req, res, next) => {
-  const returnRequest = await ReturnRequest.findOne({
-    _id: req.params.id,
-    user: req.user._id,
-  }).populate("order");
-
-  if (!returnRequest) {
-    return next(
-      new ApiError(`No return request found with id: ${req.params.id}`, 404),
-    );
-  }
+export const getMyReturn = asyncHandler(async (req, res, next) => {
+  const doc = await findUserReturn(req.params.id, req.user._id).populate(returnPopulate).lean();
+  if (!doc) return next(new ApiError(`No return request found with id: ${req.params.id}`, 404));
 
   sendResponse(res, {
-    message: "Return request retrieved successfully",
-    data: enrichReturnDocument(returnRequest),
+    message: 'Return request retrieved successfully',
+    data: doc,
   });
 });
 
-/**
- * @desc    List all return requests (admin)
- * @route   GET /api/v1/returns
- * @access  Admin
- */
-export const getReturnRequests = asyncHandler(async (req, res) => {
+export const getReturns = asyncHandler(async (req, res) => {
   const features = new ApiFeatures(ReturnRequest.find(), req.query)
     .filter()
     .sort()
@@ -215,154 +142,133 @@ export const getReturnRequests = asyncHandler(async (req, res) => {
 
   await features.paginate();
 
-  const returns = await features.mongooseQuery
-    .populate("user", "name email phone")
-    .populate("order", "orderStatus paymentMethod totalPrice deliveredAt");
-
-  const pagination = features.getPaginationResult();
+  const returns = await features.mongooseQuery.populate(returnListPopulate).lean();
 
   sendResponse(res, {
-    message: "Return requests retrieved successfully",
-    data: returns.map(enrichReturnDocument),
-    pagination: { ...pagination, results: returns.length },
+    message: 'Return requests retrieved successfully',
+    data: returns,
+    pagination: { ...features.getPaginationResult(), results: returns.length },
   });
 });
 
-/**
- * @desc    Get one return request (admin)
- * @route   GET /api/v1/returns/:id
- * @access  Admin
- */
-export const getReturnRequest = asyncHandler(async (req, res, next) => {
-  const returnRequest = await ReturnRequest.findById(req.params.id)
-    .populate("user", "name email phone")
-    .populate("order");
+export const getReturn = asyncHandler(async (req, res, next) => {
+  const doc = await ReturnRequest.findById(req.params.id)
+    .populate(returnAdminDetailPopulate)
+    .lean();
 
-  if (!returnRequest) {
-    return next(
-      new ApiError(`No return request found with id: ${req.params.id}`, 404),
-    );
-  }
+  if (!doc) return next(new ApiError(`No return request found with id: ${req.params.id}`, 404));
 
   sendResponse(res, {
-    message: "Return request retrieved successfully",
-    data: enrichReturnDocument(returnRequest),
+    message: 'Return request retrieved successfully',
+    data: doc,
   });
 });
 
-/**
- * @desc    Advance return workflow (admin)
- * @route   PATCH /api/v1/returns/:id/status
- * @access  Admin
- */
 export const updateReturnStatus = asyncHandler(async (req, res, next) => {
-  const returnRequest = await ReturnRequest.findById(req.params.id);
-  if (!returnRequest) {
-    return next(
-      new ApiError(`No return request found with id: ${req.params.id}`, 404),
-    );
-  }
+  const doc = await ReturnRequest.findById(req.params.id);
+  if (!doc) return next(new ApiError(`No return request found with id: ${req.params.id}`, 404));
 
   const nextStatus = req.body.refundStatus;
-  assertReturnStatusTransition(returnRequest.refundStatus, nextStatus);
+  validateStatusTransition(doc.refundStatus, nextStatus);
 
-  if (nextStatus === "refunded") {
-    if (req.body.manualRefundNote) {
-      returnRequest.manualRefundNote = req.body.manualRefundNote;
-      await returnRequest.save();
+  const updates = { refundStatus: nextStatus };
+
+  if (nextStatus === 'approved') {
+    const logistics = await resolveLogisticsOnApprove({
+      logisticsHandler: req.body.logisticsHandler,
+      carrierId: req.body.carrierId,
+      dropOffPickupId: req.body.dropOffPickupId,
+    });
+    Object.assign(updates, logistics);
+  }
+
+  if (nextStatus === 'rejected') {
+    updates.adminNote = req.body.adminNote?.trim() || null;
+  }
+
+  if (nextStatus === 'refunded') {
+    if (doc.refundStatus !== 'received') {
+      return next(new ApiError('Return must be received before refunding', 400));
     }
-    const finalized = await finalizeReturnRefund(returnRequest);
+
+    const order = await Order.findById(doc.order);
+    if (!order) return next(new ApiError('Linked order not found', 404));
+
+    if (order.paymentMethod === 'cod' && !req.body.manualRefundNote?.trim()) {
+      return next(
+        new ApiError('manualRefundNote is required when refunding a COD return', 400)
+      );
+    }
+
+    let returnDoc = doc;
+    if (req.body.manualRefundNote?.trim()) {
+      returnDoc = await ReturnRequest.findByIdAndUpdate(
+        doc._id,
+        { manualRefundNote: req.body.manualRefundNote.trim() },
+        { returnDocument: 'after' }
+      );
+    }
+
+    const { returnRequest, gatewayRefundId } = await finalizeReturnRefund(returnDoc, order);
+
+    const populated = await ReturnRequest.findById(returnRequest._id)
+      .populate(returnPopulate)
+      .lean();
+
     return sendResponse(res, {
-      message: "Return refunded successfully",
-      data: enrichReturnDocument(finalized),
+      message: 'Return refunded successfully',
+      data: { returnRequest: populated, gatewayRefundId },
     });
   }
 
-  if (shouldCreateBostaOnApprove(returnRequest, nextStatus)) {
-    const order = await Order.findById(returnRequest.order).select(
-      "fulfillment user",
-    );
-
-    if (await orderUsesBostaApi(order)) {
-      if (!req.body.pickupLocationId) {
-        return next(
-          new ApiError(
-            "pickupLocationId is required when approving a Bosta pickup return",
-            400,
-          ),
-        );
-      }
-
-      try {
-        await createReturnBostaPickup(returnRequest, order, {
-          pickupLocationId: req.body.pickupLocationId,
-          size: req.body.size,
-        });
-      } catch (err) {
-        return next(
-          new ApiError(
-            err.message || "Failed to create Bosta return pickup",
-            err.statusCode || 502,
-          ),
-        );
-      }
-    }
-  }
-
-  returnRequest.refundStatus = nextStatus;
-  if (req.body.adminNote) returnRequest.adminNote = req.body.adminNote;
-  if (req.body.manualRefundNote)
-    returnRequest.manualRefundNote = req.body.manualRefundNote;
-  await returnRequest.save();
-
-  let updated = returnRequest;
-  if (returnRequest.bostaReturnTrackingNumber) {
-    updated = await syncReturnTrackingFromBosta(returnRequest);
-  }
+  const updated = await ReturnRequest.findByIdAndUpdate(doc._id, updates, {
+    returnDocument: 'after',
+    runValidators: true,
+  })
+    .populate(returnPopulate)
+    .lean();
 
   sendResponse(res, {
-    message: "Return request status updated successfully",
-    data: enrichReturnDocument(updated),
+    message: 'Return status updated successfully',
+    data: updated,
   });
 });
 
-/**
- * @desc    Retry Bosta Customer Return Pickup for an approved return
- * @route   PATCH /api/v1/returns/:id/bosta-retry
- * @access  Admin
- */
-export const retryBostaPickup = asyncHandler(async (req, res, next) => {
-  const returnRequest = await ReturnRequest.findById(req.params.id);
-  if (!returnRequest) {
+export const scheduleBostaReturn = asyncHandler(async (req, res, next) => {
+  const doc = await ReturnRequest.findById(req.params.id);
+  if (!doc) return next(new ApiError(`No return request found with id: ${req.params.id}`, 404));
+
+  if (doc.logisticsHandler !== 'bosta') {
+    return next(new ApiError('Return logistics handler is not Bosta', 400));
+  }
+
+  if (!['approved', 'picked_up'].includes(doc.refundStatus)) {
     return next(
-      new ApiError(`No return request found with id: ${req.params.id}`, 404),
+      new ApiError('Bosta return can only be scheduled after approval', 400)
     );
   }
-  if (returnRequest.refundStatus !== "approved") {
-    return next(new ApiError("Return must be approved first", 400));
-  }
-  if (returnRequest.returnMethod !== "pickup") {
-    return next(new ApiError("Only pickup returns support Bosta", 400));
-  }
-  if (returnRequest.bostaReturnDeliveryId) {
-    return next(new ApiError("Bosta return pickup already exists", 400));
-  }
-  if (!req.body.pickupLocationId) {
-    return next(new ApiError("pickupLocationId is required", 400));
-  }
 
-  const order = await Order.findById(returnRequest.order).select(
-    "fulfillment user",
-  );
+  const order = await Order.findById(doc.order);
+  if (!order) return next(new ApiError('Linked order not found', 404));
 
-  await createReturnBostaPickup(returnRequest, order, {
-    pickupLocationId: req.body.pickupLocationId,
-    size: req.body.size || "MEDIUM",
-  });
-  await returnRequest.save();
+  const result = await createBostaReturnForReturnRequest(doc, order);
+
+  const updated = await ReturnRequest.findByIdAndUpdate(
+    doc._id,
+    {
+      bostaExternalId: result.externalDeliveryId,
+      bostaTrackingNumber: result.trackingNumber,
+      bostaState: result.providerState,
+      bostaStateLabel: result.providerStateLabel,
+      logisticsScheduledAt: new Date(),
+    },
+    { returnDocument: 'after', runValidators: true }
+  ).populate(returnPopulate);
 
   sendResponse(res, {
-    message: "Bosta return pickup created successfully",
-    data: enrichReturnDocument(returnRequest),
+    message: result.alreadyScheduled
+      ? 'Bosta return was already scheduled'
+      : 'Bosta return scheduled successfully',
+    data: { returnRequest: updated, ...result },
   });
 });

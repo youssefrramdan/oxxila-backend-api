@@ -1,7 +1,6 @@
 // src/utils/checkoutHelpers.js
 import mongoose from 'mongoose';
 import Cart from '../models/Cart.js';
-import Product from '../models/Product.js';
 import Order from '../models/Order.js';
 import Governorate from '../models/Governorate.js';
 import District from '../models/District.js';
@@ -10,6 +9,15 @@ import ApiError from './apiError.js';
 import resolveShipping from './resolveShipping.js';
 import { isCouponValidForCart, commitCouponUsage } from './couponHelpers.js';
 import { decrementStockForOrderItems } from './orderStockHelpers.js';
+import { DEFAULT_SHIPPING_METHOD } from './shipping/constants.js';
+
+const assertShippingMethodCode = (methodCode) => {
+  const code = methodCode || DEFAULT_SHIPPING_METHOD.methodCode;
+  if (code !== DEFAULT_SHIPPING_METHOD.methodCode) {
+    throw new ApiError('Invalid shipping method', 400);
+  }
+  return code;
+};
 
 export const getCartSubtotal = (items) =>
   items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -52,6 +60,11 @@ export const buildShippingSnapshot = async ({ governorateId, districtId, address
     throw new ApiError('Country is not available for shipping', 400);
   }
 
+  const line = String(addressLine || '').trim();
+  if (line.length < 6) {
+    throw new ApiError('addressLine must be at least 6 characters for delivery', 400);
+  }
+
   const { shippingPrice, isOther } = await resolveShipping({ governorateId, districtId });
 
   let districtName = 'Other';
@@ -71,7 +84,7 @@ export const buildShippingSnapshot = async ({ governorateId, districtId, address
       countryName: governorate.country.name,
       governorateName: governorate.name,
       districtName,
-      addressLine: addressLine.trim(),
+      addressLine: line,
       isOther,
       countryId: governorate.country._id,
       governorateId: governorate._id,
@@ -80,7 +93,7 @@ export const buildShippingSnapshot = async ({ governorateId, districtId, address
   };
 };
 
-export const prepareCheckoutFromCart = async (userId, addressInput) => {
+export const prepareCheckoutFromCart = async (userId, addressInput, checkoutOptions = {}) => {
   const cart = await Cart.findOne({ user: userId });
   if (!cart?.items?.length) {
     throw new ApiError('Cart is empty', 400);
@@ -109,6 +122,17 @@ export const prepareCheckoutFromCart = async (userId, addressInput) => {
   }
 
   const { shippingPrice, shippingAddress } = await buildShippingSnapshot(addressInput);
+  const methodCode = assertShippingMethodCode(
+    checkoutOptions.shippingMethodCode || checkoutOptions.methodCode
+  );
+
+  const shipping = {
+    methodCode,
+    methodName: DEFAULT_SHIPPING_METHOD.methodName,
+    price: shippingPrice,
+    quotedAt: new Date(),
+  };
+
   const totalPrice = Math.max(0, subtotal - discountAmount + shippingPrice);
 
   return {
@@ -116,6 +140,7 @@ export const prepareCheckoutFromCart = async (userId, addressInput) => {
     orderItems,
     subtotal,
     shippingPrice,
+    shipping,
     shippingAddress,
     discountAmount,
     totalPrice,
@@ -124,10 +149,6 @@ export const prepareCheckoutFromCart = async (userId, addressInput) => {
   };
 };
 
-/**
- * Creates the order, decrements stock, clears cart, commits coupon usage.
- * `snapshot` — checkout prep result or PaymentSession document (`items` or `orderItems`).
- */
 export const fulfillCheckout = async (snapshot, payment) => {
   const userId = snapshot.user ?? snapshot.userId;
   const items = snapshot.orderItems ?? snapshot.items;
@@ -135,6 +156,7 @@ export const fulfillCheckout = async (snapshot, payment) => {
     shippingAddress,
     subtotal,
     shippingPrice,
+    shipping,
     discountAmount,
     totalPrice,
     couponCode,
@@ -154,6 +176,12 @@ export const fulfillCheckout = async (snapshot, payment) => {
             user: userId,
             items,
             shippingAddress,
+            shipping: shipping ?? {
+              methodCode: 'standard',
+              methodName: 'Standard delivery',
+              price: shippingPrice,
+              quotedAt: new Date(),
+            },
             subtotal,
             shippingPrice,
             discountAmount,

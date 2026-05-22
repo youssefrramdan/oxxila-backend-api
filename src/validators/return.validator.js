@@ -1,128 +1,115 @@
 // src/validators/return.validator.js
-import { body, param } from "express-validator";
-import validate from "../middlewares/validate.middleware.js";
-import { RETURN_REASONS } from "../utils/returnHelpers.js";
+import { body, param, query } from 'express-validator';
+import validate from '../middlewares/validate.middleware.js';
+import { PROOF_REQUIRED_REASONS, getReturnProofUploads } from '../utils/returnHelpers.js';
 
-const pickupAddressFields = [
-  body("pickupAddress.city")
+const mongoId = (field, location = 'param') =>
+  location === 'param'
+    ? param(field).isMongoId().withMessage(`Invalid ${field}`)
+    : body(field).isMongoId().withMessage(`Invalid ${field}`);
+
+const pickupAddressRules = [
+  body('pickupAddress.firstLine')
     .trim()
     .notEmpty()
-    .withMessage("Pickup city is required"),
-
-  body("pickupAddress.governorate")
+    .withMessage('pickupAddress.firstLine is required')
+    .isLength({ max: 500 }),
+  body('pickupAddress.city').trim().notEmpty().withMessage('pickupAddress.city is required'),
+  body('pickupAddress.governorateName')
     .trim()
     .notEmpty()
-    .withMessage("Pickup governorate is required"),
-
-  body("pickupAddress.address")
-    .trim()
-    .notEmpty()
-    .withMessage("Pickup address is required")
-    .isLength({ min: 5, max: 500 }),
-
-  body("pickupAddress.governorateId")
-    .optional({ nullable: true })
-    .isMongoId()
-    .withMessage("Invalid governorateId"),
-
-  body("pickupAddress.districtId")
-    .optional({ nullable: true })
-    .isMongoId()
-    .withMessage("Invalid districtId"),
+    .withMessage('pickupAddress.governorateName is required'),
+  body('pickupAddress.secondLine').optional().trim().isLength({ max: 200 }),
+  body('pickupAddress.governorateId').optional().isMongoId(),
+  body('pickupAddress.districtId')
+    .optional()
+    .custom((value) => {
+      if (value == null || value === '' || value === 'other') return true;
+      if (typeof value === 'string' && /^[a-f\d]{24}$/i.test(value)) return true;
+      throw new Error('Invalid pickupAddress.districtId');
+    }),
+  body('pickupAddress.districtName').optional().trim().isLength({ max: 120 }),
 ];
+
+const isReturnLineId = (value) => {
+  const v = String(value ?? '').trim();
+  if (/^[a-f\d]{24}$/i.test(v)) return true;
+  if (/^idx:\d+$/.test(v)) return true;
+  if (/^\d+$/.test(v)) return true;
+  return false;
+};
 
 export const createReturnValidator = [
-  body("order")
+  body('order').trim().isMongoId().withMessage('Invalid order id'),
+  body('items').isArray({ min: 1 }).withMessage('items must be a non-empty array'),
+  body('items.*.orderItemId')
+    .custom((value) => {
+      if (!isReturnLineId(value)) throw new Error('Invalid orderItemId');
+      return true;
+    }),
+  body('items.*.quantity').isInt({ min: 1 }).withMessage('quantity must be at least 1'),
+  body('reason')
     .notEmpty()
-    .withMessage("order is required")
-    .isMongoId()
-    .withMessage("Invalid order ID"),
-
-  body("items")
-    .isArray({ min: 1 })
-    .withMessage("items must be a non-empty array"),
-
-  body("items.*.orderItemId")
-    .notEmpty()
-    .withMessage("orderItemId is required for each item")
-    .isMongoId()
-    .withMessage("Invalid orderItemId"),
-
-  body("items.*.quantity")
-    .isInt({ min: 1 })
-    .withMessage("quantity must be at least 1"),
-
-  body("reason")
-    .notEmpty()
-    .withMessage("reason is required")
-    .isIn(RETURN_REASONS)
-    .withMessage(`reason must be one of: ${RETURN_REASONS.join(", ")}`),
-
-  body("note").optional().trim().isLength({ max: 2000 }),
-
-  body("returnMethod")
-    .notEmpty()
-    .withMessage("returnMethod is required")
-    .isIn(["pickup", "self_ship"])
-    .withMessage("returnMethod must be pickup or self_ship"),
-
-  ...pickupAddressFields,
-
+    .isIn([
+      'damaged_item',
+      'wrong_product',
+      'allergic_reaction',
+      'expired_product',
+      'changed_mind',
+      'other',
+    ]),
+  body('note').optional().trim().isLength({ max: 1000 }),
+  body('contactPhone').optional().trim().isLength({ max: 20 }),
+  ...pickupAddressRules,
+  body().custom((_, { req }) => {
+    if (
+      PROOF_REQUIRED_REASONS.has(req.body.reason) &&
+      getReturnProofUploads(req).length === 0
+    ) {
+      throw new Error('Proof images are required for this return reason');
+    }
+    return true;
+  }),
   validate,
 ];
 
-export const returnIdParamValidator = [
-  param("id").isMongoId().withMessage("Invalid return request ID"),
-  validate,
-];
-
-const bostaPickupFields = [
-  body("pickupLocationId")
-    .optional()
-    .isMongoId()
-    .withMessage("Invalid pickupLocationId"),
-
-  body("size")
-    .optional()
-    .isIn(["SMALL", "MEDIUM", "LARGE", "XLARGE", "Light Bulky", "Heavy Bulky"])
-    .withMessage("Invalid Bosta package size"),
-];
+export const returnIdParamValidator = [mongoId('id'), validate];
 
 export const updateReturnStatusValidator = [
-  param("id").isMongoId().withMessage("Invalid return request ID"),
-
-  body("refundStatus")
+  mongoId('id'),
+  body('refundStatus')
     .notEmpty()
-    .withMessage("refundStatus is required")
-    .isIn(["approved", "rejected", "picked_up", "received", "refunded"])
-    .withMessage("Invalid refundStatus for this action"),
-
-  body("adminNote").optional().trim().isLength({ max: 1000 }),
-
-  body("manualRefundNote")
+    .isIn(['approved', 'picked_up', 'received', 'refunded', 'rejected']),
+  body('logisticsHandler')
     .optional()
-    .trim()
-    .isLength({ max: 500 })
-    .withMessage("manualRefundNote is for COD manual payout notes"),
-
-  ...bostaPickupFields,
-
+    .isIn(['bosta', 'internal']),
+  body('carrierId').optional().isMongoId(),
+  body('dropOffPickupId').optional().isMongoId(),
+  body('manualRefundNote').optional().trim().isLength({ max: 500 }),
+  body('adminNote').optional().trim().isLength({ max: 500 }),
+  body().custom((_, { req }) => {
+    if (req.body.refundStatus === 'approved') {
+      if (!['bosta', 'internal'].includes(req.body.logisticsHandler)) {
+        throw new Error('logisticsHandler (bosta or internal) is required when approving');
+      }
+      if (req.body.logisticsHandler === 'bosta') {
+        if (!req.body.carrierId) throw new Error('carrierId is required for Bosta logistics');
+        if (!req.body.dropOffPickupId) {
+          throw new Error('dropOffPickupId is required for Bosta logistics');
+        }
+      }
+    }
+    if (req.body.refundStatus === 'rejected' && !req.body.adminNote?.trim()) {
+      throw new Error('adminNote is recommended when rejecting a return');
+    }
+    return true;
+  }),
   validate,
 ];
 
-export const retryBostaPickupValidator = [
-  param("id").isMongoId().withMessage("Invalid return request ID"),
-
-  body("pickupLocationId")
-    .notEmpty()
-    .withMessage("pickupLocationId is required")
-    .isMongoId()
-    .withMessage("Invalid pickupLocationId"),
-
-  body("size")
+export const listReturnsQueryValidator = [
+  query('refundStatus')
     .optional()
-    .isIn(["SMALL", "MEDIUM", "LARGE", "XLARGE", "Light Bulky", "Heavy Bulky"])
-    .withMessage("Invalid Bosta package size"),
-
+    .isIn(['pending', 'approved', 'picked_up', 'received', 'refunded', 'rejected']),
   validate,
 ];

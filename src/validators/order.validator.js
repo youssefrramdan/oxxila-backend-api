@@ -21,8 +21,15 @@ const addressFields = [
     .trim()
     .notEmpty()
     .withMessage('addressLine is required')
-    .isLength({ min: 5, max: 500 })
-    .withMessage('addressLine must be between 5 and 500 characters'),
+    .isLength({ min: 6, max: 500 })
+    .withMessage('addressLine must be between 6 and 500 characters'),
+
+  body('shippingMethodCode')
+    .optional()
+    .trim()
+    .isIn(['standard'])
+    .withMessage('Invalid shipping method'),
+
 ];
 
 export const createOrderValidator = [
@@ -66,13 +73,15 @@ export const updateOrderStatusValidator = [
     .notEmpty()
     .withMessage('orderStatus is required')
     .isIn([
-      'confirmed',
       'pending',
+      'confirmed',
       'processing',
       'shipped',
-      'delivered',
-      'partially_returned',
+      'out_for_delivery',
+      'failed_attempt',
       'returned',
+      'partially_returned',
+      'delivered',
       'cancelled',
     ])
     .withMessage('Invalid order status'),
@@ -82,5 +91,17 @@ export const updateOrderStatusValidator = [
 
 export const refundOrderValidator = [
   param('id').isMongoId().withMessage('Invalid order ID'),
+  validate,
+];
+
+export const cancelOrderValidator = [
+  param('id').isMongoId().withMessage('Invalid order ID'),
+
+  body('reason')
+    .optional()
+    .trim()
+    .isLength({ max: 300 })
+    .withMessage('reason must be at most 300 characters'),
+
   validate,
 ];

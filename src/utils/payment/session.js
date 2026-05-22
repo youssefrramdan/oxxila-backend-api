@@ -70,12 +70,20 @@ export const fulfillPaymentSession = async (paymentSessionId, paymentReference) 
   }
 
   try {
-    const order = await fulfillCheckout(locked, {
-      method: 'card',
-      status: 'paid',
-      provider: locked.provider,
-      reference: paymentReference,
-    });
+    const order = await fulfillCheckout(
+      {
+        ...locked.toObject(),
+        userId: locked.user,
+        orderItems: locked.items,
+        shipping: locked.shipping,
+      },
+      {
+        method: 'card',
+        status: 'paid',
+        provider: locked.provider,
+        reference: paymentReference,
+      }
+    );
 
     await PaymentSession.updateOne(
       { _id: paymentSessionId },

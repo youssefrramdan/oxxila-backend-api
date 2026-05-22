@@ -20,19 +20,20 @@ import { handleBostaWebhookPayload } from '../utils/carriers/bostaFulfillment.js
  * @access  Private
  */
 export const createPaymentSession = asyncHandler(async (req, res, next) => {
-  const { governorateId, districtId, addressLine, provider } = req.body;
+  const { governorateId, districtId, addressLine, provider, shippingMethodCode } = req.body;
   const userId = req.user._id;
 
-  const checkout = await prepareCheckoutFromCart(userId, {
-    governorateId,
-    districtId,
-    addressLine,
-  });
+  const checkout = await prepareCheckoutFromCart(
+    userId,
+    { governorateId, districtId, addressLine },
+    { shippingMethodCode }
+  );
 
   const paymentSession = await PaymentSession.create({
     user: userId,
     items: checkout.orderItems,
     shippingAddress: checkout.shippingAddress,
+    shipping: checkout.shipping,
     subtotal: checkout.subtotal,
     shippingPrice: checkout.shippingPrice,
     discountAmount: checkout.discountAmount,
@@ -145,12 +146,20 @@ const verifyBostaWebhook = (req) => {
   const secret = process.env.BOSTA_WEBHOOK_SECRET?.trim();
   if (!secret) return;
 
+  const customHeader = process.env.BOSTA_WEBHOOK_AUTH_HEADER?.trim()?.toLowerCase();
   const header =
+    (customHeader && req.headers[customHeader]) ||
     req.headers['x-bosta-signature'] ||
     req.headers['x-webhook-secret'] ||
     req.headers.authorization;
 
-  if (header !== secret && header !== `Bearer ${secret}`) {
+  const valid =
+    header === secret ||
+    header === `Bearer ${secret}` ||
+    header === `Basic ${secret}` ||
+    header === `Basic ${Buffer.from(secret).toString('base64')}`;
+
+  if (!valid) {
     throw new ApiError('Invalid Bosta webhook signature', 401);
   }
 };

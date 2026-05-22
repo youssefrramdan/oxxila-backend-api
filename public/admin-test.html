@@ -202,7 +202,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
             <label>District ID (or leave empty for Other)</label>
             <input id="zc-dist-id" placeholder="optional">
           </div>
-          <button class="btn btn-primary" onclick="clientResolve()">4. Resolve Price</button>
+          <button class="btn btn-primary" onclick="clientResolve()">4. Resolve Shipping Price</button>
           <div class="res-box" id="zc-resolve">-</div>
         </div>
       </div>
@@ -492,28 +492,15 @@ async function saveCoverage() {
 }
 
 async function loadSettings() {
-  const data = await api('GET', '/admin/shipping-settings')
-  if (data.data) {
-    document.getElementById('tog-api').classList.toggle('on', data.data.api)
-    document.getElementById('tog-known').classList.toggle('on', data.data.known)
-    document.getElementById('tog-internal').classList.toggle('on', data.data.internal)
-  }
-  show('settings-res', data, data.success === false)
+  show('settings-res', { message: 'ShippingSettings removed — toggle carrier isActive instead' })
 }
 
 async function saveSettings() {
-  const data = await api('PUT', '/admin/shipping-settings', {
-    api:      document.getElementById('tog-api').classList.contains('on'),
-    known:    document.getElementById('tog-known').classList.contains('on'),
-    internal: document.getElementById('tog-internal').classList.contains('on'),
-  })
-  show('settings-res', data, data.success === false)
+  show('settings-res', { message: 'Use PUT /admin/carriers/:id to enable/disable carriers' })
 }
 
 async function clientGetCarriers() {
-  const govId = document.getElementById('cc-gov-id').value
-  const data = await api('GET', '/shipping/carriers?governorateId=' + govId, null, true)
-  show('cc-res', data, data.success === false)
+  show('cc-res', { message: 'GET /shipping/resolve?governorateId=&districtId=' })
 }
 </script>
 </body>

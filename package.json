@@ -6,15 +6,16 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js ",
-    "seed:categories": "node src/scripts/seedCategories.js",
-    "seed:admins": "node src/scripts/seedAdmins.js",
+    "seed:all": "node src/scripts/seedAll.js",
     "seed:products": "node src/scripts/seedProducts.js",
     "seed:catalog": "npm run seed:products",
     "seed:shipping": "node src/scripts/seedShippingZones.js",
     "seed:carriers": "node src/scripts/seedCarriers.js",
     "seed:bosta-zones": "node src/scripts/seedBostaZones.js",
-    "migrate:statuses": "node src/scripts/migrateOrderReturnStatuses.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test:bosta-webhook": "node src/scripts/testBostaWebhook.js",
+    "migrate:shipping": "node src/scripts/migrateShippingRefactor.js",
+    "sync:indexes": "node src/scripts/syncIndexes.js",
+    "test": "echo \"No tests configured\" && exit 1"
   },
   "engines": {
     "node": ">=20.0.0"

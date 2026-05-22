@@ -8,6 +8,7 @@ import {
   getOrder,
   updateOrderStatus,
   refundOrder,
+  cancelOrder,
 } from "../controllers/order.controller.js";
 import {
   createPaymentSession,
@@ -20,6 +21,7 @@ import {
   orderIdParamValidator,
   updateOrderStatusValidator,
   refundOrderValidator,
+  cancelOrderValidator,
 } from "../validators/order.validator.js";
 import { protectedRoutes, allowTo } from "../middlewares/auth.middleware.js";
 
@@ -40,6 +42,7 @@ router.get(
 router.post("/", createOrderValidator, createOrder);
 router.get("/my-orders", getMyOrders);
 router.get("/my-orders/:id", orderIdParamValidator, getMyOrder);
+router.patch("/:id/cancel", cancelOrderValidator, cancelOrder);
 
 router.use(allowTo("admin"));
 

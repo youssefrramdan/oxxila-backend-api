@@ -3,11 +3,9 @@ import asyncHandler from 'express-async-handler';
 import Country from '../models/Country.js';
 import Governorate from '../models/Governorate.js';
 import District from '../models/District.js';
-import CarrierCoverage from '../models/CarrierCoverage.js';
-import ShippingSettings from '../models/ShippingSettings.js';
-import resolveShipping from '../utils/resolveShipping.js';
-import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
+import ApiError from '../utils/apiError.js';
+import resolveShipping from '../utils/resolveShipping.js';
 
 const activeCountryFilter = { isActive: true };
 
@@ -71,7 +69,7 @@ export const getZones = asyncHandler(async (req, res, next) => {
 });
 
 /**
- * @desc    Resolve shipping price for governorate/district selection
+ * @desc    Resolve shipping price for governorate + optional district
  * @route   GET /api/v1/shipping/resolve
  * @access  Public
  */
@@ -79,42 +77,7 @@ export const resolveShippingPrice = asyncHandler(async (req, res, next) => {
   const { governorateId, districtId } = req.query;
   if (!governorateId) return next(new ApiError('governorateId is required', 400));
 
-  const result = await resolveShipping({ governorateId, districtId });
-  sendResponse(res, { message: 'Shipping price resolved successfully', data: result });
-});
+  const data = await resolveShipping({ governorateId, districtId });
 
-/**
- * @desc    Carriers available for a governorate at checkout
- * @route   GET /api/v1/shipping/carriers?governorateId=
- * @access  Public
- */
-export const getAvailableCarriers = asyncHandler(async (req, res, next) => {
-  const { governorateId } = req.query;
-  if (!governorateId) return next(new ApiError('governorateId is required', 400));
-
-  const settings = await ShippingSettings.findOne();
-  const enabledTypes = ['api', 'known', 'internal'].filter(
-    (t) => !settings || settings[t] !== false
-  );
-
-  const coverages = await CarrierCoverage.find({
-    governorate: governorateId,
-    isActive: true,
-  }).populate({
-    path: 'carrier',
-    match: { isActive: true, type: { $in: enabledTypes } },
-    select: 'name code type deliveryDays apiProvider',
-  });
-
-  const data = coverages
-    .filter((c) => c.carrier)
-    .map((c) => ({
-      _id: c.carrier._id,
-      name: c.carrier.name,
-      code: c.carrier.code,
-      type: c.carrier.type,
-      deliveryDays: c.carrier.deliveryDays,
-    }));
-
-  sendResponse(res, { message: 'Available carriers retrieved successfully', data });
+  sendResponse(res, { message: 'Shipping price resolved successfully', data });
 });

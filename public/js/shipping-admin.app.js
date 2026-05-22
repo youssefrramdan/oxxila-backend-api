@@ -1,4 +1,6 @@
 // public/js/shipping-admin.app.js
+const { api, toast, esc, getApiBase: apiBase } = window.OxxilaShippingAdmin;
+
 let token = localStorage.getItem("oxxila_admin_token") || "";
 let carriers = [];
 let countries = [];
@@ -14,43 +16,6 @@ let coverageOnlyMode = false;
 let orders = [];
 let assigningOrderId = null;
 let assignDetail = null;
-const apiBase = () =>
-  (
-    document.getElementById("api-base")?.value ||
-    localStorage.getItem("oxxila_api_base") ||
-    "http://localhost:3000/api/v1"
-  ).replace(/\/$/, "");
-
-function toast(msg, isErr = false) {
-  const el = document.getElementById("toast");
-  el.textContent = msg;
-  el.className = "toast show " + (isErr ? "err" : "ok");
-  setTimeout(() => el.classList.remove("show"), 3200);
-}
-
-async function api(method, path, body) {
-  const headers = { "Content-Type": "application/json" };
-  if (token) headers.Authorization = "Bearer " + token;
-  const res = await fetch(apiBase() + path, {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.success === false) {
-    const err = new Error(data.message || res.statusText || "Request failed");
-    err.data = data;
-    throw err;
-  }
-  return data;
-}
-
-function esc(s) {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/"/g, "&quot;");
-}
 
 function selectedCountry() {
   return countries.find((c) => c._id === selCountry);
@@ -87,45 +52,15 @@ async function doLogin() {
 }
 
 async function loadAll() {
-  await Promise.all([
-    loadSettings(),
-    loadCarriers(),
-    loadZones(),
-    loadOrders(),
-  ]);
+  await Promise.all([loadCarriers(), loadZones(), loadOrders()]);
 }
 
-// â”€â”€ Settings â”€â”€
 async function loadSettings() {
-  const { data } = await api("GET", "/admin/shipping-settings");
-  ["api", "known", "internal"].forEach((key) => {
-    const card = document.getElementById("method-" + key);
-    if (!card) return;
-    const on = data[key] !== false;
-    card.classList.toggle("on", on);
-    card.querySelector(".toggle")?.classList.toggle("on", on);
-  });
+  /* ShippingSettings removed — carriers use isActive only */
 }
 
-async function toggleMethodSetting(card) {
-  const key = card.dataset.setting;
-  if (!key) return;
-  card.classList.toggle("on");
-  card.querySelector(".toggle")?.classList.toggle("on");
-  const payload = {
-    api: document.getElementById("method-api").classList.contains("on"),
-    known: document.getElementById("method-known").classList.contains("on"),
-    internal: document
-      .getElementById("method-internal")
-      .classList.contains("on"),
-  };
-  try {
-    await api("PUT", "/admin/shipping-settings", payload);
-    toast("Settings saved");
-  } catch (e) {
-    toast(e.message, true);
-    await loadSettings();
-  }
+async function toggleMethodSetting() {
+  toast("Use carrier Active/Inactive toggles in the Carriers tab", true);
 }
 
 // â”€â”€ Carriers â”€â”€
@@ -333,12 +268,6 @@ async function saveCarrier() {
         "/admin/carriers/" + editingCarrierId,
         put,
       );
-      if (updated.data?.syncSummary) {
-        toast(
-          `Synced: ${updated.data.syncSummary.count ?? 0} governorates, ` +
-            `${updated.data.syncSummary.districtsCreated ?? 0} new districts`,
-        );
-      }
     } else {
       const payload = { name, code, type, isActive };
       if (type === "api") {
@@ -356,11 +285,6 @@ async function saveCarrier() {
       }
       const created = await api("POST", "/admin/carriers", payload);
       carrierId = created.data?.carrier?._id ?? created.data?._id;
-      if (created.data?.syncSummary) {
-        toast(
-          `Bosta sync: ${created.data.syncSummary.count ?? 0} governorates covered`,
-        );
-      }
     }
 
     if (carrierId && govIds.length && type !== "api") {
@@ -438,7 +362,29 @@ function onCarrierTypeChange() {
 function onApiProviderChange() {
   const isBosta =
     document.getElementById("carrier-api-provider")?.value === "bosta";
-  BostaPickups.setSectionVisible(isBosta && !!editingCarrierId);
+  const showBostaExtras = isBosta && !!editingCarrierId;
+  BostaPickups.setSectionVisible(showBostaExtras);
+  const syncSec = document.getElementById("bosta-sync-section");
+  if (syncSec) syncSec.style.display = showBostaExtras ? "" : "none";
+}
+
+async function syncBostaZonesManual() {
+  if (!editingCarrierId) {
+    toast("Save carrier first", true);
+    return;
+  }
+  try {
+    const { data } = await api(
+      "POST",
+      "/admin/carriers/" + editingCarrierId + "/bosta/sync-zones",
+    );
+    toast(
+      `Synced: ${data?.governoratesCreated ?? 0} new govs, ${data?.districtsCreated ?? 0} new districts, ${data?.coverageGovernorates ?? 0} covered`,
+    );
+    await loadZones();
+  } catch (e) {
+    toast(e.message, true);
+  }
 }
 
 function populateCoverageCountries() {
@@ -499,11 +445,33 @@ function selectDays(el) {
 }
 
 // â”€â”€ Zones â”€â”€
+const loadedGovDistricts = new Set();
+
+async function loadDistrictsForGov(govId) {
+  if (loadedGovDistricts.has(govId)) return;
+  const { data: dists } = await api(
+    "GET",
+    "/admin/governorates/" + govId + "/districts",
+  );
+  districts = districts.filter((d) => d.governorate !== govId);
+  for (const d of dists || []) {
+    districts.push({
+      _id: d._id,
+      governorate: govId,
+      name: d.name,
+      price: d.shippingPrice,
+      covered: d.isCovered !== false,
+    });
+  }
+  loadedGovDistricts.add(govId);
+}
+
 async function loadZones() {
   const { data: countryList } = await api("GET", "/admin/countries");
   countries = countryList || [];
   governorates = [];
   districts = [];
+  loadedGovDistricts.clear();
   for (const c of countries) {
     const { data: govs } = await api(
       "GET",
@@ -515,22 +483,8 @@ async function loadZones() {
         country: c._id,
         name: g.name,
         price: g.shippingPrice,
-        bostaApiCovered: g.bostaApiCovered === true,
+        districtCount: g.districtCount ?? 0,
       });
-      const { data: dists } = await api(
-        "GET",
-        "/admin/governorates/" + g._id + "/districts",
-      );
-      for (const d of dists || []) {
-        districts.push({
-          _id: d._id,
-          governorate: g._id,
-          name: d.name,
-          price: d.shippingPrice,
-          covered: d.isCovered !== false,
-          bostaApiCovered: d.bostaApiCovered === true,
-        });
-      }
     }
   }
   renderCountries();
@@ -581,7 +535,7 @@ function renderGovs() {
       .map(
         (g) => `
     <div class="zone-row ${selGov === g._id ? "sel" : ""}" onclick="selectGov('${g._id}')">
-      <div style="flex:1"><div class="zone-name">${esc(g.name)}</div><div class="zone-sub">${districts.filter((d) => d.governorate === g._id).length} districts</div></div>
+      <div style="flex:1"><div class="zone-name">${esc(g.name)}</div><div class="zone-sub">${g.districtCount ?? districts.filter((d) => d.governorate === g._id).length} districts</div></div>
       <span class="zone-price">${g.price} ${esc(selectedCurrency())}</span>
       <i class="ti ti-trash zone-del" onclick="event.stopPropagation();deleteGov('${g._id}')"></i>
     </div>`,
@@ -590,10 +544,18 @@ function renderGovs() {
     `<div class="add-zone-btn" onclick="openAddGov()"><i class="ti ti-plus"></i> Add governorate</div>`;
 }
 
-function selectGov(id) {
+async function selectGov(id) {
   selGov = id;
   renderGovs();
-  renderDistricts();
+  const el = document.getElementById("dists-col");
+  if (el) el.innerHTML = '<div class="empty-zone">Loading districts…</div>';
+  try {
+    await loadDistrictsForGov(id);
+    renderDistricts();
+  } catch (e) {
+    if (el) el.innerHTML = '<div class="empty-zone">' + esc(e.message) + "</div>";
+    toast(e.message, true);
+  }
 }
 
 function renderDistricts() {
@@ -615,7 +577,7 @@ function renderDistricts() {
       (d) => `
     <div class="district-row">
       <span class="cov-badge ${d.covered ? "cov-yes" : "cov-no"}" onclick="toggleCovered('${d._id}')">${d.covered ? "Covered" : "Closed"}</span>
-      <span style="flex:1;font-size:13px">${esc(d.name)}${d.bostaApiCovered ? '<span class="bosta-badge">Bosta API</span>' : ""}</span>
+      <span style="flex:1;font-size:13px">${esc(d.name)}</span>
       <input class="price-inp" type="number" value="${d.price}" onchange="updateDistPrice('${d._id}',this.value)">
       <i class="ti ti-trash zone-del" onclick="deleteDistrict('${d._id}')"></i>
     </div>`,
@@ -722,7 +684,7 @@ function updateOrdersBadge() {
   const n = orders.filter(
     (o) =>
       ["confirmed", "pending", "processing"].includes(o.orderStatus) &&
-      !o.fulfillment?.carrier,
+      !o.shipment?.carrier,
   ).length;
   badge.textContent = n > 0 ? String(n) : "0";
 }
@@ -731,15 +693,33 @@ function orderStatusClass(status) {
   if (window.OxxilaTracking) return OxxilaTracking.orderStatusClass(status);
   if (status === "shipped") return "os-shipped";
   if (status === "delivered") return "os-delivered";
+  if (status === "partially_returned") return "os-partial-return";
+  if (status === "returned") return "os-product-returned";
   if (status === "processing") return "os-assigned";
   if (status === "confirmed") return "os-confirmed";
   return "os-pending";
 }
 
-function orderStatusLabel(status) {
+function orderStatusLabel(orderOrStatus) {
+  if (orderOrStatus && typeof orderOrStatus === "object") {
+    return (
+      orderOrStatus.orderStatusLabel ||
+      (window.OxxilaTracking
+        ? OxxilaTracking.orderStatusLabel(orderOrStatus.orderStatus)
+        : orderOrStatus.orderStatus)
+    );
+  }
+  const status = orderOrStatus;
   return window.OxxilaTracking
     ? OxxilaTracking.orderStatusLabel(status)
     : status;
+}
+
+function paymentStatusLabel(order) {
+  return (
+    order?.paymentStatusLabel ??
+    (order?.paymentStatus === "paid" ? "Paid" : "Not paid")
+  );
 }
 
 async function confirmOrder(orderId) {
@@ -775,20 +755,29 @@ function renderOrders() {
     .map((o) => {
       const user = o.user || {};
       const zone = `${o.shippingAddress?.governorateName || ""} / ${o.shippingAddress?.districtName || ""}`;
-      const carrier = o.fulfillment?.carrierName || "—";
-      const tracking =
-        o.fulfillment?.trackingNumber || o.fulfillment?.driverName || "—";
+      const carrier = o.shipment?.carrierName || "—";
+      const trackingNum =
+        o.tracking?.trackingNumber ||
+        o.shipment?.trackingNumber ||
+        o.shipment?.driverName ||
+        "";
+      const tracking = trackingNum ? esc(trackingNum) : "—";
       const canAssign = window.OxxilaTracking
         ? OxxilaTracking.canAssignOrder(o)
         : ["confirmed", "pending", "processing"].includes(o.orderStatus) &&
-          !o.fulfillment?.carrier;
+          !o.shipment?.carrier;
       const needsConfirm = window.OxxilaTracking?.needsConfirmOrder(o);
+      const showReturns =
+        o.orderStatus === "partially_returned" || o.orderStatus === "returned";
       const actions = [
         needsConfirm
           ? `<button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;margin-right:4px" onclick="confirmOrder('${o._id}')">Confirm</button>`
           : "",
         canAssign
           ? `<button class="btn btn-primary" style="font-size:11px;padding:5px 10px" onclick="openAssign('${o._id}')">Assign</button>`
+          : "",
+        showReturns
+          ? `<a class="btn btn-secondary" style="font-size:11px;padding:5px 10px;text-decoration:none" href="/returns-admin.html?orderId=${o._id}">Returns</a>`
           : "",
       ]
         .filter(Boolean)
@@ -835,8 +824,8 @@ function renderAssignDrawer() {
   const user = o.user || {};
   const carriersList = assignDetail.carriers || [];
   const bostaWarn =
-    assignDetail.districtBosta && !assignDetail.districtBosta.bostaApiCovered
-      ? '<p style="color:var(--amber);font-size:11px;margin-top:8px">This district is not Bosta API covered — Bosta assignment may fail.</p>'
+    assignDetail.zoneMapping === null && o.shippingAddress?.districtId
+      ? '<p style="color:var(--amber);font-size:11px;margin-top:8px">No Bosta zone mapping for this district — run zone sync first.</p>'
       : "";
 
   const grouped = { api: [], known: [], internal: [] };
@@ -853,16 +842,16 @@ function renderAssignDrawer() {
       ${list
         .map((c) => {
           const noCoverage = !c.coversGovernorate;
-          const noPickup =
+          const noPickups =
             c.type === "api" &&
             c.apiProvider === "bosta" &&
-            c.hasDefaultPickup === false;
-          const disabled = noCoverage || noPickup;
+            c.hasPickups === false;
+          const disabled = noCoverage || noPickups;
           const id = c._id;
           const hint = noCoverage
             ? "not in coverage"
-            : noPickup
-              ? "no default pickup"
+            : noPickups
+              ? "no pickups in DB — import in carrier"
               : "";
           return `
         <label style="display:flex;align-items:center;gap:8px;padding:8px 0;opacity:${disabled ? 0.45 : 1};cursor:${disabled ? "not-allowed" : "pointer"}">
@@ -909,19 +898,49 @@ function renderAssignDrawer() {
       ${renderGroup("Known carriers", grouped.known)}
       ${renderGroup("Internal delivery", grouped.internal)}
     </div>
+    <div id="bosta-assign-pickup" style="display:none;margin-top:12px">
+      <div class="form-group">
+        <label class="form-label">Pickup location (required)</label>
+        <select class="form-select" id="assign-pickup-id">
+          <option value="">— Select pickup —</option>
+        </select>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px">Pickups are loaded from your database (import once in carrier settings).</p>
+      </div>
+    </div>
     <div id="manual-assign-fields" style="display:none;margin-top:12px">
       <div class="form-group"><label class="form-label">Driver name</label><input class="form-input" id="assign-driver-name"></div>
       <div class="form-group"><label class="form-label">Driver phone</label><input class="form-input" id="assign-driver-phone"></div>
-      <div class="form-group"><label class="form-label">Tracking number (optional)</label><input class="form-input" id="assign-tracking"></div>
+      <div class="form-group"><label class="form-label">Tracking number (optional — auto-generated if empty)</label><input class="form-input" id="assign-tracking" placeholder="Leave blank to auto-generate"></div>
       <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="assign-notes"></div>
     </div>`;
 }
 
+function fillAssignPickupSelect(carrierId) {
+  const sel = document.getElementById("assign-pickup-id");
+  if (!sel) return;
+  const list = assignDetail?.pickupsByCarrier?.[carrierId] || [];
+  sel.innerHTML =
+    '<option value="">— Select pickup —</option>' +
+    list
+      .map((p) => {
+        const sub = [p.city, p.districtName].filter(Boolean).join(" · ");
+        const def = p.isDefault ? " (default)" : "";
+        return `<option value="${p._id}">${esc(p.locationName)}${def}${sub ? " — " + esc(sub) : ""}</option>`;
+      })
+      .join("");
+  if (list.length === 1) sel.value = list[0]._id;
+}
+
 function onAssignCarrierChange(type, provider) {
   const manual = document.getElementById("manual-assign-fields");
-  if (!manual) return;
-  const showManual = type === "known" || type === "internal";
-  manual.style.display = showManual ? "" : "none";
+  const bostaPickup = document.getElementById("bosta-assign-pickup");
+  const isBosta = type === "api" && provider === "bosta";
+  if (bostaPickup) bostaPickup.style.display = isBosta ? "" : "none";
+  if (manual) manual.style.display = type === "known" || type === "internal" ? "" : "none";
+  if (isBosta) {
+    const carrierId = document.querySelector('input[name="assign-carrier"]:checked')?.value;
+    if (carrierId) fillAssignPickupSelect(carrierId);
+  }
 }
 
 async function confirmAssign() {
@@ -934,17 +953,26 @@ async function confirmAssign() {
   }
   const carrierId = selected.value;
   const carrier = assignDetail?.carriers?.find((c) => c._id === carrierId);
+  const isBosta =
+    carrier?.type === "api" && carrier?.apiProvider === "bosta";
+  const pickupId = document.getElementById("assign-pickup-id")?.value?.trim();
+  if (isBosta && !pickupId) {
+    toast("Select a pickup location", true);
+    return;
+  }
   const payload = {
     carrierId,
     driverName: document.getElementById("assign-driver-name")?.value?.trim(),
     driverPhone: document.getElementById("assign-driver-phone")?.value?.trim(),
     trackingNumber: document.getElementById("assign-tracking")?.value?.trim(),
     notes: document.getElementById("assign-notes")?.value?.trim(),
-    size: document.getElementById("assign-size")?.value || "MEDIUM", // ← الإضافة
-    markShipped: carrier?.type === "api" && carrier?.apiProvider === "bosta",
+    size: document.getElementById("assign-size")?.value || "MEDIUM",
+    pickupId: isBosta ? pickupId : undefined,
+    markShipped:
+      isBosta || carrier?.type === "known" || carrier?.type === "internal",
   };
   try {
-    await api(
+    const res = await api(
       "POST",
       "/admin/shipping/orders/" + assigningOrderId + "/assign",
       payload,

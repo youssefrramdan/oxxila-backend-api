@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oxxila — My Returns</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="/css/returns-shared.css">
+<style>
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--sidebar);}
+.brand{font-weight:600;font-size:15px;}
+.tabs{display:flex;gap:8px;margin:16px 20px 0;}
+.tab{padding:8px 14px;border-radius:8px;cursor:pointer;border:1px solid var(--border2);color:var(--muted);font-size:12px;}
+.tab.active{background:var(--accent);color:#fff;}
+.panel{margin:16px 20px 40px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;}
+.card{border:1px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:10px;font-size:12px;}
+.hidden{display:none;}
+.line-item{display:flex;align-items:center;gap:10px;margin:6px 0;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">Oxxila Returns</div>
+  <div style="display:flex;gap:12px;align-items:center">
+    <a href="/checkout-test.html">Checkout</a>
+    <a href="/cart-test.html">Shop</a>
+    <button class="btn btn-secondary" id="login-btn" onclick="toggleLogin()">Login</button>
+  </div>
+</div>
+<input type="hidden" id="base-url" value="http://localhost:3000/api/v1">
+<div class="tabs">
+  <div class="tab active" data-tab="list" onclick="switchTab('list')">My returns</div>
+  <div class="tab" data-tab="new" onclick="switchTab('new')">New request</div>
+</div>
+<section id="tab-list" class="panel">
+  <div id="my-returns-list"></div>
+</section>
+<section id="tab-new" class="panel hidden">
+  <label class="form-label">Eligible order</label>
+  <select class="form-input" id="eligible-order" onchange="onOrderPick()"></select>
+  <div id="return-lines"></div>
+  <label class="form-label">Reason</label>
+  <select class="form-input" id="reason">
+    <option value="changed_mind">Changed mind</option>
+    <option value="damaged_item">Damaged item</option>
+    <option value="wrong_product">Wrong product</option>
+    <option value="allergic_reaction">Allergic reaction</option>
+    <option value="expired_product">Expired product</option>
+    <option value="other">Other</option>
+  </select>
+  <label class="form-label">Note</label>
+  <input class="form-input" id="note" placeholder="Optional details">
+  <label class="form-label">Country</label>
+  <select class="form-input" id="country" onchange="onCountryChange()"></select>
+  <label class="form-label">Governorate</label>
+  <select class="form-input" id="governorate" onchange="onGovernorateChange()" disabled></select>
+  <label class="form-label">District</label>
+  <select class="form-input" id="district" disabled></select>
+  <label class="form-label">Address line (pickup from you)</label>
+  <input class="form-input" id="first-line" placeholder="Building, street, floor">
+  <label class="form-label">Second line (optional)</label>
+  <input class="form-input" id="second-line" placeholder="Apartment">
+  <label class="form-label">Proof images (max 5, required for damaged/wrong/allergic)</label>
+  <input type="file" id="proof-files" accept="image/*" multiple>
+  <button class="btn btn-primary" style="margin-top:12px" onclick="submitReturn()">Submit return</button>
+</section>
+<div id="toast" class="toast"></div>
+<script src="/js/returns-test.app.js"></script>
+</body>
+</html>

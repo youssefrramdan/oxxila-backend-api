@@ -34,7 +34,6 @@ export const createDistrict = asyncHandler(async (req, res, next) => {
     governorate,
     name,
     shippingPrice,
-    bostaApiCovered: false,
   });
   sendResponse(res, {
     statusCode: 201,

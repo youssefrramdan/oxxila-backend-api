@@ -1,5 +1,6 @@
 // src/controllers/governorate.controller.js
 import asyncHandler from 'express-async-handler';
+import mongoose from 'mongoose';
 import Governorate from '../models/Governorate.js';
 import District from '../models/District.js';
 import Country from '../models/Country.js';
@@ -15,7 +16,21 @@ export const getGovernoratesByCountry = asyncHandler(async (req, res, next) => {
   const country = await Country.findById(req.params.id);
   if (!country) return next(new ApiError(`No country found with id: ${req.params.id}`, 404));
 
-  const governorates = await Governorate.find({ country: req.params.id }).sort({ name: 1 });
+  const countryOid = new mongoose.Types.ObjectId(req.params.id);
+  const governorates = await Governorate.aggregate([
+    { $match: { country: countryOid } },
+    { $sort: { name: 1 } },
+    {
+      $lookup: {
+        from: District.collection.name,
+        localField: '_id',
+        foreignField: 'governorate',
+        as: '_districts',
+      },
+    },
+    { $addFields: { districtCount: { $size: '$_districts' } } },
+    { $project: { _districts: 0 } },
+  ]);
   sendResponse(res, { message: 'Governorates retrieved successfully', data: governorates });
 });
 

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oxxila — Returns Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="/css/returns-shared.css">
+<style>
+body{display:flex;}
+.sidebar{width:200px;background:var(--sidebar);border-right:1px solid var(--border);padding:16px 10px;min-height:100vh;}
+.sidebar a{display:block;padding:8px 10px;border-radius:8px;color:var(--muted);font-size:13px;margin-bottom:4px;}
+.sidebar a.active{background:var(--accent-dim);color:var(--text);border:1px solid var(--accent-border);}
+.main{flex:1;padding:20px 24px;}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.tab{padding:6px 12px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--border2);color:var(--muted);}
+.tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.grid{display:grid;grid-template-columns:1fr 360px;gap:16px;}
+table{width:100%;border-collapse:collapse;}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:12px;}
+th{color:var(--muted);font-size:10px;text-transform:uppercase;}
+tbody tr{cursor:pointer;}
+tbody tr.sel{background:var(--accent-dim);}
+.detail{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.detail h3{font-size:14px;margin-bottom:10px;}
+.muted{color:var(--muted);font-size:11px;}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+#dropoff-wrap{display:none;margin-top:10px;}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div style="font-weight:600;margin-bottom:14px;padding:0 8px">Oxxila Admin</div>
+  <a href="/shipping-admin.html"><i class="ti ti-truck"></i> Shipping</a>
+  <a href="/returns-admin.html" class="active"><i class="ti ti-arrow-back"></i> Returns</a>
+</aside>
+<main class="main">
+  <div class="topbar">
+    <div>
+      <h1 style="font-size:18px;font-weight:600">Return requests</h1>
+      <p class="muted">Review, assign logistics, refund</p>
+    </div>
+    <div>
+      <input class="form-input" id="api-base" style="width:260px;margin:0" placeholder="API base">
+      <input class="form-input" id="admin-token" type="password" style="width:200px;margin:0 0 0 8px" placeholder="Admin Bearer token">
+      <button class="btn btn-secondary" onclick="saveAuth()">Save</button>
+    </div>
+  </div>
+  <div class="tabs" id="status-tabs"></div>
+  <div class="grid">
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <table>
+        <thead><tr><th>ID</th><th>User</th><th>Order</th><th>Amount</th><th>Status</th></tr></thead>
+        <tbody id="returns-body"></tbody>
+      </table>
+      <div id="returns-pagination" class="actions" style="padding:10px 12px;border-top:1px solid var(--border)"></div>
+    </div>
+    <div class="detail" id="detail-panel">
+      <p class="muted">Select a return request</p>
+    </div>
+  </div>
+</main>
+<div class="modal-overlay" id="approve-modal">
+  <div class="modal">
+    <h3 style="margin-bottom:12px">Approve return</h3>
+    <label class="form-label">Who handles pickup?</label>
+    <select class="form-input" id="approve-handler" onchange="onHandlerChange()">
+      <option value="internal">Internal team</option>
+      <option value="bosta">Bosta</option>
+    </select>
+    <div id="dropoff-wrap">
+      <label class="form-label">Bosta carrier</label>
+      <select class="form-input" id="approve-carrier"></select>
+      <label class="form-label">Drop-off warehouse (receives return)</label>
+      <select class="form-input" id="approve-dropoff"></select>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="confirmApprove()">Approve</button>
+      <button class="btn btn-secondary" onclick="closeApprove()">Cancel</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="refund-modal">
+  <div class="modal">
+    <h3 style="margin-bottom:12px">Process refund</h3>
+    <label class="form-label">Manual refund note (COD)</label>
+    <input class="form-input" id="refund-note" placeholder="Vodafone Cash / bank transfer ref">
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="confirmRefund()">Refund</button>
+      <button class="btn btn-secondary" onclick="closeRefund()">Cancel</button>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+<link rel="stylesheet" href="/css/tracking-ui.css">
+<script src="/js/tracking-ui.js"></script>
+<script src="/js/returns-admin.app.js"></script>
+</body>
+</html>

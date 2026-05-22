@@ -9,20 +9,11 @@ import sendResponse from "../utils/apiResponse.js";
 import {
   normalizeBostaBaseUrl,
   getBostaCredentials,
-  fetchBostaCityDistricts,
 } from "../utils/carriers/bosta.js";
 import { syncBostaCarrierCoverage } from "../utils/carriers/bostaFulfillment.js";
+import { mapCarrierForAdmin } from "../utils/carriers/bosta/admin.js";
 
-const mapCarrierForAdmin = (c, coverages) => ({
-  ...c.toObject(),
-  hasApiKey: Boolean(c.apiKey),
-  apiBaseUrl: c.apiBaseUrl ? normalizeBostaBaseUrl(c.apiBaseUrl) : null,
-  apiKey: undefined,
-  coverage: coverages
-    .filter((cv) => cv.carrier.toString() === c._id.toString())
-    .map((cv) => cv.governorate?.name)
-    .filter(Boolean),
-});
+const MAX_PICKUP_LOCATIONS = 200;
 
 /**
  * @desc    List carriers with coverage summary (admin)
@@ -78,17 +69,10 @@ export const createCarrier = asyncHandler(async (req, res, next) => {
       : {}),
   });
 
-  let syncSummary = null;
-  if (carrier.apiProvider === "bosta" && carrier.apiKey) {
-    const credentials = await getBostaCredentials(carrier);
-    await fetchBostaCityDistricts(credentials);
-    syncSummary = await syncBostaCarrierCoverage(carrier._id, credentials);
-  }
-
   sendResponse(res, {
     statusCode: 201,
     message: "Carrier created successfully",
-    data: { carrier, syncSummary },
+    data: { carrier },
   });
 });
 
@@ -117,30 +101,14 @@ export const updateCarrier = asyncHandler(async (req, res, next) => {
     delete update.apiKey;
   }
 
-  const keyChanged = update.apiKey && update.apiKey !== existing.apiKey;
-  const urlChanged =
-    update.apiBaseUrl &&
-    update.apiBaseUrl !== normalizeBostaBaseUrl(existing.apiBaseUrl);
-
   const carrier = await Carrier.findByIdAndUpdate(req.params.id, update, {
-    new: true,
+    returnDocument: "after",
     runValidators: true,
   }).select("+apiKey +apiBaseUrl");
 
-  let syncSummary = null;
-  if (
-    carrier.apiProvider === "bosta" &&
-    carrier.apiKey &&
-    (keyChanged || urlChanged)
-  ) {
-    const credentials = await getBostaCredentials(carrier);
-    await fetchBostaCityDistricts(credentials);
-    syncSummary = await syncBostaCarrierCoverage(carrier._id, credentials);
-  }
-
   sendResponse(res, {
     message: "Carrier updated successfully",
-    data: { carrier: mapCarrierForAdmin(carrier, []), syncSummary },
+    data: { carrier: mapCarrierForAdmin(carrier, []) },
   });
 });
 
@@ -166,10 +134,10 @@ export const syncBostaZonesForCarrier = asyncHandler(async (req, res, next) => {
     return next(new ApiError("Bosta API key is not configured", 400));
   }
 
-  const syncSummary = await syncBostaCarrierCoverage(carrier._id, credentials);
+  const zoneStats = await syncBostaCarrierCoverage(carrier._id, credentials);
   sendResponse(res, {
-    message: "Bosta zones synced successfully",
-    data: syncSummary,
+    message: "Bosta governorates and districts synced successfully",
+    data: zoneStats,
   });
 });
 
@@ -261,8 +229,11 @@ export const getBostaPickupLocations = asyncHandler(async (req, res) => {
   const pickups = await CarrierPickup.find({
     carrier: { $in: bostaCarriers.map((c) => c._id) },
   })
+    .select("carrier locationName bostaLocationId isDefault address")
     .populate("carrier", "name")
-    .sort({ isDefault: -1, locationName: 1 });
+    .sort({ isDefault: -1, locationName: 1 })
+    .limit(MAX_PICKUP_LOCATIONS)
+    .lean();
 
   sendResponse(res, {
     message: "Bosta pickup locations retrieved successfully",

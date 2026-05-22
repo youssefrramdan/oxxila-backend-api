@@ -33,8 +33,14 @@ export const getAllBrands = asyncHandler(async (req, res, next) => {
     .search(['name'])
     .sort();
 
-  const brands = await features.mongooseQuery;
-  sendResponse(res, { message: 'Brands retrieved successfully', data: brands });
+  await features.paginate();
+
+  const brands = await features.mongooseQuery.lean();
+  sendResponse(res, {
+    message: 'Brands retrieved successfully',
+    data: brands,
+    pagination: { ...features.getPaginationResult(), results: brands.length },
+  });
 });
 
 export const getBrand = asyncHandler(async (req, res, next) => {

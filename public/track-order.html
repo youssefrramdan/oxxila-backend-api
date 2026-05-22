@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oxxila — Track order</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link rel="stylesheet" href="/css/checkout-test.css">
+<link rel="stylesheet" href="/css/tracking-ui.css">
+<style>
+.track-page { max-width: 720px; margin: 0 auto; }
+.track-search { display: flex; gap: 8px; margin-bottom: 20px; }
+.track-search .form-input { flex: 1; }
+.track-meta { font-size: 13px; color: var(--muted); margin: 12px 0 20px; }
+.track-meta strong { color: var(--text); font-family: 'DM Mono', monospace; }
+.track-card { margin-top: 16px; }
+.track-empty { color: var(--muted); font-size: 14px; padding: 24px 0; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Oxx<span>i</span>la<small>Track order</small></div>
+  <div class="topbar-right">
+    <a class="nav-link" href="/checkout-test.html"><i class="ti ti-shopping-bag"></i> Checkout</a>
+    <a class="nav-link" href="/cart-test.html"><i class="ti ti-shopping-cart"></i> Shop</a>
+  </div>
+</div>
+
+<main class="main track-page">
+  <h1 class="page-title">Track your order</h1>
+  <p class="page-sub">Enter your tracking number, or open this page right after checkout with your order link.</p>
+
+  <section class="card">
+    <h2>Lookup</h2>
+    <div class="track-search">
+      <input class="form-input" id="tracking-input" placeholder="Tracking number e.g. OX-BOSTA-…" autocomplete="off">
+      <button type="button" class="btn btn-primary" onclick="searchTracking()">Track</button>
+    </div>
+    <p class="track-meta" id="hint-line">Logged-in users can also use <code>?orderId=</code> from checkout.</p>
+  </section>
+
+  <div id="track-result" style="display:none">
+    <section class="card track-card">
+      <h2>Status</h2>
+      <div id="track-banner"></div>
+      <div id="track-stepper" style="margin-top:16px"></div>
+      <div class="track-meta" id="track-details"></div>
+    </section>
+  </div>
+
+  <div id="track-empty" class="track-empty">Enter a tracking number to see delivery progress.</div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="/js/tracking-ui.js"></script>
+<script src="/js/track-order.app.js"></script>
+</body>
+</html>

@@ -145,6 +145,8 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
 .os-shipped{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(96,165,250,.22);}
 .os-pending{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(251,191,36,.22);}
 .os-delivered{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+.os-partial-return{background:rgba(251,191,36,.12);color:var(--amber);border:1px solid rgba(251,191,36,.25);}
+.os-product-returned{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,.22);}
 .os-assigned{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border);}
 .tracking-code{font-family:var(--mono);font-size:11px;color:var(--muted);}
 .method-cell{font-size:11px;color:var(--muted);text-transform:uppercase;font-family:var(--mono);letter-spacing:.04em;}
@@ -312,6 +314,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
   <div class="nav-item"><i class="ti ti-star"></i> Reviews</div>
   <div class="nav-section">Logistics</div>
   <div class="nav-item active"><i class="ti ti-truck"></i> Shipping</div>
+  <a class="nav-item" href="/returns-admin.html" style="text-decoration:none;color:inherit"><i class="ti ti-arrow-back"></i> Returns</a>
   <div class="nav-item"><i class="ti ti-tag"></i> Free Shipping</div>
   <div class="nav-item"><i class="ti ti-settings"></i> Settings</div>
   <div class="sidebar-bottom">
@@ -467,6 +470,8 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
           <div class="order-filter-btn" onclick="filterOrders('processing',this)">Processing</div>
           <div class="order-filter-btn" onclick="filterOrders('shipped',this)">Shipped</div>
           <div class="order-filter-btn" onclick="filterOrders('delivered',this)">Delivered</div>
+          <div class="order-filter-btn" onclick="filterOrders('partially_returned',this)">Partial return</div>
+          <div class="order-filter-btn" onclick="filterOrders('returned',this)">Returned</div>
         </div>
       </div>
       <table>
@@ -537,10 +542,17 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
         <label class="form-label">API Key</label>
         <input class="form-input" type="password" id="carrier-api-key" placeholder="Paste API key" autocomplete="off">
       </div>
+      <div id="bosta-sync-section" style="display:none">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="syncBostaZonesManual()"><i class="ti ti-refresh"></i> Sync governorates &amp; districts</button>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px">One bulk import from Bosta (all cities at once). Run after saving API key — not on create.</p>
+      </div>
             <div id="bosta-pickups-section" style="display:none">
         <div class="form-divider">Bosta Pickup Locations</div>
         <div class="pickups-toolbar">
           <div id="pickups-list" class="pickups-list-main">Save carrier with API key first</div>
+          <button type="button" class="btn btn-secondary pickups-add-btn" title="Import from Bosta" onclick="BostaPickups.syncFromBosta()">
+            <i class="ti ti-download"></i>
+          </button>
           <button type="button" class="btn btn-secondary pickups-add-btn" title="Add pickup" onclick="togglePickupInlineForm()">
             <i class="ti ti-plus"></i>
           </button>
@@ -654,6 +666,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
 </div>
 
 <script src="/js/tracking-ui.js"></script>
+<script src="js/shipping-admin.api.js"></script>
 <script src="js/shipping-admin.pickups.js"></script>
 <script src="js/shipping-admin.app.js"></script>
 </body>

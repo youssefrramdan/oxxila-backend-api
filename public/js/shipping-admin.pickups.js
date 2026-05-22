@@ -79,7 +79,7 @@ const BostaPickups = (() => {
     if (!listEl) return;
     if (!pickups.length) {
       listEl.innerHTML =
-        '<span style="color:var(--muted2)">No pickups — use + to add (syncs from Bosta on first load)</span>';
+        '<span style="color:var(--muted2)">No pickups — import from Bosta or add manually</span>';
       return;
     }
     listEl.innerHTML = pickups
@@ -96,6 +96,26 @@ const BostaPickups = (() => {
         </div>`;
       })
       .join('');
+  };
+
+  const syncFromBosta = async () => {
+    if (!editingCarrierId) {
+      toast('Save carrier with API key first', true);
+      return;
+    }
+    const listEl = $('pickups-list');
+    if (listEl) listEl.textContent = 'Syncing from Bosta…';
+    try {
+      const { data } = await api(
+        'POST',
+        '/admin/carriers/' + editingCarrierId + '/bosta/sync-pickups',
+      );
+      renderList(editingCarrierId, data || []);
+      toast('Pickups imported from Bosta');
+    } catch (e) {
+      if (listEl) listEl.textContent = e.message;
+      toast(e.message, true);
+    }
   };
 
   const load = async (carrierId) => {
@@ -194,6 +214,7 @@ const BostaPickups = (() => {
 
   return {
     load,
+    syncFromBosta,
     toggleForm,
     hideForm,
     submit,

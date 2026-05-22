@@ -202,6 +202,7 @@ async function onGovernorateChange() {
     shippingPrice = d.shippingPrice;
     dist.disabled = false;
     updateTotal();
+    await refreshShippingPrice();
     return;
   }
   let html = '<option value="">Select district</option>';
@@ -211,22 +212,32 @@ async function onGovernorateChange() {
   html += `<option value="other">Other (${d.other.shippingPrice} EGP)</option>`;
   dist.innerHTML = html;
   dist.disabled = false;
-  resolveShippingPrice();
+  onDistrictChange();
 }
 
-async function resolveShippingPrice() {
+async function onDistrictChange() {
+  const opt = document.getElementById('district').selectedOptions[0];
+  if (opt?.textContent?.includes('EGP')) {
+    const m = opt.textContent.match(/\((\d+(?:\.\d+)?)\s*EGP\)/);
+    if (m) shippingPrice = Number(m[1]);
+  }
+  updateTotal();
+  await refreshShippingPrice();
+}
+
+async function refreshShippingPrice() {
   const governorateId = document.getElementById('governorate').value;
   const districtId = document.getElementById('district').value || 'other';
   if (!governorateId) return;
-  const data = await api(
-    'GET',
-    `/shipping/resolve?governorateId=${governorateId}&districtId=${districtId}`,
-    null,
-    true
-  );
-  shippingPrice = data?.data?.shippingPrice ?? 0;
-  document.getElementById('sum-ship').textContent = `${shippingPrice} EGP`;
-  updateTotal();
+
+  const q = new URLSearchParams({ governorateId, districtId });
+  const data = await api('GET', `/shipping/resolve?${q}`, null, true);
+  const price = data?.data?.shippingPrice;
+  if (price != null) {
+    shippingPrice = price;
+    document.getElementById('sum-ship').textContent = `${shippingPrice} EGP`;
+    updateTotal();
+  }
 }
 
 function checkoutPayload() {
@@ -234,6 +245,7 @@ function checkoutPayload() {
     governorateId: document.getElementById('governorate').value,
     districtId: document.getElementById('district').value || 'other',
     addressLine: document.getElementById('address-line').value.trim(),
+    shippingMethodCode: 'standard',
   };
 }
 
@@ -257,10 +269,11 @@ async function placeOrder() {
     btn.disabled = false;
     btn.innerHTML = '<i class="ti ti-lock"></i> Place order';
     if (data?.data) {
-      showToast('COD order created');
-      const alert = document.getElementById('return-alert');
-      alert.style.display = '';
-      document.getElementById('return-msg').textContent = `Order ${data.data._id} — ${data.data.paymentStatus}`;
+      showToast('COD order created — opening tracker…');
+      const orderId = data.data._id;
+      setTimeout(() => {
+        window.location.href = `/track-order.html?orderId=${orderId}`;
+      }, 600);
       await loadCart();
       loadMyOrders();
     } else {
@@ -308,10 +321,11 @@ function pollPaymentSession(id) {
     if (st === 'completed' && data?.data?.order) {
       clearInterval(pollTimer);
       const orderId = data.data.order._id || data.data.order;
-      showToast('Order created after payment');
-      document.getElementById('return-alert').style.display = '';
-      document.getElementById('return-msg').textContent = `Order ${orderId}`;
+      showToast('Payment complete — opening tracker…');
       sessionStorage.removeItem('oxxila_payment_session');
+      setTimeout(() => {
+        window.location.href = `/track-order.html?orderId=${orderId}`;
+      }, 600);
       await loadCart();
       loadMyOrders();
     } else if (st === 'failed' || n > 80) {
@@ -433,7 +447,7 @@ async function loadMyOrders() {
       </div>
       ${tracker}
       ${banner}
-      <div>${o.items?.length || 0} items · <strong>${o.totalPrice} EGP</strong></div>
+      <div>${o.itemCount ?? o.items?.length ?? 0} items · <strong>${o.totalPrice} EGP</strong></div>
       <div class="order-meta">${o.paymentMethod}${provider} · ${new Date(o.createdAt).toLocaleString()}</div>
       ${refundBtn}
     </div>`;
@@ -448,12 +462,13 @@ function checkPaymentReturn() {
 
   if (paymobSessionId && paymobStatus) {
     sessionStorage.setItem('oxxila_payment_session', paymobSessionId);
-    document.getElementById('return-alert').style.display = '';
+    const alert = document.getElementById('order-alert');
+    if (alert) alert.style.display = '';
     if (paymobStatus === 'completed') {
-      document.getElementById('return-msg').textContent = 'Back from Paymob — verifying…';
+      document.getElementById('order-msg').textContent = 'Back from Paymob — verifying…';
       pollPaymentSession(paymobSessionId);
     } else {
-      document.getElementById('return-msg').textContent = 'Paymob payment failed';
+      document.getElementById('order-msg').textContent = 'Paymob payment failed';
       showToast('Payment failed', 'err');
     }
     history.replaceState({}, '', location.pathname);
@@ -462,8 +477,9 @@ function checkPaymentReturn() {
 
   const psId = sessionStorage.getItem('oxxila_payment_session');
   if (psId && (params.get('session_id') || params.get('paid') === '1')) {
-    document.getElementById('return-alert').style.display = '';
-    document.getElementById('return-msg').textContent = 'Back from Stripe — verifying…';
+    const alert = document.getElementById('order-alert');
+    if (alert) alert.style.display = '';
+    document.getElementById('order-msg').textContent = 'Back from Stripe — verifying…';
     pollPaymentSession(psId);
     history.replaceState({}, '', location.pathname);
   }
@@ -474,7 +490,8 @@ window.closeLogin = closeLogin;
 window.doLogin = doLogin;
 window.onCountryChange = onCountryChange;
 window.onGovernorateChange = onGovernorateChange;
-window.resolveShippingPrice = resolveShippingPrice;
+window.onDistrictChange = onDistrictChange;
+window.refreshShippingPrice = refreshShippingPrice;
 window.placeOrder = placeOrder;
 window.loadMyOrders = loadMyOrders;
 window.adminLogin = adminLogin;

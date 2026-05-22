@@ -3,6 +3,7 @@ import asyncHandler from 'express-async-handler';
 import Offer from '../models/Offer.js';
 import Product from '../models/Product.js';
 import ApiError from '../utils/apiError.js';
+import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
 
 const PRODUCT_ON_CARD = 'name slug price images isBundle';
@@ -57,8 +58,19 @@ export const getAllOffers = asyncHandler(async (req, res) => {
     filter.endDate = { $lte: endOfToday, $gt: now };
   }
 
-  const data = await Offer.find(filter).populate(popProduct(PRODUCT_ON_CARD)).sort({ endDate: 1 }).lean();
-  sendResponse(res, { message: 'Offers retrieved successfully', data });
+  const features = new ApiFeatures(
+    Offer.find(filter).populate(popProduct(PRODUCT_ON_CARD)).sort({ endDate: 1 }),
+    req.query
+  );
+
+  await features.paginate();
+
+  const data = await features.mongooseQuery.lean();
+  sendResponse(res, {
+    message: 'Offers retrieved successfully',
+    data,
+    pagination: { ...features.getPaginationResult(), results: data.length },
+  });
 });
 
 /**

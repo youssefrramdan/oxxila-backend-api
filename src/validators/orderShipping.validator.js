@@ -14,6 +14,7 @@ export const assignOrderShippingValidator = [
     .optional()
     .isIn(["SMALL", "MEDIUM", "LARGE", "XLARGE"])
     .withMessage("size must be SMALL, MEDIUM, LARGE, or XLARGE"),
+  body("pickupId").optional().isMongoId().withMessage("Invalid pickup id"),
   validate,
 ];
 

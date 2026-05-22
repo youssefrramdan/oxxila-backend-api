@@ -12,6 +12,16 @@ const paymentItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const paymentShippingSelectionSchema = new mongoose.Schema(
+  {
+    methodCode: { type: String, default: 'standard' },
+    methodName: { type: String, default: 'Standard delivery' },
+    price: { type: Number, min: 0, default: 0 },
+    quotedAt: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const paymentShippingAddressSchema = new mongoose.Schema(
   {
     countryName: { type: String, required: true, trim: true },
@@ -37,6 +47,7 @@ const paymentSessionSchema = new mongoose.Schema(
       },
     },
     shippingAddress: { type: paymentShippingAddressSchema, required: true },
+    shipping: { type: paymentShippingSelectionSchema, default: () => ({}) },
     subtotal: { type: Number, required: true, min: 0 },
     shippingPrice: { type: Number, required: true, min: 0 },
     discountAmount: { type: Number, default: 0, min: 0 },

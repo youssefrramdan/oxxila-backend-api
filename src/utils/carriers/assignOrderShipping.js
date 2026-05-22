@@ -1,122 +1,23 @@
 // src/utils/carriers/assignOrderShipping.js
-import CarrierCoverage from "../../models/CarrierCoverage.js";
-import District from "../../models/District.js";
-import Governorate from "../../models/Governorate.js";
-import User from "../../models/User.js";
-import ApiError from "../apiError.js";
-import {
-  getBostaCredentials,
-  createBostaDelivery,
-  enrichBostaAddress,
-  findDefaultPickup,
-} from "./bosta.js";
-import { mapBostaStateToOrderStatus } from "./bostaFulfillment.js";
+import CarrierCoverage from '../../models/CarrierCoverage.js';
+import Shipment from '../../models/Shipment.js';
+import ApiError from '../apiError.js';
+import { createBostaDeliveryForOrder } from './bosta/deliveries.js';
+import { getBostaCredentials, formatBostaError, isUncoveredAddressError } from './bosta/client.js';
+import { mapBostaStateToOrderStatus } from './bostaStates.js';
+import { appendShipmentEvent, syncOrderFromShipment } from '../shipping/shipmentSync.js';
+import { generateManualTrackingNumber } from '../shipping/generateTrackingNumber.js';
 
-const BLOCKED_STATUSES = new Set(["cancelled", "delivered", "returned"]);
+const BLOCKED_STATUSES = new Set(['cancelled', 'delivered']);
 
-const assignBosta = async (
-  order,
-  carrier,
-  fulfillmentBase,
-  options,
-  credentials,
-) => {
-  const defaultPickup = await findDefaultPickup(carrier._id, credentials);
-  if (!defaultPickup) {
-    throw new ApiError(
-      "No default Bosta pickup location configured. Add one in shipping admin or in Bosta dashboard, then refresh the carrier.",
-      400,
-    );
-  }
-
-  // Fail fast on missing phone before any address work
-  const user = await User.findById(order.user).select("name phone");
-  if (!user?.phone) {
-    throw new ApiError("Customer phone is required for Bosta delivery", 400);
-  }
-
-  let districtDoc = null;
-  if (order.shippingAddress.districtId) {
-    districtDoc = await District.findById(order.shippingAddress.districtId);
-  }
-
-  if (districtDoc && !districtDoc.bostaApiCovered) {
-    throw new ApiError(
-      `District ${order.shippingAddress.districtName} is not covered by Bosta API`,
-      400,
-    );
-  }
-
-  const governorate = await Governorate.findById(
-    order.shippingAddress.governorateId,
-  );
-
-  const dropOffAddress = await enrichBostaAddress(
-    {
-      city: order.shippingAddress.governorateName,
-      zone: order.shippingAddress.districtName,
-      firstLine: order.shippingAddress.addressLine,
-      cityId: governorate?.bostaCityId || undefined,
-      districtId: districtDoc?.bostaDistrictId || undefined,
-      districtName:
-        !districtDoc?.bostaDistrictId && !order.shippingAddress.isOther
-          ? order.shippingAddress.districtName
-          : undefined,
-    },
-    credentials,
-    {
-      cityName: order.shippingAddress.governorateName,
-      districtName: order.shippingAddress.districtName,
-      districtId: districtDoc?.bostaDistrictId,
-    },
-  );
-
-  const cod = order.paymentMethod === "cod" ? Math.round(order.totalPrice) : 0;
-
-  const bostaRes = await createBostaDelivery(
-    {
-      receiverName: user.name,
-      receiverPhone: user.phone,
-      dropOffAddress,
-      cod,
-      businessReference: String(order._id),
-      notes: options.notes || "",
-      defaultPickupFromDb: defaultPickup,
-      packageSpecs: {
-        itemsCount: order.items.reduce((s, i) => s + i.quantity, 0),
-        description: `Order ${order._id}`,
-        size: options.size || "MEDIUM",
-      },
-    },
-    credentials,
-  );
-
-  const delivery = bostaRes.data ?? bostaRes;
-  fulfillmentBase.trackingNumber =
-    delivery.trackingNumber ??
-    delivery.tracking_number ??
-    options.trackingNumber ??
-    null;
-  fulfillmentBase.externalDeliveryId =
-    delivery._id ?? delivery.id ?? delivery.deliveryId ?? null;
-  fulfillmentBase.bostaState = delivery.state?.value ?? delivery.state ?? null;
-};
-
-export const assignOrderToCarrier = async (
-  order,
-  carrier,
-  adminUserId,
-  options = {},
-) => {
+export const assignOrderToCarrier = async (order, carrier, adminUserId, options = {}) => {
   if (BLOCKED_STATUSES.has(order.orderStatus)) {
-    throw new ApiError(
-      `Cannot assign carrier to order with status: ${order.orderStatus}`,
-      400,
-    );
+    throw new ApiError(`Cannot assign carrier to order with status: ${order.orderStatus}`, 400);
   }
 
-  if (order.fulfillment?.carrier) {
-    throw new ApiError("Order already has a carrier assigned", 400);
+  const existingShipment = await Shipment.findOne({ order: order._id });
+  if (existingShipment?.carrier) {
+    throw new ApiError('Order already has a carrier assigned', 400);
   }
 
   const coverage = await CarrierCoverage.findOne({
@@ -127,54 +28,95 @@ export const assignOrderToCarrier = async (
   if (!coverage) {
     throw new ApiError(
       `Carrier ${carrier.name} does not cover governorate: ${order.shippingAddress.governorateName}`,
-      400,
+      400
     );
   }
 
-  const fulfillmentBase = {
-    carrier: carrier._id,
-    carrierName: carrier.name,
-    carrierCode: carrier.code,
-    carrierType: carrier.type,
-    assignedAt: new Date(),
-    assignedBy: adminUserId,
-    driverName: options.driverName?.trim() || null,
-    driverPhone: options.driverPhone?.trim() || null,
-    notes: options.notes?.trim() || null,
-    trackingNumber: options.trackingNumber?.trim() || null,
-  };
+  let shipment =
+    existingShipment ??
+    (await Shipment.create({
+      order: order._id,
+      status: 'pending_assignment',
+      methodSnapshot: {
+        methodCode: order.shipping?.methodCode ?? 'standard',
+        methodName: order.shipping?.methodName ?? 'Standard delivery',
+        price: order.shippingPrice,
+      },
+    }));
 
-  let orderStatus = options.markShipped === false ? "processing" : "shipped";
+  shipment.carrier = carrier._id;
+  shipment.carrierName = carrier.name;
+  shipment.carrierCode = carrier.code;
+  shipment.carrierType = carrier.type;
+  shipment.assignedAt = new Date();
+  shipment.assignedBy = adminUserId;
+  shipment.driverName = options.driverName?.trim() || null;
+  shipment.driverPhone = options.driverPhone?.trim() || null;
+  shipment.notes = options.notes?.trim() || null;
+  shipment.trackingNumber = options.trackingNumber?.trim() || shipment.trackingNumber;
 
-  if (carrier.type === "api" && carrier.apiProvider === "bosta") {
+  let orderStatus = options.markShipped === false ? 'processing' : 'shipped';
+
+  if (carrier.type === 'api' && carrier.apiProvider === 'bosta') {
+    if (!options.pickupId) {
+      throw new ApiError('Select a pickup location for Bosta assignment', 400);
+    }
     const credentials = await getBostaCredentials(carrier);
     if (!credentials) {
-      throw new ApiError(
-        "Bosta API key is not configured for this carrier",
-        400,
-      );
+      throw new ApiError('Bosta API key is not configured for this carrier', 400);
     }
 
-    await assignBosta(order, carrier, fulfillmentBase, options, credentials);
+    try {
+      const result = await createBostaDeliveryForOrder(order, carrier, options, credentials);
+      shipment.trackingNumber = result.trackingNumber ?? options.trackingNumber ?? null;
+      shipment.externalDeliveryId = result.externalDeliveryId;
+      shipment.providerState = result.providerState;
+      shipment.providerStateLabel = result.providerStateLabel;
+      shipment.status = 'submitted';
+      shipment.attemptCount = (shipment.attemptCount || 0) + 1;
+      shipment.lastError = null;
+
+      appendShipmentEvent(shipment, {
+        code: result.providerState,
+        label: result.providerStateLabel ?? 'Submitted to Bosta',
+        source: 'api',
+      });
+    } catch (err) {
+      const bostaMsg = formatBostaError(err);
+      shipment.lastError = bostaMsg;
+      shipment.attemptCount = (shipment.attemptCount || 0) + 1;
+      await shipment.save();
+      if (isUncoveredAddressError(err) || err.statusCode === 400) {
+        throw err;
+      }
+      throw new ApiError(bostaMsg, err.statusCode || 502);
+    }
+
     orderStatus =
-      mapBostaStateToOrderStatus(
-        fulfillmentBase.bostaState,
-        options.markShipped === false ? "processing" : "processing",
-      ) ?? "processing";
-  } else if (carrier.type === "known" || carrier.type === "internal") {
-    if (options.markShipped !== true && !fulfillmentBase.trackingNumber) {
-      orderStatus = "processing";
+      mapBostaStateToOrderStatus(shipment.providerState, 'processing') ?? 'processing';
+  } else if (carrier.type === 'known' || carrier.type === 'internal') {
+    if (!shipment.trackingNumber) {
+      shipment.trackingNumber = await generateManualTrackingNumber(order, carrier);
+    }
+    shipment.status = options.markShipped === false ? 'pending_assignment' : 'submitted';
+    appendShipmentEvent(shipment, {
+      code: 'submitted',
+      label: 'Shipment registered',
+      source: 'manual',
+    });
+    if (options.markShipped !== true) {
+      orderStatus = 'processing';
+    } else {
+      orderStatus = 'shipped';
     }
   } else {
-    throw new ApiError(
-      `Carrier type ${carrier.type} is not supported for assignment`,
-      400,
-    );
+    throw new ApiError(`Carrier type ${carrier.type} is not supported for assignment`, 400);
   }
 
-  order.fulfillment = fulfillmentBase;
+  await shipment.save();
   order.orderStatus = orderStatus;
   await order.save();
+  await syncOrderFromShipment(shipment);
 
   return order;
 };

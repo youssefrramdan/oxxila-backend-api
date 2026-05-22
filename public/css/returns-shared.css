@@ -1,0 +1,29 @@
+/* public/css/returns-shared.css */
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0c0c10;--sidebar:#11111a;--panel:#16161f;--card:#1c1c28;
+  --border:#252535;--border2:#2e2e42;--accent:#7c6dff;
+  --accent-dim:rgba(124,109,255,.15);--accent-border:rgba(124,109,255,.35);
+  --text:#e2e2ee;--muted:#6a6a88;--muted2:#3e3e56;
+  --green:#34d399;--red:#f87171;--amber:#fbbf24;--blue:#60a5fa;
+  --font:'DM Sans',system-ui,sans-serif;--mono:'DM Mono',monospace;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+a{color:var(--accent);text-decoration:none;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:none;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-secondary{background:var(--card);color:var(--text);border:1px solid var(--border2);}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 14px;border-radius:8px;font-size:12px;opacity:0;transition:.2s;z-index:99;}
+.toast.show{opacity:1;}
+.toast.ok{background:#14532d;color:#bbf7d0;}
+.toast.err{background:#450a0a;color:#fecaca;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:50;padding:16px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto;}
+.form-label{font-size:11px;color:var(--muted);margin-bottom:4px;display:block;}
+.form-input{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--card);color:var(--text);font-size:13px;margin-bottom:10px;}
+.status-pill{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:500;}
+.st-pending{background:var(--amber);color:#000;}
+.st-approved,.st-picked_up,.st-received{background:var(--blue);color:#fff;}
+.st-refunded{background:var(--green);color:#000;}
+.st-rejected{background:var(--red);color:#fff;}

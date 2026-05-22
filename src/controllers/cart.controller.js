@@ -2,73 +2,19 @@
 import asyncHandler from 'express-async-handler';
 import Cart from '../models/Cart.js';
 import Product from '../models/Product.js';
-import Coupon from '../models/Coupon.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import {
   assertCouponApplicable,
   calculateCouponDiscount,
   findActiveCouponByCode,
-  isCouponValidForCart,
 } from '../utils/couponHelpers.js';
-
-const resolveProductPrice = (product) => product.priceAfterDiscount ?? product.price;
-
-const getCartSubtotal = (cart) =>
-  cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-const formatCartResponse = (result) => ({
-  _id: result.cart._id,
-  items: result.cart.items,
-  couponCode: result.cart.couponCode,
-  discountAmount: result.cart.discountAmount,
-  subtotal: result.subtotal,
-  totalPrice: result.totalPrice,
-});
-
-const getUpdatedCart = async (userId) => {
-  const cart = await Cart.findOne({ user: userId }).populate(
-    'items.product',
-    'name images price priceAfterDiscount stock isActive'
-  );
-  if (!cart) return null;
-
-  let changed = false;
-  for (const item of cart.items) {
-    if (!item.product) continue;
-    const currentPrice = resolveProductPrice(item.product);
-    if (item.price !== currentPrice) {
-      item.price = currentPrice;
-      changed = true;
-    }
-  }
-
-  const subtotal = getCartSubtotal(cart);
-
-  if (cart.couponId) {
-    const coupon = await Coupon.findById(cart.couponId);
-
-    if (!isCouponValidForCart(coupon, userId, subtotal)) {
-      cart.couponCode = null;
-      cart.couponId = null;
-      cart.discountAmount = 0;
-      changed = true;
-    } else {
-      const discount = calculateCouponDiscount(coupon, subtotal);
-      if (cart.discountAmount !== discount) {
-        cart.discountAmount = discount;
-        changed = true;
-      }
-    }
-  }
-
-  if (changed) await cart.save();
-
-  const finalSubtotal = getCartSubtotal(cart);
-  const totalPrice = Math.max(0, finalSubtotal - (cart.discountAmount || 0));
-
-  return { cart, subtotal: finalSubtotal, totalPrice };
-};
+import {
+  resolveProductPrice,
+  getCartSubtotal,
+  formatCartResponse,
+  getUpdatedCart,
+} from '../utils/cartPricing.js';
 
 export const getCart = asyncHandler(async (req, res) => {
   const result = await getUpdatedCart(req.user._id);

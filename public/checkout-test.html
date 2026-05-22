@@ -16,6 +16,8 @@
   <div class="brand">Oxx<span>i</span>la<small>Checkout test</small></div>
   <div class="topbar-right">
     <a class="nav-link" href="/cart-test.html"><i class="ti ti-shopping-cart"></i> Shop</a>
+    <a class="nav-link" href="/track-order.html"><i class="ti ti-map-pin"></i> Track</a>
+    <a class="nav-link" href="/returns-test.html"><i class="ti ti-arrow-back"></i> Returns</a>
     <div class="login-pill" id="login-pill" onclick="openLogin()">
       <i class="ti ti-user"></i><span id="login-label">Login</span>
     </div>
@@ -28,7 +30,7 @@
 
   <div class="checkout-grid">
     <div class="col-left">
-      <div id="return-alert" class="return-alert" style="display:none"><span id="return-msg"></span></div>
+      <div id="order-alert" class="return-alert" style="display:none"><span id="order-msg"></span></div>
 
       <section class="card">
         <h2>Shipping</h2>
@@ -42,11 +44,11 @@
         </div>
         <div class="form-group">
           <label class="form-label">District</label>
-          <select class="form-input" id="district" onchange="resolveShippingPrice()" disabled><option>Select governorate</option></select>
+          <select class="form-input" id="district" onchange="onDistrictChange()" disabled><option>Select governorate</option></select>
         </div>
         <div class="form-group">
           <label class="form-label">Address line</label>
-          <input class="form-input" id="address-line" value="123 Test Street, Cairo">
+          <input class="form-input" id="address-line" value="123 Test Street, Cairo" onblur="refreshShippingPrice()">
         </div>
       </section>
 

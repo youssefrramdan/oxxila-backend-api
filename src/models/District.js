@@ -22,10 +22,6 @@ const districtSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    bostaApiCovered: { type: Boolean, default: false },
-    bostaDistrictId: { type: String, default: null },
-    bostaZoneId: { type: String, default: null },
-    bostaDropOffAvailable: { type: Boolean, default: null },
   },
   { timestamps: true }
 );

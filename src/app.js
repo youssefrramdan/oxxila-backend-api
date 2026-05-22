@@ -8,6 +8,7 @@ import dotenv from "dotenv";
 import morgan from "morgan";
 import ApiError from "./utils/apiError.js";
 import globalError from "./middlewares/error.middleware.js";
+import { requestTiming } from "./middlewares/requestTiming.middleware.js";
 import sendResponse from "./utils/apiResponse.js";
 import passport from "./config/passport.js";
 import authRouter from "./routes/auth.routes.js";
@@ -26,6 +27,7 @@ import shippingRouter from "./routes/shipping.routes.js";
 import cartRouter from "./routes/cart.routes.js";
 import orderRouter from "./routes/order.routes.js";
 import returnRouter from "./routes/return.routes.js";
+import trackingRouter from "./routes/tracking.routes.js";
 import {
   stripeWebhook,
   paymobWebhook,
@@ -73,6 +75,7 @@ app.post("/api/v1/webhooks/paymob", express.json(), paymobWebhook);
 app.post("/api/v1/webhooks/bosta", express.json(), bostaWebhook);
 
 app.use(express.json());
+app.use(requestTiming);
 app.use(cookieParser());
 // Stateless Passport — only used by OAuth routes to populate req.user.
 app.use(passport.initialize());
@@ -104,13 +107,22 @@ app.get("/cart-test.html", (req, res) => {
 app.get("/checkout-test.html", (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "checkout-test.html"));
 });
-app.get("/return-admin.html", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "return-admin.html"));
+
+app.get("/returns-admin.html", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "returns-admin.html"));
 });
+
+app.get("/returns-test.html", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "returns-test.html"));
+});
+
 app.get("/return-page.html", (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "return-page.html"));
 });
 
+app.get("/track-order.html", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "track-order.html"));
+});
 app.use(express.static(PUBLIC_DIR));
 
 app.use("/api/v1/auth", authRouter);
@@ -131,6 +143,7 @@ app.use("/api/v1/shipping", shippingRouter);
 app.use("/api/v1/cart", cartRouter);
 app.use("/api/v1/orders", orderRouter);
 app.use("/api/v1/returns", returnRouter);
+app.use("/api/v1/track", trackingRouter);
 
 app.all(/(.*)/, (req, res, next) => {
   next(new ApiError(`Route ${req.originalUrl} not found`, 404));

@@ -115,4 +115,7 @@ userSchema.set('toJSON', {
   },
 });
 
+userSchema.index({ role: 1, createdAt: -1 });
+userSchema.index({ role: 1, active: 1 });
+
 export default model('User', userSchema);
