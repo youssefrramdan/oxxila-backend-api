@@ -3989,7 +3989,7 @@
                     }
                   ]
                 },
-                "description": "**Admin** Approve without Bosta — customer ships to warehouse or internal pickup. Then advance: picked_up → received → refunded (COD: `manualRefundNote` on final step)."
+                "description": "**Admin** Approve without Bosta — customer ships to warehouse or internal pickup. Then advance: picked_up → received → refunded (COD: issues store credit to customer account)."
               },
               "response": []
             },
@@ -4108,7 +4108,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"refundStatus\": \"refunded\",\n  \"manualRefundNote\": \"Vodafone Cash 010xxxxxxxx — COD order\"\n}"
+                  "raw": "{\n  \"refundStatus\": \"refunded\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/returns/:id/status",
@@ -4129,7 +4129,7 @@
                     }
                   ]
                 },
-                "description": "**Admin** `received` → `refunded`. Card: Stripe/Paymob partial refund + restock. COD: no gateway — set `manualRefundNote` (bank/wallet/Vodafone Cash) and restock."
+                "description": "**Admin** `received` → `refunded`. Card: Stripe/Paymob partial refund + restock. COD: issues store credit (`refundAmount`) to customer; auto-applied on next cart/checkout."
               },
               "response": []
             },

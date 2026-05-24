@@ -174,7 +174,9 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
 .zone-del:hover{color:var(--red);}
 .district-row{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:7px;background:var(--card);border:1px solid var(--border);margin-bottom:4px;}
 .cov-badge{font-size:9px;padding:2px 7px;border-radius:12px;font-weight:500;cursor:pointer;flex-shrink:0;}
-.bosta-badge{font-size:9px;padding:2px 6px;border-radius:10px;background:var(--blue-bg);color:var(--blue);border:1px solid rgba(96,165,250,.25);margin-left:6px;}
+.bosta-badge{font-size:9px;padding:2px 7px;border-radius:10px;background:var(--blue-bg);color:var(--blue);border:1px solid rgba(96,165,250,.25);flex-shrink:0;white-space:nowrap;}
+.bosta-badge.bosta-covered{font-size:9px;font-weight:500;letter-spacing:.02em;}
+.zone-legend{font-size:10px;color:var(--muted);line-height:1.45;padding:0 14px 10px;margin-top:-4px;}
 .pickups-toolbar{display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;}
 .pickups-list-main{flex:1;min-height:36px;font-size:12px;color:var(--muted);}
 .pickups-add-btn{flex-shrink:0;padding:7px 10px;}
@@ -429,6 +431,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
         </div>
         <button class="btn btn-secondary" onclick="openAddCountry()"><i class="ti ti-plus"></i> Add Country</button>
       </div>
+      <p class="zone-legend"><strong>Checkout</strong> (Covered / Closed) — toggled here. <strong>Bosta covered</strong> badge — shown only when Bosta drop-off is available (updated by Bosta sync).</p>
       <div class="zones-grid">
         <!-- Countries -->
         <div class="zones-col">
@@ -537,8 +540,12 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
         <input class="form-input" type="password" id="carrier-api-key" placeholder="Paste API key" autocomplete="off">
       </div>
       <div id="bosta-sync-section" style="display:none">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="syncBostaZonesManual()"><i class="ti ti-refresh"></i> Sync governorates &amp; districts</button>
-        <p style="font-size:11px;color:var(--muted);margin-top:6px">One bulk import from Bosta (all cities at once). Run after saving API key — not on create.</p>
+        <button type="button" class="btn btn-secondary btn-sm" id="bosta-sync-btn" onclick="syncBostaZonesManual()">
+          <i class="ti ti-refresh"></i> Sync Bosta Zones
+        </button>
+        <p id="bosta-sync-hint" style="font-size:11px;color:var(--muted);margin-top:6px">
+          First run: imports all governorates &amp; districts. After that: updates Bosta coverage only.
+        </p>
       </div>
             <div id="bosta-pickups-section" style="display:none">
         <div class="form-divider">Bosta Pickup Locations</div>

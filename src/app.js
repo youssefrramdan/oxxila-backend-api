@@ -35,10 +35,12 @@ import {
   bostaWebhook,
 } from "./controllers/payment.controller.js";
 import { startOfferCron } from "./utils/offerCron.js";
+import { startBostaCoverageSyncJob } from "./jobs/bostaCoverageSync.job.js";
 
 dotenv.config();
 
 startOfferCron();
+startBostaCoverageSyncJob();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "..", "public");

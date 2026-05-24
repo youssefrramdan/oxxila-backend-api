@@ -1675,7 +1675,11 @@
       <div class="return-meta">
         <div>Reason: <strong>${esc(REASON_LABELS[r.reason] || r.reason)}</strong></div>
         <div>Logistics: <strong>${esc(r.logisticsHandler === "bosta" ? "Bosta" : r.logisticsHandler === "internal" ? "Internal" : "Pending review")}</strong></div>
-        <div>Refund: <strong style="color:var(--accent2)">${r.refundAmount} EGP</strong></div>
+        <div>Refund: <strong style="color:var(--accent2)">${r.refundAmount} EGP</strong>${
+          r.refundStatus === "refunded" && r.order?.paymentMethod === "cod"
+            ? ' <span style="color:var(--muted);font-weight:400">· added to store credit</span>'
+            : ""
+        }</div>
       </div>
       ${
         r.bostaTrackingNumber

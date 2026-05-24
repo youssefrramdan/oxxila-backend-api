@@ -22,6 +22,10 @@ const districtSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    bostaCovered: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

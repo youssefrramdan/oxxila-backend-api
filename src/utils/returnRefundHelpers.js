@@ -7,12 +7,18 @@ import { createPaymobRefund } from './payment/paymob.js';
 import { createStripeRefund, resolveStripePaymentIntentId } from './payment/stripe.js';
 import { restoreStockForOrderItems } from './orderStockHelpers.js';
 import { syncOrderReturnState } from './returnHelpers.js';
+import { issueStoreCredit } from './storeCredit.js';
 
 const CARD_PROVIDERS = ['stripe', 'paymob'];
 
 export const finalizeReturnRefund = async (returnRequest, order) => {
   if (returnRequest.restocked) {
-    return { returnRequest, gatewayRefundId: returnRequest.gatewayRefundId, alreadyDone: true };
+    return {
+      returnRequest,
+      gatewayRefundId: returnRequest.gatewayRefundId,
+      alreadyDone: true,
+      storeCreditIssued: false,
+    };
   }
 
   const alreadyRefunded = await ReturnRequest.aggregate([
@@ -68,9 +74,20 @@ export const finalizeReturnRefund = async (returnRequest, order) => {
 
   const session = await mongoose.startSession();
   let updated;
+  let storeCreditIssued = false;
 
   try {
     await session.withTransaction(async () => {
+      if (order.paymentMethod === 'cod') {
+        const creditResult = await issueStoreCredit({
+          userId: returnRequest.user,
+          amount: returnRequest.refundAmount,
+          returnRequestId: returnRequest._id,
+          session,
+        });
+        storeCreditIssued = !creditResult.alreadyIssued;
+      }
+
       await restoreStockForOrderItems(returnRequest.items, session);
 
       updated = await ReturnRequest.findByIdAndUpdate(
@@ -90,5 +107,10 @@ export const finalizeReturnRefund = async (returnRequest, order) => {
     session.endSession();
   }
 
-  return { returnRequest: updated, gatewayRefundId, alreadyDone: false };
+  return {
+    returnRequest: updated,
+    gatewayRefundId,
+    alreadyDone: false,
+    storeCreditIssued,
+  };
 };

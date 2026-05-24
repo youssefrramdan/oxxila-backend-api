@@ -5,6 +5,10 @@ import {
   calculateCouponDiscount,
   isCouponValidForCart,
 } from './couponHelpers.js';
+import {
+  computeStoreCreditApplied,
+  getStoreCreditBalance,
+} from './storeCredit.js';
 
 export const resolveProductPrice = (product) => product.priceAfterDiscount ?? product.price;
 
@@ -16,6 +20,8 @@ export const formatCartResponse = (result) => ({
   items: result.cart.items,
   couponCode: result.cart.couponCode,
   discountAmount: result.cart.discountAmount,
+  storeCreditBalance: result.storeCreditBalance ?? 0,
+  storeCreditApplied: result.storeCreditApplied ?? 0,
   subtotal: result.subtotal,
   totalPrice: result.totalPrice,
 });
@@ -59,7 +65,19 @@ export const getUpdatedCart = async (userId) => {
   if (changed) await cart.save();
 
   const finalSubtotal = getCartSubtotal(cart);
-  const totalPrice = Math.max(0, finalSubtotal - (cart.discountAmount || 0));
+  const couponDiscount = cart.discountAmount || 0;
+  const payableBeforeCredit = Math.max(0, finalSubtotal - couponDiscount);
+  const storeCreditBalance = await getStoreCreditBalance(userId);
+  const { storeCreditApplied, payableAfterCredit } = computeStoreCreditApplied(
+    storeCreditBalance,
+    payableBeforeCredit
+  );
 
-  return { cart, subtotal: finalSubtotal, totalPrice };
+  return {
+    cart,
+    subtotal: finalSubtotal,
+    storeCreditBalance,
+    storeCreditApplied,
+    totalPrice: payableAfterCredit,
+  };
 };

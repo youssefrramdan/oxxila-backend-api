@@ -273,6 +273,12 @@ async function confirmApprove() {
 }
 
 function openRefund() {
+  const amount = selected?.refundAmount ?? 0;
+  const isCod = selected?.order?.paymentMethod === 'cod';
+  const msg = isCod
+    ? `Issue store credit of ${amount} EGP to the customer account? It will apply as a discount on their next order.`
+    : `Process gateway refund of ${amount} EGP and restock items?`;
+  document.getElementById('refund-modal-message').textContent = msg;
   document.getElementById('refund-modal').classList.add('open');
 }
 
@@ -281,14 +287,16 @@ function closeRefund() {
 }
 
 async function confirmRefund() {
-  const note = document.getElementById('refund-note').value.trim();
   try {
-    await api('PATCH', '/returns/' + selected._id + '/status', {
+    const { data } = await api('PATCH', '/returns/' + selected._id + '/status', {
       refundStatus: 'refunded',
-      manualRefundNote: note || undefined,
     });
     closeRefund();
-    toast('Refunded');
+    const creditMsg =
+      data?.storeCreditIssued && data?.refundAmount != null
+        ? `Refunded — ${data.refundAmount} EGP store credit issued`
+        : 'Refunded';
+    toast(creditMsg);
     await loadReturns();
     await selectReturn(selected._id);
   } catch (e) {

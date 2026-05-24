@@ -26,6 +26,7 @@ export const getDistrictsByGovernorate = asyncHandler(async (req, res, next) => 
  * @access  Admin
  */
 export const createDistrict = asyncHandler(async (req, res, next) => {
+  delete req.body.bostaCovered;
   const { governorate, name, shippingPrice } = req.body;
   const govExists = await Governorate.findById(governorate);
   if (!govExists) return next(new ApiError(`No governorate found with id: ${governorate}`, 404));
@@ -48,6 +49,7 @@ export const createDistrict = asyncHandler(async (req, res, next) => {
  * @access  Admin
  */
 export const updateDistrict = asyncHandler(async (req, res, next) => {
+  delete req.body.bostaCovered;
   const district = await District.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,

@@ -37,6 +37,7 @@ export const createPaymentSession = asyncHandler(async (req, res, next) => {
     subtotal: checkout.subtotal,
     shippingPrice: checkout.shippingPrice,
     discountAmount: checkout.discountAmount,
+    storeCreditApplied: checkout.storeCreditApplied,
     totalPrice: checkout.totalPrice,
     couponCode: checkout.couponCode,
     couponId: checkout.couponId,

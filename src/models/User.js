@@ -41,6 +41,7 @@ const userSchema = new Schema(
     // we can destroy the old asset when the user uploads a new one.
     avatarPublicId: { type: String, default: '', select: false },
     active: { type: Boolean, default: true },
+    storeCreditBalance: { type: Number, default: 0, min: 0 },
 
     phone: { type: String, trim: true, maxlength: 30, default: '' },
 

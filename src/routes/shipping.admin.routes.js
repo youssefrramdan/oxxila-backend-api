@@ -42,6 +42,7 @@ import {
   getCarrierCoverage,
   updateCarrierCoverage,
   syncBostaZonesForCarrier,
+  syncBostaCoverageForCarrier,
   getBostaPickupLocations,
 } from "../controllers/carrier.controller.js";
 import {
@@ -123,6 +124,11 @@ router.post(
   "/carriers/:id/bosta/sync-zones",
   carrierIdParamValidator,
   syncBostaZonesForCarrier,
+);
+router.post(
+  "/carriers/:id/bosta/sync-coverage",
+  carrierIdParamValidator,
+  syncBostaCoverageForCarrier,
 );
 router.post(
   "/carriers/:id/bosta/sync-pickups",

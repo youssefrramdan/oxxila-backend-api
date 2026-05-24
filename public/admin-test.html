@@ -179,7 +179,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
         <div class="card-body">
           <div class="form-group"><label>Governorate ID</label><input id="d-load-gov" placeholder="paste governorate _id"></div>
           <button class="btn btn-secondary btn-sm" onclick="loadDistricts()">Load</button>
-          <table style="margin-top:12px"><thead><tr><th>Name</th><th>Price</th><th>Covered</th><th>ID</th></tr></thead>
+          <table style="margin-top:12px"><thead><tr><th>Name</th><th>Price</th><th>Checkout</th><th>Bosta</th><th>ID</th></tr></thead>
           <tbody id="dists-tbl"></tbody></table>
         </div>
       </div>
@@ -413,6 +413,7 @@ async function loadDistricts() {
     <tr>
       <td>${d.name}</td><td>${d.shippingPrice} EGP</td>
       <td><span class="badge ${d.isCovered ? 'badge-active' : 'badge-inactive'}">${d.isCovered ? 'covered' : 'closed'}</span></td>
+      <td><span class="badge ${d.bostaCovered ? 'badge-active' : 'badge-inactive'}">${d.bostaCovered ? 'bosta' : 'no bosta'}</span></td>
       <td style="font-family:var(--mono);font-size:10px">${d._id}</td>
     </tr>`).join('')
 }

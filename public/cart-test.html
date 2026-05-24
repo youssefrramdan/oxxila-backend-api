@@ -365,12 +365,20 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
           id="coupon-apply-btn">Apply</button>
       </div>
     </div>
+    <div id="store-credit-banner" style="display:none;margin-bottom:12px;padding:10px 12px;
+      background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);border-radius:8px;font-size:11px;color:#a5b4fc">
+      <i class="ti ti-wallet"></i> <span id="store-credit-banner-text"></span>
+    </div>
     <div class="cart-summary" id="cart-summary" style="display:none">
       <div class="summary-row"><span>Subtotal</span><span id="cart-subtotal">0 EGP</span></div>
       <div class="summary-row"><span>Shipping</span><span style="color:var(--muted)">Calculated at checkout</span></div>
       <div class="summary-row" id="discount-row" style="display:none;color:#34d399">
-        <span>Discount</span>
+        <span>Coupon</span>
         <span id="cart-discount">-0 EGP</span>
+      </div>
+      <div class="summary-row" id="store-credit-row" style="display:none;color:#a5b4fc">
+        <span>Return credit</span>
+        <span id="cart-store-credit">-0 EGP</span>
       </div>
       <div class="summary-row total"><span>Total</span><span id="cart-total">0 EGP</span></div>
     </div>
@@ -587,8 +595,7 @@ async function clearCart() {
   if (!token || !cartData?.items?.length) return
   const data = await api('DELETE', '/cart')
   if (data?.message) {
-    cartData = { items: [], totalPrice: 0 }
-    updateCartUI()
+    await loadCart()
     showToast('Cart cleared')
   }
 }
@@ -636,6 +643,16 @@ function updateCartUI() {
 
   // body
   const body = document.getElementById('cart-body')
+  const creditBanner = document.getElementById('store-credit-banner')
+  const creditBalance = cartData?.storeCreditBalance ?? 0
+  if (!items.length && creditBalance > 0 && token) {
+    creditBanner.style.display = ''
+    document.getElementById('store-credit-banner-text').textContent =
+      `You have ${creditBalance} EGP return credit — add items to apply it at checkout.`
+  } else {
+    creditBanner.style.display = 'none'
+  }
+
   if (!items.length) {
     body.innerHTML = `<div class="cart-empty"><i class="ti ti-shopping-cart-off"></i><p>Your cart is empty</p></div>`
   } else {
@@ -674,6 +691,7 @@ function updateCartUI() {
   const couponApplied   = document.getElementById('coupon-applied')
   const couponInputRow  = document.getElementById('coupon-input-row')
   const discountRow     = document.getElementById('discount-row')
+  const storeCreditRow  = document.getElementById('store-credit-row')
 
   couponSection.style.display = items.length && token ? '' : 'none'
 
@@ -691,8 +709,16 @@ function updateCartUI() {
     document.getElementById('coupon-input').value = ''
   }
 
+  const applied = cartData?.storeCreditApplied ?? 0
+  if (applied > 0) {
+    storeCreditRow.style.display = ''
+    document.getElementById('cart-store-credit').textContent = `-${applied} EGP`
+  } else {
+    storeCreditRow.style.display = 'none'
+  }
+
   // subtotal + total
-  document.getElementById('cart-subtotal').textContent = (cartData?.subtotal || total) + ' EGP'
+  document.getElementById('cart-subtotal').textContent = (cartData?.subtotal ?? 0) + ' EGP'
   document.getElementById('cart-total').textContent    = (cartData?.totalPrice ?? total) + ' EGP'
 
   checkoutBtn.disabled = !items.length || !token

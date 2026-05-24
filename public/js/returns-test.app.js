@@ -70,12 +70,16 @@ async function loadMyReturns() {
       return;
     }
     list.innerHTML = data
-      .map(
-        (r) => `<div class="card">
-          <strong>#${String(r._id).slice(-6)}</strong> · ${r.refundStatus} · ${r.refundAmount} EGP
+      .map((r) => {
+        const codCredit =
+          r.refundStatus === 'refunded' && r.order?.paymentMethod === 'cod'
+            ? ' · store credit issued'
+            : '';
+        return `<div class="card">
+          <strong>#${String(r._id).slice(-6)}</strong> · ${r.refundStatus} · ${r.refundAmount} EGP${codCredit}
           <div style="color:var(--muted);margin-top:4px">Order ${String(r.order?._id || r.order).slice(-6)} · ${r.reason}</div>
-        </div>`
-      )
+        </div>`;
+      })
       .join('');
   } catch (e) {
     toast(e.message, true);

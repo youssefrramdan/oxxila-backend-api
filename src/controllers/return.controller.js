@@ -194,30 +194,28 @@ export const updateReturnStatus = asyncHandler(async (req, res, next) => {
     const order = await Order.findById(doc.order);
     if (!order) return next(new ApiError('Linked order not found', 404));
 
-    if (order.paymentMethod === 'cod' && !req.body.manualRefundNote?.trim()) {
-      return next(
-        new ApiError('manualRefundNote is required when refunding a COD return', 400)
-      );
-    }
-
-    let returnDoc = doc;
-    if (req.body.manualRefundNote?.trim()) {
-      returnDoc = await ReturnRequest.findByIdAndUpdate(
-        doc._id,
-        { manualRefundNote: req.body.manualRefundNote.trim() },
-        { returnDocument: 'after' }
-      );
-    }
-
-    const { returnRequest, gatewayRefundId } = await finalizeReturnRefund(returnDoc, order);
+    const { returnRequest, gatewayRefundId, storeCreditIssued } = await finalizeReturnRefund(
+      doc,
+      order
+    );
 
     const populated = await ReturnRequest.findById(returnRequest._id)
       .populate(returnPopulate)
       .lean();
 
+    const isCod = order.paymentMethod === 'cod';
+    const message = isCod
+      ? 'Return refunded successfully; store credit issued to customer'
+      : 'Return refunded successfully';
+
     return sendResponse(res, {
-      message: 'Return refunded successfully',
-      data: { returnRequest: populated, gatewayRefundId },
+      message,
+      data: {
+        returnRequest: populated,
+        gatewayRefundId,
+        storeCreditIssued: isCod ? storeCreditIssued : false,
+        refundAmount: returnRequest.refundAmount,
+      },
     });
   }
 

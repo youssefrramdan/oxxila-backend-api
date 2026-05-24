@@ -149,13 +149,39 @@ function renderSummary() {
   } else {
     discRow.style.display = 'none';
   }
+
+  const creditBalance = cartData?.storeCreditBalance ?? 0;
+  const creditHint = document.getElementById('checkout-credit-hint');
+  if (creditBalance > 0) {
+    creditHint.style.display = '';
+    const remaining = Math.max(0, creditBalance - (cartData?.storeCreditApplied ?? 0));
+    document.getElementById('checkout-credit-hint-text').textContent =
+      remaining > 0 && (cartData?.storeCreditApplied ?? 0) > 0
+        ? `${cartData.storeCreditApplied} EGP applied now · ${remaining} EGP left for future orders`
+        : `${creditBalance} EGP return credit available`;
+  } else {
+    creditHint.style.display = 'none';
+  }
+
   updateTotal();
 }
 
 function updateTotal() {
   const sub = cartData?.subtotal ?? 0;
   const disc = cartData?.discountAmount ?? 0;
-  const total = Math.max(0, sub - disc + shippingPrice);
+  const payableBeforeShip = Math.max(0, sub - disc);
+  const balance = cartData?.storeCreditBalance ?? 0;
+  const creditApplied = Math.min(balance, payableBeforeShip + shippingPrice);
+  const total = Math.max(0, payableBeforeShip + shippingPrice - creditApplied);
+
+  const creditRow = document.getElementById('sum-credit-row');
+  if (creditApplied > 0) {
+    creditRow.style.display = '';
+    document.getElementById('sum-credit').textContent = `-${creditApplied.toFixed(0)} EGP`;
+  } else {
+    creditRow.style.display = 'none';
+  }
+
   document.getElementById('sum-total').textContent = `${total.toFixed(0)} EGP`;
   document.getElementById('sum-ship').textContent = shippingPrice ? `${shippingPrice} EGP` : '—';
 }
@@ -438,6 +464,10 @@ async function loadMyOrders() {
       const statusLabel = T ? T.orderStatusLabel(o.orderStatus) : o.orderStatus;
       const tracker = T ? T.renderOrderTracker(o) : '';
       const banner = T ? T.renderOrderStatusBanner(o) : '';
+      const creditLine =
+        o.storeCreditApplied > 0
+          ? `<div class="order-meta" style="color:var(--green)">Return credit applied: -${o.storeCreditApplied} EGP</div>`
+          : '';
       return `
     <div class="order-card">
       <div class="order-top">
@@ -447,6 +477,7 @@ async function loadMyOrders() {
       ${tracker}
       ${banner}
       <div>${o.itemCount ?? o.items?.length ?? 0} items · <strong>${o.totalPrice} EGP</strong></div>
+      ${creditLine}
       <div class="order-meta">${o.paymentMethod}${provider} · ${new Date(o.createdAt).toLocaleString()}</div>
       ${refundBtn}
     </div>`;

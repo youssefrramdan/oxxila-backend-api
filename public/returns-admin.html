@@ -85,10 +85,9 @@ tbody tr.sel{background:var(--accent-dim);}
 <div class="modal-overlay" id="refund-modal">
   <div class="modal">
     <h3 style="margin-bottom:12px">Process refund</h3>
-    <label class="form-label">Manual refund note (COD)</label>
-    <input class="form-input" id="refund-note" placeholder="Vodafone Cash / bank transfer ref">
+    <p id="refund-modal-message" class="muted" style="margin-bottom:12px"></p>
     <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn btn-primary" onclick="confirmRefund()">Refund</button>
+      <button class="btn btn-primary" onclick="confirmRefund()">Confirm refund</button>
       <button class="btn btn-secondary" onclick="closeRefund()">Cancel</button>
     </div>
   </div>
