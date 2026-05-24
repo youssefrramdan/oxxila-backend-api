@@ -245,7 +245,6 @@ function checkoutPayload() {
     governorateId: document.getElementById('governorate').value,
     districtId: document.getElementById('district').value || 'other',
     addressLine: document.getElementById('address-line').value.trim(),
-    shippingMethodCode: 'standard',
   };
 }
 

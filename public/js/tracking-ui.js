@@ -151,10 +151,21 @@
     return parts.join('');
   }
 
+  function isCommittedShipment(shipment) {
+    if (!shipment?.carrier && !shipment?.carrierName) return false;
+    if (shipment.carrierType === 'api') {
+      return Boolean(shipment.externalDeliveryId);
+    }
+    if (shipment.carrierType === 'known' || shipment.carrierType === 'internal') {
+      return Boolean(shipment.trackingNumber);
+    }
+    return Boolean(shipment.externalDeliveryId || shipment.trackingNumber);
+  }
+
   function canAssignOrder(order) {
-    const hasCarrier = order?.shipment?.carrier || order?.shipment?.carrierName;
     return (
-      ['pending', 'confirmed', 'processing'].includes(order?.orderStatus) && !hasCarrier
+      ['pending', 'confirmed', 'processing'].includes(order?.orderStatus) &&
+      !isCommittedShipment(order?.shipment)
     );
   }
 

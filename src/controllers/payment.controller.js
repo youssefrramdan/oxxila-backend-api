@@ -20,14 +20,14 @@ import { handleBostaWebhookPayload } from '../utils/carriers/bostaFulfillment.js
  * @access  Private
  */
 export const createPaymentSession = asyncHandler(async (req, res, next) => {
-  const { governorateId, districtId, addressLine, provider, shippingMethodCode } = req.body;
+  const { governorateId, districtId, addressLine, provider } = req.body;
   const userId = req.user._id;
 
-  const checkout = await prepareCheckoutFromCart(
-    userId,
-    { governorateId, districtId, addressLine },
-    { shippingMethodCode }
-  );
+  const checkout = await prepareCheckoutFromCart(userId, {
+    governorateId,
+    districtId,
+    addressLine,
+  });
 
   const paymentSession = await PaymentSession.create({
     user: userId,

@@ -10,13 +10,52 @@ import { generateManualTrackingNumber } from '../shipping/generateTrackingNumber
 
 const BLOCKED_STATUSES = new Set(['cancelled', 'delivered']);
 
+const isCommittedCarrierAssignment = (shipment) => {
+  if (!shipment?.carrier) return false;
+  if (shipment.carrierType === 'api') {
+    return Boolean(shipment.externalDeliveryId);
+  }
+  if (shipment.carrierType === 'known' || shipment.carrierType === 'internal') {
+    return Boolean(shipment.trackingNumber);
+  }
+  return Boolean(shipment.externalDeliveryId || shipment.trackingNumber);
+};
+
+const clearShipmentCarrier = (shipment) => {
+  shipment.carrier = null;
+  shipment.carrierName = null;
+  shipment.carrierCode = null;
+  shipment.carrierType = null;
+  shipment.assignedAt = null;
+  shipment.assignedBy = null;
+  shipment.driverName = null;
+  shipment.driverPhone = null;
+  shipment.trackingNumber = null;
+  shipment.externalDeliveryId = null;
+  shipment.providerState = null;
+  shipment.providerStateLabel = null;
+};
+
+const applyShipmentCarrier = (shipment, carrier, adminUserId, options) => {
+  shipment.carrier = carrier._id;
+  shipment.carrierName = carrier.name;
+  shipment.carrierCode = carrier.code;
+  shipment.carrierType = carrier.type;
+  shipment.assignedAt = new Date();
+  shipment.assignedBy = adminUserId;
+  shipment.driverName = options.driverName?.trim() || null;
+  shipment.driverPhone = options.driverPhone?.trim() || null;
+  shipment.notes = options.notes?.trim() || null;
+  shipment.trackingNumber = options.trackingNumber?.trim() || shipment.trackingNumber;
+};
+
 export const assignOrderToCarrier = async (order, carrier, adminUserId, options = {}) => {
   if (BLOCKED_STATUSES.has(order.orderStatus)) {
     throw new ApiError(`Cannot assign carrier to order with status: ${order.orderStatus}`, 400);
   }
 
   const existingShipment = await Shipment.findOne({ order: order._id });
-  if (existingShipment?.carrier) {
+  if (isCommittedCarrierAssignment(existingShipment)) {
     throw new ApiError('Order already has a carrier assigned', 400);
   }
 
@@ -38,22 +77,14 @@ export const assignOrderToCarrier = async (order, carrier, adminUserId, options 
       order: order._id,
       status: 'pending_assignment',
       methodSnapshot: {
-        methodCode: order.shipping?.methodCode ?? 'standard',
         methodName: order.shipping?.methodName ?? 'Standard delivery',
         price: order.shippingPrice,
       },
     }));
 
-  shipment.carrier = carrier._id;
-  shipment.carrierName = carrier.name;
-  shipment.carrierCode = carrier.code;
-  shipment.carrierType = carrier.type;
-  shipment.assignedAt = new Date();
-  shipment.assignedBy = adminUserId;
-  shipment.driverName = options.driverName?.trim() || null;
-  shipment.driverPhone = options.driverPhone?.trim() || null;
-  shipment.notes = options.notes?.trim() || null;
-  shipment.trackingNumber = options.trackingNumber?.trim() || shipment.trackingNumber;
+  if (existingShipment?.carrier && !isCommittedCarrierAssignment(existingShipment)) {
+    clearShipmentCarrier(shipment);
+  }
 
   let orderStatus = options.markShipped === false ? 'processing' : 'shipped';
 
@@ -68,6 +99,7 @@ export const assignOrderToCarrier = async (order, carrier, adminUserId, options 
 
     try {
       const result = await createBostaDeliveryForOrder(order, carrier, options, credentials);
+      applyShipmentCarrier(shipment, carrier, adminUserId, options);
       shipment.trackingNumber = result.trackingNumber ?? options.trackingNumber ?? null;
       shipment.externalDeliveryId = result.externalDeliveryId;
       shipment.providerState = result.providerState;
@@ -83,11 +115,16 @@ export const assignOrderToCarrier = async (order, carrier, adminUserId, options 
       });
     } catch (err) {
       const bostaMsg = formatBostaError(err);
+      clearShipmentCarrier(shipment);
       shipment.lastError = bostaMsg;
       shipment.attemptCount = (shipment.attemptCount || 0) + 1;
+      shipment.status = 'pending_assignment';
       await shipment.save();
-      if (isUncoveredAddressError(err) || err.statusCode === 400) {
+      if (err instanceof ApiError) {
         throw err;
+      }
+      if (isUncoveredAddressError(err) || err.statusCode === 400) {
+        throw new ApiError(bostaMsg, 400);
       }
       throw new ApiError(bostaMsg, err.statusCode || 502);
     }
@@ -95,6 +132,7 @@ export const assignOrderToCarrier = async (order, carrier, adminUserId, options 
     orderStatus =
       mapBostaStateToOrderStatus(shipment.providerState, 'processing') ?? 'processing';
   } else if (carrier.type === 'known' || carrier.type === 'internal') {
+    applyShipmentCarrier(shipment, carrier, adminUserId, options);
     if (!shipment.trackingNumber) {
       shipment.trackingNumber = await generateManualTrackingNumber(order, carrier);
     }

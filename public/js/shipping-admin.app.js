@@ -79,6 +79,7 @@ async function loadCarriers() {
     hasApiKey: c.hasApiKey === true,
   }));
   renderCarriers();
+  syncApiCarrierTypeOption();
   populateCoverageCountries();
 }
 
@@ -126,6 +127,21 @@ function getSelectedDeliveryDays() {
   return chip ? chip.textContent.trim() : "1-2";
 }
 
+function hasBostaApiCarrier() {
+  return carriers.some((c) => c.type === "api" && c.provider === "bosta");
+}
+
+function syncApiCarrierTypeOption() {
+  const sel = document.getElementById("carrier-type-sel");
+  const apiOpt = sel?.querySelector('option[value="api"]');
+  if (!apiOpt) return;
+  const blocked = hasBostaApiCarrier() && !editingCarrierId;
+  apiOpt.disabled = blocked;
+  apiOpt.textContent = blocked
+    ? "API Carrier (Bosta) — already configured"
+    : "API Carrier (Bosta)";
+}
+
 function openAddCarrier() {
   editingCarrierId = null;
   coverageOnlyMode = false;
@@ -135,7 +151,9 @@ function openAddCarrier() {
   document.getElementById("carrier-code").readOnly = false;
   document.getElementById("carrier-type-sel").value = "known";
   document.getElementById("carrier-type-sel").disabled = false;
-  document.getElementById("carrier-api-provider").value = "bosta";
+  syncApiCarrierTypeOption();
+  const providerEl = document.getElementById("carrier-api-provider");
+  if (providerEl) providerEl.value = "bosta";
   document.getElementById("carrier-api-base-url").value =
     localStorage.getItem("oxxila_bosta_default_base") || "https://app.bosta.co";
   document.getElementById("carrier-api-key").value = "";
@@ -166,11 +184,8 @@ async function openEditCarrier(id) {
   document.getElementById("carrier-api-key").value = "";
   document.getElementById("carrier-api-key").placeholder =
     c.type === "api" ? "New API key (optional)" : "Paste API key";
-  if (c.type === "api" && c.provider) {
-    document.getElementById("carrier-api-provider").value = c.provider;
-  } else {
-    document.getElementById("carrier-api-provider").value = "bosta";
-  }
+  const providerEl = document.getElementById("carrier-api-provider");
+  if (providerEl) providerEl.value = "bosta";
   if (c.type === "api") {
     document.getElementById("carrier-api-base-url").value =
       c.apiBaseUrl ||
@@ -187,6 +202,7 @@ async function openEditCarrier(id) {
       d ? chip.textContent.trim() === d : chip.textContent.trim() === "1-2",
     );
   });
+  syncApiCarrierTypeOption();
   onCarrierTypeChange();
   onApiProviderChange();
   if (c.type === "api" && c.provider === "bosta") {
@@ -243,6 +259,10 @@ async function saveCarrier() {
     }
 
     const type = document.getElementById("carrier-type-sel").value;
+    if (type === "api" && !editingCarrierId && hasBostaApiCarrier()) {
+      toast("A Bosta API carrier already exists. Edit it instead.", true);
+      return;
+    }
     const name = document.getElementById("carrier-name").value.trim();
     const code = document.getElementById("carrier-code").value.trim();
     const isActive = document
@@ -271,9 +291,7 @@ async function saveCarrier() {
     } else {
       const payload = { name, code, type, isActive };
       if (type === "api") {
-        payload.apiProvider = document.getElementById(
-          "carrier-api-provider",
-        ).value;
+        payload.apiProvider = "bosta";
         payload.apiKey = document
           .getElementById("carrier-api-key")
           .value.trim();
@@ -765,7 +783,7 @@ function renderOrders() {
       const canAssign = window.OxxilaTracking
         ? OxxilaTracking.canAssignOrder(o)
         : ["confirmed", "pending", "processing"].includes(o.orderStatus) &&
-          !o.shipment?.carrier;
+          !(o.shipment?.carrier && (o.shipment?.externalDeliveryId || o.shipment?.trackingNumber));
       const needsConfirm = window.OxxilaTracking?.needsConfirmOrder(o);
       const showReturns =
         o.orderStatus === "partially_returned" || o.orderStatus === "returned";
@@ -894,7 +912,7 @@ function renderAssignDrawer() {
     </div>
 
     <div id="assign-carriers-list">
-      ${renderGroup("API (Bosta / Mylerz)", grouped.api)}
+      ${renderGroup("API (Bosta)", grouped.api)}
       ${renderGroup("Known carriers", grouped.known)}
       ${renderGroup("Internal delivery", grouped.internal)}
     </div>
@@ -984,6 +1002,7 @@ async function confirmAssign() {
     toast("Carrier assigned");
   } catch (e) {
     toast(e.message, true);
+    await loadOrders();
   }
 }
 

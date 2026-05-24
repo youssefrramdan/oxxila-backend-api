@@ -29,7 +29,7 @@ const carrierSchema = new mongoose.Schema(
     },
     apiProvider: {
       type: String,
-      enum: ['mylerz', 'bosta'],
+      enum: ['bosta'],
       default: null,
     },
     apiKey: {

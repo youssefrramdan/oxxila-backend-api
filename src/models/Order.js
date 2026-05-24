@@ -13,7 +13,6 @@ const orderItemSchema = new mongoose.Schema(
 
 const shippingSelectionSchema = new mongoose.Schema(
   {
-    methodCode: { type: String, default: 'standard' },
     methodName: { type: String, default: 'Standard delivery' },
     price: { type: Number, min: 0, default: 0 },
     quotedAt: { type: Date, default: null },

@@ -1,7 +1,7 @@
 // src/utils/carriers/bosta/pickups.js
 import CarrierPickup from '../../../models/CarrierPickup.js';
 import ApiError from '../../apiError.js';
-import { bostaRequest, splitBostaContactName } from './client.js';
+import { bostaRequest, normalizeEgyptPhone, splitBostaContactName } from './client.js';
 import { buildBostaAddress, enrichBostaAddress } from './addresses.js';
 
 const PICKUP_PATH = '/api/v2/pickup-locations';
@@ -16,12 +16,16 @@ export const extractBostaLocationId = (res) => {
   return loc?._id ?? loc?.id ?? null;
 };
 
-export const buildPickupLocationContact = ({ name, email, phone, isDefault } = {}) => {
+export const buildPickupLocationContact = ({ name, email, phone } = {}) => {
   const { firstName, lastName } = splitBostaContactName(name);
-  const contact = { firstName, lastName, phone: String(phone || '').trim() };
+  const contact = {
+    firstName,
+    lastName,
+    phone: normalizeEgyptPhone(phone) || String(phone || '').trim(),
+    isDefault: true,
+  };
   const mail = String(email || '').trim();
   if (mail) contact.email = mail;
-  if (isDefault === true) contact.isDefault = true;
   return contact;
 };
 
@@ -54,9 +58,7 @@ export const buildPickupLocationPayload = (body) => {
   const { address, contactPerson } = body;
   return {
     locationName: body.locationName,
-    contacts: [
-      buildPickupLocationContact({ ...contactPerson, isDefault: body.isDefault === true }),
-    ],
+    contacts: [buildPickupLocationContact(contactPerson)],
     address: buildPickupLocationAddress(address),
   };
 };

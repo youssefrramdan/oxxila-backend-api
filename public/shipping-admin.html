@@ -360,7 +360,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
             <div class="method-icon courier"><i class="ti ti-building-store"></i></div>
             <div>
               <div class="method-title">API Carrier</div>
-              <div class="method-sub">Mylerz — automated booking</div>
+              <div class="method-sub">Bosta — automated booking</div>
             </div>
           </div>
           <div class="toggle on" onclick="event.stopPropagation();toggleMethodSetting(this.closest('.method-card'))"></div>
@@ -520,20 +520,14 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
       <select class="form-select" id="carrier-type-sel" onchange="onCarrierTypeChange()">
         <option value="known">Known Carrier (manual)</option>
         <option value="internal">Internal Delivery (your staff)</option>
-        <option value="api">API Carrier (Bosta / Mylerz)</option>
+        <option value="api">API Carrier (Bosta)</option>
       </select>
     </div>
 
     <!-- API section -->
     <div id="api-section" style="display:none">
       <div class="form-divider">API Configuration</div>
-      <div class="form-group">
-        <label class="form-label">API Provider</label>
-        <select class="form-select" id="carrier-api-provider" onchange="onApiProviderChange()">
-          <option value="bosta">Bosta</option>
-          <option value="mylerz">Mylerz</option>
-        </select>
-      </div>
+      <input type="hidden" id="carrier-api-provider" value="bosta">
       <div class="form-group">
         <label class="form-label">API Base URL</label>
         <input class="form-input" id="carrier-api-base-url" placeholder="https://app.bosta.co" autocomplete="off">

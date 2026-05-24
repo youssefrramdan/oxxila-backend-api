@@ -3182,7 +3182,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Cairo\",\n  \"paymentMethod\": \"cod\",\n  \"shippingMethodCode\": \"standard\"\n}"
+                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Cairo\",\n  \"paymentMethod\": \"cod\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders",
@@ -3226,7 +3226,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Cairo\",\n  \"provider\": \"stripe\",\n  \"shippingMethodCode\": \"standard\"\n}"
+                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Cairo\",\n  \"provider\": \"stripe\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/payment-session",
@@ -3271,7 +3271,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Cairo\",\n  \"provider\": \"paymob\",\n  \"shippingMethodCode\": \"standard\"\n}"
+                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Cairo\",\n  \"provider\": \"paymob\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/payment-session",
@@ -4971,7 +4971,7 @@
                     "carriers"
                   ]
                 },
-                "description": "**Admin** Bearer. Create `known` or `internal` carriers. `type: api` carriers (Mylerz) are seeded by system — prefer not creating via admin."
+                "description": "**Admin** Bearer. Create carriers. Only one `type: api` + `apiProvider: bosta` carrier is allowed — use seed:carriers or shipping-admin; returns 400 if a second Bosta API carrier is created."
               },
               "response": []
             },

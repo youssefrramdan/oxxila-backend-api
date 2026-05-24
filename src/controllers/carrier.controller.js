@@ -54,6 +54,24 @@ export const createCarrier = asyncHandler(async (req, res, next) => {
   const exists = await Carrier.findOne({ code: code.toUpperCase() });
   if (exists) return next(new ApiError("Carrier code already exists", 400));
 
+  if (type === "api") {
+    if (apiProvider !== "bosta") {
+      return next(new ApiError("Only Bosta is supported as an API carrier", 400));
+    }
+    const bostaExists = await Carrier.findOne({
+      type: "api",
+      apiProvider: "bosta",
+    });
+    if (bostaExists) {
+      return next(
+        new ApiError(
+          "A Bosta API carrier already exists. Edit the existing carrier instead.",
+          400,
+        ),
+      );
+    }
+  }
+
   const carrier = await Carrier.create({
     name,
     code,

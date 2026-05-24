@@ -18,7 +18,7 @@ export const createCarrierValidator = [
   body('apiProvider')
     .if(body('type').equals('api'))
     .notEmpty().withMessage('apiProvider is required for API carriers')
-    .isIn(['mylerz', 'bosta']).withMessage('apiProvider must be mylerz or bosta'),
+    .isIn(['bosta']).withMessage('apiProvider must be bosta'),
 
   body('apiKey')
     .if(body('type').equals('api'))
