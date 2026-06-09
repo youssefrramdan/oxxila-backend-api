@@ -50,6 +50,100 @@ const mappingUpsertOp = (carrierId, zoneType, zoneId, data) => ({
   },
 });
 
+const buildDistrictsByGov = (allDistricts) => {
+  const districtsByGov = new Map();
+  for (const d of allDistricts) {
+    const key = String(d.governorate);
+    if (!districtsByGov.has(key)) districtsByGov.set(key, []);
+    districtsByGov.get(key).push(d);
+  }
+  return districtsByGov;
+};
+
+const collectBostaServiceableDistricts = (cities) => {
+  const items = [];
+  for (const city of cities) {
+    if (city.dropOffAvailability === false) continue;
+    for (const bd of city.districts || []) {
+      if (bd.dropOffAvailability === false) continue;
+      items.push({ city, bd });
+    }
+  }
+  return items;
+};
+
+const markUnmatchedBostaCoveredFalse = (affectedGovIds, matchedDistrictIds, districtsByGov, bulkOps) => {
+  let bostaCoveredFalse = 0;
+  for (const govId of affectedGovIds) {
+    const districts = districtsByGov.get(govId) ?? [];
+    for (const d of districts) {
+      if (matchedDistrictIds.has(String(d._id))) continue;
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: d._id },
+          update: { $set: { bostaCovered: false } },
+        },
+      });
+      bostaCoveredFalse += 1;
+    }
+  }
+  return bostaCoveredFalse;
+};
+
+export const syncBostaCoveredOnly = async (_carrierId, credentials, { countryCode = 'EG' } = {}) => {
+  const cities = await fetchBostaCityDistricts(credentials);
+  const country = await Country.findOne({
+    code: countryCode.toUpperCase(),
+    isActive: true,
+  });
+  if (!country) {
+    throw new Error(`No active country found with code: ${countryCode}`);
+  }
+
+  const existingGovs = await Governorate.find({ country: country._id });
+  const govIds = existingGovs.map((g) => g._id);
+  const allDistricts = await District.find({ governorate: { $in: govIds } });
+  const districtsByGov = buildDistrictsByGov(allDistricts);
+
+  const matchedDistrictIds = new Set();
+  const affectedGovIds = new Set();
+  const bulkOps = [];
+  let bostaCoveredTrue = 0;
+
+  for (const { city, bd } of collectBostaServiceableDistricts(cities)) {
+    const governorate = matchGovernorate(existingGovs, city);
+    if (!governorate) continue;
+
+    const govKey = String(governorate._id);
+    affectedGovIds.add(govKey);
+    const existingDistricts = districtsByGov.get(govKey) ?? [];
+    const matched = matchDistrict(existingDistricts, bd);
+    if (!matched) continue;
+
+    matchedDistrictIds.add(String(matched._id));
+    bulkOps.push({
+      updateOne: {
+        filter: { _id: matched._id },
+        update: { $set: { bostaCovered: true } },
+      },
+    });
+    bostaCoveredTrue += 1;
+  }
+
+  const bostaCoveredFalse = markUnmatchedBostaCoveredFalse(
+    affectedGovIds,
+    matchedDistrictIds,
+    districtsByGov,
+    bulkOps
+  );
+
+  if (bulkOps.length) {
+    await District.bulkWrite(bulkOps, { ordered: false });
+  }
+
+  return { bostaCoveredTrue, bostaCoveredFalse };
+};
+
 export const syncBostaZones = async (credentials, carrierId, { countryCode = 'EG' } = {}) => {
   const cities = await fetchBostaCityDistricts(credentials);
   const country = await Country.findOne({
@@ -68,15 +162,12 @@ export const syncBostaZones = async (credentials, carrierId, { countryCode = 'EG
   const existingGovs = await Governorate.find({ country: country._id });
   const govIds = existingGovs.map((g) => g._id);
   const allDistricts = await District.find({ governorate: { $in: govIds } });
-  const districtsByGov = new Map();
-  for (const d of allDistricts) {
-    const key = String(d.governorate);
-    if (!districtsByGov.has(key)) districtsByGov.set(key, []);
-    districtsByGov.get(key).push(d);
-  }
+  const districtsByGov = buildDistrictsByGov(allDistricts);
 
   const districtBulkOps = [];
   const mappingBulkOps = [];
+  const matchedDistrictIds = new Set();
+  const affectedGovIds = new Set();
 
   for (const city of cities) {
     if (city.dropOffAvailability === false) continue;
@@ -97,6 +188,9 @@ export const syncBostaZones = async (credentials, carrierId, { countryCode = 'EG
       governoratesMatched += 1;
     }
 
+    const govKey = String(governorate._id);
+    affectedGovIds.add(govKey);
+
     if (carrierId) {
       mappingBulkOps.push(
         mappingUpsertOp(carrierId, 'governorate', governorate._id, {
@@ -107,7 +201,7 @@ export const syncBostaZones = async (credentials, carrierId, { countryCode = 'EG
       );
     }
 
-    const existingDistricts = districtsByGov.get(String(governorate._id)) ?? [];
+    const existingDistricts = districtsByGov.get(govKey) ?? [];
     const bostaDistricts = city.districts || [];
 
     for (const bd of bostaDistricts) {
@@ -115,10 +209,11 @@ export const syncBostaZones = async (credentials, carrierId, { countryCode = 'EG
 
       const matched = matchDistrict(existingDistricts, bd);
       if (matched) {
+        matchedDistrictIds.add(String(matched._id));
         districtBulkOps.push({
           updateOne: {
             filter: { _id: matched._id },
-            update: { $set: { isCovered: true } },
+            update: { $set: { bostaCovered: true } },
           },
         });
         districtsUpdated += 1;
@@ -140,10 +235,12 @@ export const syncBostaZones = async (credentials, carrierId, { countryCode = 'EG
             name: bd.districtName || bd.zoneName || 'District',
             shippingPrice: governorate.shippingPrice ?? 0,
             isCovered: true,
+            bostaCovered: true,
           },
         ]);
+        matchedDistrictIds.add(String(created._id));
         existingDistricts.push(created);
-        districtsByGov.set(String(governorate._id), existingDistricts);
+        districtsByGov.set(govKey, existingDistricts);
         districtsCreated += 1;
         if (carrierId) {
           mappingBulkOps.push(
@@ -160,6 +257,13 @@ export const syncBostaZones = async (credentials, carrierId, { countryCode = 'EG
     }
   }
 
+  markUnmatchedBostaCoveredFalse(
+    affectedGovIds,
+    matchedDistrictIds,
+    districtsByGov,
+    districtBulkOps
+  );
+
   if (districtBulkOps.length) await District.bulkWrite(districtBulkOps, { ordered: false });
   if (mappingBulkOps.length) {
     await CarrierZoneMapping.bulkWrite(mappingBulkOps, { ordered: false });
@@ -175,8 +279,8 @@ export const syncBostaZones = async (credentials, carrierId, { countryCode = 'EG
   };
 };
 
-export const syncBostaCarrierCoverage = async (carrierId, credentials) => {
-  const zoneStats = await syncBostaZones(credentials, carrierId);
+export const syncBostaCarrierCoverage = async (carrierId, credentials, options = {}) => {
+  const zoneStats = await syncBostaZones(credentials, carrierId, options);
 
   const districtZoneIds = await CarrierZoneMapping.find({
     carrier: carrierId,

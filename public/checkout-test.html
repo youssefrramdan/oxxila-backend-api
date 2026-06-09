@@ -81,9 +81,13 @@
     <aside class="col-right card sticky">
       <h2>Summary</h2>
       <div id="cart-lines"><p class="empty-inline">Empty — <a href="/cart-test.html">add items</a></p></div>
+      <div id="checkout-credit-hint" class="return-alert" style="display:none;margin-bottom:12px;font-size:12px">
+        <i class="ti ti-wallet"></i> <span id="checkout-credit-hint-text"></span>
+      </div>
       <div class="totals">
         <div class="summary-row"><span>Subtotal</span><span id="sum-sub">0 EGP</span></div>
-        <div class="summary-row discount" id="sum-disc-row" style="display:none"><span>Discount</span><span id="sum-disc">0</span></div>
+        <div class="summary-row discount" id="sum-disc-row" style="display:none"><span>Coupon</span><span id="sum-disc">0</span></div>
+        <div class="summary-row discount" id="sum-credit-row" style="display:none"><span>Return credit</span><span id="sum-credit">0</span></div>
         <div class="summary-row"><span>Shipping</span><span id="sum-ship">—</span></div>
         <div class="summary-row total"><span>Total</span><span id="sum-total">0 EGP</span></div>
       </div>

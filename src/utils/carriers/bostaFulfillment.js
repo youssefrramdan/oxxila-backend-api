@@ -1,5 +1,9 @@
 // src/utils/carriers/bostaFulfillment.js
-export { syncBostaZones, syncBostaCarrierCoverage } from './bosta/sync.js';
+export {
+  syncBostaZones,
+  syncBostaCoveredOnly,
+  syncBostaCarrierCoverage,
+} from './bosta/sync.js';
 export {
   handleBostaWebhookPayload,
   syncOrderTrackingFromBosta,

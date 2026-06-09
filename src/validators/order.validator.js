@@ -23,13 +23,6 @@ const addressFields = [
     .withMessage('addressLine is required')
     .isLength({ min: 6, max: 500 })
     .withMessage('addressLine must be between 6 and 500 characters'),
-
-  body('shippingMethodCode')
-    .optional()
-    .trim()
-    .isIn(['standard'])
-    .withMessage('Invalid shipping method'),
-
 ];
 
 export const createOrderValidator = [

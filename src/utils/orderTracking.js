@@ -24,8 +24,11 @@ export const enrichOrderDocument = (order, shipment = null, itemCount = null) =>
         carrier: shipment.carrier,
         carrierName: shipment.carrierName,
         carrierCode: shipment.carrierCode,
+        carrierType: shipment.carrierType,
         trackingNumber: shipment.trackingNumber,
+        externalDeliveryId: shipment.externalDeliveryId,
         status: shipment.status,
+        lastError: shipment.lastError,
         providerStateLabel: shipment.providerStateLabel,
       }
     : null;

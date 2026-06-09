@@ -29,9 +29,12 @@ export const assertBostaDropOffServiceable = async (carrierId, order) => {
   const { governorateId, districtId, isOther } = order.shippingAddress;
 
   if (districtId && !isOther) {
-    const district = await District.findById(districtId).select('isCovered name');
+    const district = await District.findById(districtId).select('isCovered bostaCovered name');
     if (!district?.isCovered) {
       return { ok: false, message: `District ${order.shippingAddress.districtName} is not covered` };
+    }
+    if (!district.bostaCovered) {
+      return { ok: false, message: 'District not covered by Bosta — cannot assign' };
     }
     const mapping = await getCarrierZoneMapping(carrierId, { governorateId, districtId });
     if (!mapping?.externalDistrictId && !mapping?.externalCityId) {

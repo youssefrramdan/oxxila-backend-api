@@ -18,7 +18,7 @@ const findUserOrder = async (orderId, userId) =>
  * @access  Private
  */
 export const createOrder = asyncHandler(async (req, res, next) => {
-  const { governorateId, districtId, addressLine, paymentMethod, shippingMethodCode } = req.body;
+  const { governorateId, districtId, addressLine, paymentMethod } = req.body;
 
   if (paymentMethod !== 'cod') {
     return next(
@@ -29,11 +29,11 @@ export const createOrder = asyncHandler(async (req, res, next) => {
     );
   }
 
-  const checkout = await prepareCheckoutFromCart(
-    req.user._id,
-    { governorateId, districtId, addressLine },
-    { shippingMethodCode }
-  );
+  const checkout = await prepareCheckoutFromCart(req.user._id, {
+    governorateId,
+    districtId,
+    addressLine,
+  });
 
   const order = await fulfillCheckout(
     { ...checkout, userId: req.user._id },

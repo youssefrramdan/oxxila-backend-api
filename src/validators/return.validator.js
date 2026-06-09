@@ -85,7 +85,6 @@ export const updateReturnStatusValidator = [
     .isIn(['bosta', 'internal']),
   body('carrierId').optional().isMongoId(),
   body('dropOffPickupId').optional().isMongoId(),
-  body('manualRefundNote').optional().trim().isLength({ max: 500 }),
   body('adminNote').optional().trim().isLength({ max: 500 }),
   body().custom((_, { req }) => {
     if (req.body.refundStatus === 'approved') {

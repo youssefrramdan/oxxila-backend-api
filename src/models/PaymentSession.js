@@ -14,7 +14,6 @@ const paymentItemSchema = new mongoose.Schema(
 
 const paymentShippingSelectionSchema = new mongoose.Schema(
   {
-    methodCode: { type: String, default: 'standard' },
     methodName: { type: String, default: 'Standard delivery' },
     price: { type: Number, min: 0, default: 0 },
     quotedAt: { type: Date, default: null },
@@ -51,6 +50,7 @@ const paymentSessionSchema = new mongoose.Schema(
     subtotal: { type: Number, required: true, min: 0 },
     shippingPrice: { type: Number, required: true, min: 0 },
     discountAmount: { type: Number, default: 0, min: 0 },
+    storeCreditApplied: { type: Number, default: 0, min: 0 },
     totalPrice: { type: Number, required: true, min: 0 },
     couponCode: { type: String, default: null },
     couponId: { type: mongoose.Schema.Types.ObjectId, ref: 'Coupon', default: null },

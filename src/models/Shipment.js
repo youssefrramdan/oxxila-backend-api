@@ -13,7 +13,6 @@ const shipmentEventSchema = new mongoose.Schema(
 
 const methodSnapshotSchema = new mongoose.Schema(
   {
-    methodCode: { type: String, default: 'standard' },
     methodName: { type: String, default: 'Standard delivery' },
     price: { type: Number, min: 0, default: 0 },
   },

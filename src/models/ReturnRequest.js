@@ -88,7 +88,6 @@ const returnRequestSchema = new mongoose.Schema(
     },
     refundAmount: { type: Number, required: true, min: 0 },
     gatewayRefundId: { type: String, default: null },
-    manualRefundNote: { type: String, trim: true, default: null },
     adminNote: { type: String, trim: true, default: null },
     restocked: { type: Boolean, default: false },
     refundedAt: { type: Date, default: null },

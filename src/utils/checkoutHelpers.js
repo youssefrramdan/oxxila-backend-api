@@ -10,14 +10,11 @@ import resolveShipping from './resolveShipping.js';
 import { isCouponValidForCart, commitCouponUsage } from './couponHelpers.js';
 import { decrementStockForOrderItems } from './orderStockHelpers.js';
 import { DEFAULT_SHIPPING_METHOD } from './shipping/constants.js';
-
-const assertShippingMethodCode = (methodCode) => {
-  const code = methodCode || DEFAULT_SHIPPING_METHOD.methodCode;
-  if (code !== DEFAULT_SHIPPING_METHOD.methodCode) {
-    throw new ApiError('Invalid shipping method', 400);
-  }
-  return code;
-};
+import {
+  computeStoreCreditApplied,
+  getStoreCreditBalance,
+  redeemStoreCredit,
+} from './storeCredit.js';
 
 export const getCartSubtotal = (items) =>
   items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -93,7 +90,7 @@ export const buildShippingSnapshot = async ({ governorateId, districtId, address
   };
 };
 
-export const prepareCheckoutFromCart = async (userId, addressInput, checkoutOptions = {}) => {
+export const prepareCheckoutFromCart = async (userId, addressInput) => {
   const cart = await Cart.findOne({ user: userId });
   if (!cart?.items?.length) {
     throw new ApiError('Cart is empty', 400);
@@ -122,28 +119,31 @@ export const prepareCheckoutFromCart = async (userId, addressInput, checkoutOpti
   }
 
   const { shippingPrice, shippingAddress } = await buildShippingSnapshot(addressInput);
-  const methodCode = assertShippingMethodCode(
-    checkoutOptions.shippingMethodCode || checkoutOptions.methodCode
-  );
 
   const shipping = {
-    methodCode,
     methodName: DEFAULT_SHIPPING_METHOD.methodName,
     price: shippingPrice,
     quotedAt: new Date(),
   };
 
-  const totalPrice = Math.max(0, subtotal - discountAmount + shippingPrice);
+  const payable = Math.max(0, subtotal - discountAmount + shippingPrice);
+  const storeCreditBalance = await getStoreCreditBalance(userId);
+  const { storeCreditApplied, payableAfterCredit } = computeStoreCreditApplied(
+    storeCreditBalance,
+    payable
+  );
 
   return {
     cartId: cart._id,
+    userId,
     orderItems,
     subtotal,
     shippingPrice,
     shipping,
     shippingAddress,
     discountAmount,
-    totalPrice,
+    storeCreditApplied,
+    totalPrice: payableAfterCredit,
     couponCode,
     couponId,
   };
@@ -158,6 +158,7 @@ export const fulfillCheckout = async (snapshot, payment) => {
     shippingPrice,
     shipping,
     discountAmount,
+    storeCreditApplied = 0,
     totalPrice,
     couponCode,
     couponId,
@@ -177,7 +178,6 @@ export const fulfillCheckout = async (snapshot, payment) => {
             items,
             shippingAddress,
             shipping: shipping ?? {
-              methodCode: 'standard',
               methodName: 'Standard delivery',
               price: shippingPrice,
               quotedAt: new Date(),
@@ -185,6 +185,7 @@ export const fulfillCheckout = async (snapshot, payment) => {
             subtotal,
             shippingPrice,
             discountAmount,
+            storeCreditApplied,
             totalPrice,
             couponCode,
             couponId,
@@ -197,6 +198,15 @@ export const fulfillCheckout = async (snapshot, payment) => {
         ],
         { session }
       );
+
+      if (storeCreditApplied > 0) {
+        await redeemStoreCredit({
+          userId,
+          amount: storeCreditApplied,
+          orderId: order._id,
+          session,
+        });
+      }
 
       await Cart.deleteOne({ user: userId }, { session });
     });

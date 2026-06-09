@@ -15,14 +15,24 @@ import {
   formatCartResponse,
   getUpdatedCart,
 } from '../utils/cartPricing.js';
+import { getStoreCreditBalance } from '../utils/storeCredit.js';
 
 export const getCart = asyncHandler(async (req, res) => {
   const result = await getUpdatedCart(req.user._id);
 
   if (!result) {
+    const storeCreditBalance = await getStoreCreditBalance(req.user._id);
     return sendResponse(res, {
       message: 'Cart retrieved successfully',
-      data: { items: [], subtotal: 0, discountAmount: 0, totalPrice: 0, couponCode: null },
+      data: {
+        items: [],
+        subtotal: 0,
+        discountAmount: 0,
+        storeCreditBalance,
+        storeCreditApplied: 0,
+        totalPrice: 0,
+        couponCode: null,
+      },
     });
   }
 

@@ -6,6 +6,7 @@ import CarrierCoverage from '../models/CarrierCoverage.js';
 import Shipment from '../models/Shipment.js';
 import CarrierZoneMapping from '../models/CarrierZoneMapping.js';
 import CarrierPickup from '../models/CarrierPickup.js';
+import District from '../models/District.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import { assignOrderToCarrier } from '../utils/carriers/assignOrderShipping.js';
@@ -35,7 +36,11 @@ export const getOrderShippingDetail = asyncHandler(async (req, res, next) => {
     .lean();
 
   let zoneMapping = null;
+  let districtMeta = null;
   if (order.shippingAddress.districtId) {
+    districtMeta = await District.findById(order.shippingAddress.districtId)
+      .select('name isCovered bostaCovered')
+      .lean();
     zoneMapping = await CarrierZoneMapping.findOne({
       zoneType: 'district',
       zoneId: order.shippingAddress.districtId,
@@ -75,6 +80,7 @@ export const getOrderShippingDetail = asyncHandler(async (req, res, next) => {
     order: enrichOrderDocument(order, shipment),
     shipment,
     zoneMapping,
+    districtMeta: districtMeta ? toPlainDoc(districtMeta) : null,
     pickupsByCarrier,
     carriers: carriers.map((c) => {
       const cid = c._id.toString();

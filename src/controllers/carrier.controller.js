@@ -3,6 +3,7 @@ import asyncHandler from "express-async-handler";
 import Carrier from "../models/Carrier.js";
 import CarrierCoverage from "../models/CarrierCoverage.js";
 import CarrierPickup from "../models/CarrierPickup.js";
+import District from "../models/District.js";
 import Governorate from "../models/Governorate.js";
 import ApiError from "../utils/apiError.js";
 import sendResponse from "../utils/apiResponse.js";
@@ -10,7 +11,10 @@ import {
   normalizeBostaBaseUrl,
   getBostaCredentials,
 } from "../utils/carriers/bosta.js";
-import { syncBostaCarrierCoverage } from "../utils/carriers/bostaFulfillment.js";
+import {
+  syncBostaCarrierCoverage,
+  syncBostaCoveredOnly,
+} from "../utils/carriers/bostaFulfillment.js";
 import { mapCarrierForAdmin } from "../utils/carriers/bosta/admin.js";
 
 const MAX_PICKUP_LOCATIONS = 200;
@@ -53,6 +57,24 @@ export const createCarrier = asyncHandler(async (req, res, next) => {
 
   const exists = await Carrier.findOne({ code: code.toUpperCase() });
   if (exists) return next(new ApiError("Carrier code already exists", 400));
+
+  if (type === "api") {
+    if (apiProvider !== "bosta") {
+      return next(new ApiError("Only Bosta is supported as an API carrier", 400));
+    }
+    const bostaExists = await Carrier.findOne({
+      type: "api",
+      apiProvider: "bosta",
+    });
+    if (bostaExists) {
+      return next(
+        new ApiError(
+          "A Bosta API carrier already exists. Edit the existing carrier instead.",
+          400,
+        ),
+      );
+    }
+  }
 
   const carrier = await Carrier.create({
     name,
@@ -112,32 +134,63 @@ export const updateCarrier = asyncHandler(async (req, res, next) => {
   });
 });
 
+const loadBostaCarrierForSync = async (carrierId, next) => {
+  const carrier = await Carrier.findById(carrierId).select("+apiKey +apiBaseUrl");
+  if (!carrier) {
+    next(new ApiError(`No carrier found with id: ${carrierId}`, 404));
+    return null;
+  }
+  if (carrier.apiProvider !== "bosta") {
+    next(new ApiError("Carrier is not a Bosta API carrier", 400));
+    return null;
+  }
+  const credentials = await getBostaCredentials(carrier);
+  if (!credentials) {
+    next(new ApiError("Bosta API key is not configured", 400));
+    return null;
+  }
+  return { carrier, credentials };
+};
+
 /**
- * @desc    Sync Bosta zones and coverage manually
+ * @desc    Full Bosta sync — governorates, districts, mappings, carrier coverage
  * @route   POST /api/v1/admin/carriers/:id/bosta/sync-zones
  * @access  Admin
  */
 export const syncBostaZonesForCarrier = asyncHandler(async (req, res, next) => {
-  const carrier = await Carrier.findById(req.params.id).select(
-    "+apiKey +apiBaseUrl",
-  );
-  if (!carrier)
-    return next(
-      new ApiError(`No carrier found with id: ${req.params.id}`, 404),
-    );
-  if (carrier.apiProvider !== "bosta") {
-    return next(new ApiError("Carrier is not a Bosta API carrier", 400));
-  }
+  const ctx = await loadBostaCarrierForSync(req.params.id, next);
+  if (!ctx) return;
 
-  const credentials = await getBostaCredentials(carrier);
-  if (!credentials) {
-    return next(new ApiError("Bosta API key is not configured", 400));
-  }
-
-  const zoneStats = await syncBostaCarrierCoverage(carrier._id, credentials);
+  const zoneStats = await syncBostaCarrierCoverage(ctx.carrier._id, ctx.credentials);
   sendResponse(res, {
     message: "Bosta governorates and districts synced successfully",
     data: zoneStats,
+  });
+});
+
+/**
+ * @desc    Lightweight Bosta sync — updates bostaCovered only (no zones/mappings/coverage)
+ * @route   POST /api/v1/admin/carriers/:id/bosta/sync-coverage
+ * @access  Admin
+ */
+export const syncBostaCoverageForCarrier = asyncHandler(async (req, res, next) => {
+  const ctx = await loadBostaCarrierForSync(req.params.id, next);
+  if (!ctx) return;
+
+  const districtCount = await District.countDocuments();
+  if (districtCount === 0) {
+    return next(
+      new ApiError(
+        "No districts in database. Run full Bosta zone sync first.",
+        400,
+      ),
+    );
+  }
+
+  const stats = await syncBostaCoveredOnly(ctx.carrier._id, ctx.credentials);
+  sendResponse(res, {
+    message: "Bosta district coverage updated successfully",
+    data: stats,
   });
 });
 
