@@ -13,6 +13,7 @@ export const registerValidator = [
     .isLength({ min: 2, max: 60 }).withMessage('Name must be 2-60 characters'),
   body('email').trim().isEmail().withMessage('Valid email is required').normalizeEmail(),
   passwordRule('password'),
+  body('phone').withMessage('Please provide phone number'),
   body('role').optional().isIn(['user', 'admin']).withMessage('Invalid role'),
   validate,
 ];
