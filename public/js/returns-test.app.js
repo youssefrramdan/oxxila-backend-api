@@ -180,7 +180,6 @@ async function onCountryChange() {
 
 async function onGovernorateChange() {
   const govId = document.getElementById("governorate").value;
-  const gov = governorates.find((g) => g._id === govId);
   const { data } = await api(
     "GET",
     `/shipping/governorates/${govId}/zones`,
@@ -204,7 +203,6 @@ async function submitReturn() {
   const orderId = document.getElementById("eligible-order").value;
   if (!orderId) return toast("Select an order", true);
 
-  const order = eligibleOrders.find((o) => o._id === orderId);
   const items = [];
   document.querySelectorAll("[data-item]").forEach((inp) => {
     const q = Number(inp.value);
@@ -220,16 +218,6 @@ async function submitReturn() {
   const districtLabel =
     districtSel.options[districtSel.selectedIndex]?.text || "";
 
-  const pickupAddress = {
-    firstLine: document.getElementById("first-line").value.trim(),
-    secondLine: document.getElementById("second-line").value.trim(),
-    city: gov?.name || "Cairo",
-    governorateName: gov?.name || "",
-    governorateId: gov?._id,
-    districtId: districtId || "other",
-    districtName: districtId === "other" ? "Other" : districtLabel,
-  };
-
   const reason = document.getElementById("reason").value;
   const proofRequired = [
     "damaged_item",
@@ -237,27 +225,38 @@ async function submitReturn() {
     "allergic_reaction",
   ].includes(reason);
   const files = document.getElementById("proof-files").files;
+  if (proofRequired && !files.length)
+    return toast("Proof images required for this reason", true);
+
+  const fd = new FormData();
+  fd.append("order", orderId);
+  items.forEach((it, i) => {
+    fd.append(`items[${i}][orderItemId]`, it.orderItemId);
+    fd.append(`items[${i}][quantity]`, String(it.quantity));
+  });
+  fd.append("reason", reason);
+  fd.append("note", document.getElementById("note").value);
+  fd.append(
+    "pickupAddress[firstLine]",
+    document.getElementById("first-line").value.trim(),
+  );
+  fd.append(
+    "pickupAddress[secondLine]",
+    document.getElementById("second-line").value.trim(),
+  );
+  fd.append("pickupAddress[city]", gov?.name || "Cairo");
+  fd.append("pickupAddress[governorateName]", gov?.name || "");
+  if (gov?._id) fd.append("pickupAddress[governorateId]", gov._id);
+  fd.append("pickupAddress[districtId]", districtId || "other");
+  fd.append(
+    "pickupAddress[districtName]",
+    districtId === "other" ? "Other" : districtLabel,
+  );
+  for (let i = 0; i < Math.min(5, files.length); i++)
+    fd.append("proofImages", files[i]);
 
   try {
-    if (proofRequired && files.length) {
-      const fd = new FormData();
-      fd.append("order", orderId);
-      fd.append("items", JSON.stringify(items));
-      fd.append("reason", reason);
-      fd.append("note", document.getElementById("note").value);
-      fd.append("pickupAddress", JSON.stringify(pickupAddress));
-      for (let i = 0; i < Math.min(5, files.length); i++)
-        fd.append("proofImages", files[i]);
-      await api("POST", "/returns", fd);
-    } else {
-      await api("POST", "/returns", {
-        order: orderId,
-        items,
-        reason,
-        note: document.getElementById("note").value,
-        pickupAddress,
-      });
-    }
+    await api("POST", "/returns", fd);
     toast("Return submitted");
     switchTab("list");
     loadMyReturns();

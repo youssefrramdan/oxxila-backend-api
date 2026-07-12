@@ -56,6 +56,7 @@ export const createReturnValidator = [
     return true;
   }),
   body("items.*.quantity")
+    .toInt()
     .isInt({ min: 1 })
     .withMessage("quantity must be at least 1"),
   body("reason")

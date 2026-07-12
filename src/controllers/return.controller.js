@@ -250,29 +250,6 @@ const formatEligibleOrder = (order, returnable) => {
   };
 };
 
-/** Parse JSON-string items/pickupAddress fields from multipart body. */
-const parseReturnCreateBody = (req) => {
-  const body = { ...req.body };
-
-  if (typeof body.items === "string") {
-    try {
-      body.items = JSON.parse(body.items);
-    } catch {
-      throw new ApiError("Invalid items JSON", 400);
-    }
-  }
-
-  if (typeof body.pickupAddress === "string") {
-    try {
-      body.pickupAddress = JSON.parse(body.pickupAddress);
-    } catch {
-      throw new ApiError("Invalid pickupAddress JSON", 400);
-    }
-  }
-
-  return body;
-};
-
 /** Collect uploaded proof image files from multer req.files. */
 export const getReturnProofUploads = (req) => {
   if (!req.files) return [];
@@ -837,8 +814,7 @@ export const getEligibleReturnOrders = asyncHandler(async (req, res) => {
  * @access  Private
  */
 export const createReturnRequest = asyncHandler(async (req, res, next) => {
-  const body = parseReturnCreateBody(req);
-  req.body = body;
+  const { body } = req;
 
   const order = await Order.findOne({ _id: body.order, user: req.user._id });
   if (!order) return next(new ApiError(`No order found with id: ${body.order}`, 404));

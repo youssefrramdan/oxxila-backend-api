@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "4062f907-628a-430c-9f5d-c9c39c20a46e",
     "name": "Oxxila-backend-api",
-    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n- **FAQs** — public list per product; user **ask specialist** (email to `ADMIN_EMAIL`); admin CRUD on `/faqs` + create under product.\n    \n- **Coupons** — admin CRUD. User apply/remove on **Cart** (`POST /cart/coupon`, `DELETE /cart/coupon`).\n    \n- **Tracking** — `GET /track/order/:orderId` (owner), public `GET /track/:trackingNumber`.\n    \n- **Orders** — COD checkout, card payment sessions (Stripe/Paymob), my-orders, admin list/status/refund. Test UI: `GET /checkout-test.html`.\n    \n- **Returns** — eligible delivered orders (14-day window), partial returns, proof images, pickup/self-ship, admin workflow through refund (Stripe/Paymob auto, COD manual).\n    \n- **Webhooks** — Stripe (`checkout.session.completed`, `charge.refunded`); Paymob processed POST + browser redirect GET (HMAC-signed; not for manual testing without valid signatures).\n    \n- **Shipping (Checkout)** — public countries, governorates, zones, resolve price.\n    \n- **Shipping Admin** — countries, governorates, districts, carriers, coverage, Bosta sync/pickups, order assign (`/api/v1/admin/*`).\n    \n- **Cart** — authenticated shopping cart: add/update/remove lines, apply/remove coupon, clear cart. Line prices sync from product on every read/write.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
+    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n- **FAQs** — public list per product; user **ask specialist** (email to `ADMIN_EMAIL`); admin CRUD on `/faqs` + create under product.\n    \n- **Coupons** — admin CRUD. User apply/remove on **Cart** (`POST /cart/coupon`, `DELETE /cart/coupon`).\n    \n- **Tracking** — `GET /track/order/:orderId` (owner), public `GET /track/:trackingNumber`.\n    \n- **Orders** — COD checkout, card payment sessions (Stripe/Paymob), my-orders, admin list/status/refund. Test UI: `GET /checkout-test.html`.\n    \n- **Returns** — eligible delivered orders (14-day window), partial returns, flattened multipart create (`items[0][…]` / `pickupAddress[…]` + `proofImages`), admin workflow through refund (Stripe/Paymob auto, COD manual).\n    \n- **Webhooks** — Stripe (`checkout.session.completed`, `charge.refunded`); Paymob processed POST + browser redirect GET (HMAC-signed; not for manual testing without valid signatures).\n    \n- **Shipping (Checkout)** — public countries, governorates, zones, resolve price.\n    \n- **Shipping Admin** — countries, governorates, districts, carriers, coverage, Bosta sync/pickups, order assign (`/api/v1/admin/*`).\n    \n- **Cart** — authenticated shopping cart: add/update/remove lines, apply/remove coupon, clear cart. Line prices sync from product on every read/write.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "54107413",
     "_collection_link": "https://go.postman.co/collection/54107413-4062f907-628a-430c-9f5d-c9c39c20a46e?source=collection_link"
@@ -3788,9 +3788,25 @@
                     "eligible-orders"
                   ]
                 },
-                "description": "**User** Bearer. Delivered / partially_returned orders within `RETURN_WINDOW_DAYS` (default 14) from `deliveredAt`, with per-line `returnableQuantity` (accounts for pending/approved returns)."
+                "description": "**User** Bearer. Delivered / partially_returned orders within `RETURN_WINDOW_DAYS` (default 14) from `deliveredAt`, with per-line `returnableQuantity`. Saves `{{orderId}}` and `{{orderItemId}}`."
               },
-              "response": []
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "const order = res?.data?.[0];",
+                      "if (!order) return;",
+                      "pm.environment.set('orderId', order._id);",
+                      "const line = (order.items || []).find((i) => (i.returnableQuantity || 0) > 0) || order.items?.[0];",
+                      "if (line?.orderItemId) pm.environment.set('orderItemId', line.orderItemId);"
+                    ]
+                  }
+                }
+              ]
             },
             {
               "name": "Create Return Request",
@@ -3818,10 +3834,15 @@
                       "type": "text"
                     },
                     {
-                      "key": "items",
-                      "value": "[{\"orderItemId\":\"REPLACE_ORDER_ITEM_ID\",\"quantity\":1}]",
+                      "key": "items[0][orderItemId]",
+                      "value": "{{orderItemId}}",
                       "type": "text",
-                      "description": "JSON array — orderItemId from eligible-orders response"
+                      "description": "From eligible-orders (`orderItemId`). Add `items[1][orderItemId]` / `items[1][quantity]` for more lines."
+                    },
+                    {
+                      "key": "items[0][quantity]",
+                      "value": "1",
+                      "type": "text"
                     },
                     {
                       "key": "reason",
@@ -3835,10 +3856,39 @@
                       "type": "text"
                     },
                     {
-                      "key": "pickupAddress",
-                      "value": "{\"firstLine\":\"12 Medical Plaza, Suite 100\",\"secondLine\":\"\",\"city\":\"Cairo\",\"governorateName\":\"Cairo\",\"governorateId\":\"REPLACE_GOV_ID\",\"districtId\":\"REPLACE_DISTRICT_ID\"}",
-                      "type": "text",
-                      "description": "Customer pickup address (JSON)"
+                      "key": "pickupAddress[firstLine]",
+                      "value": "12 Medical Plaza, Suite 100",
+                      "type": "text"
+                    },
+                    {
+                      "key": "pickupAddress[secondLine]",
+                      "value": "",
+                      "type": "text"
+                    },
+                    {
+                      "key": "pickupAddress[city]",
+                      "value": "Cairo",
+                      "type": "text"
+                    },
+                    {
+                      "key": "pickupAddress[governorateName]",
+                      "value": "Cairo",
+                      "type": "text"
+                    },
+                    {
+                      "key": "pickupAddress[governorateId]",
+                      "value": "{{governorateId}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "pickupAddress[districtId]",
+                      "value": "{{districtId}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "pickupAddress[districtName]",
+                      "value": "",
+                      "type": "text"
                     },
                     {
                       "key": "proofImages",
@@ -3859,7 +3909,7 @@
                     "returns"
                   ]
                 },
-                "description": "**User** Bearer. `multipart/form-data`. Order must be `delivered` within return window. Saves `{{returnId}}`."
+                "description": "**User** Bearer. `multipart/form-data` with **flattened** fields (not JSON strings):\n\n- `items[0][orderItemId]`, `items[0][quantity]`\n- `pickupAddress[firstLine]`, `pickupAddress[city]`, …\n- `proofImages` (file, max 5)\n\nRun **Get Eligible Return Orders** first to fill `{{orderId}}` / `{{orderItemId}}`. Order must be `delivered` within return window. Saves `{{returnId}}`."
               },
               "response": []
             },
@@ -3932,7 +3982,7 @@
               "response": []
             }
           ],
-          "description": "Customer return flow. Mark order **delivered** first (admin) to set `deliveredAt` and start the 14-day window."
+          "description": "Customer return flow. Mark order **delivered** first (admin) to set `deliveredAt` and start the 14-day window. Create uses flattened multipart fields."
         },
         {
           "name": "Admin",
@@ -4258,7 +4308,7 @@
           "description": "Admin review and refund pipeline. Env: `{{returnId}}`, `{{orderId}}`."
         }
       ],
-      "description": "`/api/v1/returns` — return window from `deliveredAt` (`RETURN_WINDOW_DAYS`, default 14). Admin must set order to **delivered** to start the clock."
+      "description": "`/api/v1/returns` — return window from `deliveredAt` (`RETURN_WINDOW_DAYS`, default 14). Create: `multipart/form-data` with flattened `items[n][…]` / `pickupAddress[…]` (+ optional `proofImages`). Env: `{{orderId}}`, `{{orderItemId}}`, `{{returnId}}`, `{{governorateId}}`, `{{districtId}}`."
     },
     {
       "name": "Coupons",

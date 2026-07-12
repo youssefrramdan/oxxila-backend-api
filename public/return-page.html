@@ -1585,7 +1585,10 @@
         try {
           const fd = new FormData();
           fd.append("order", orderId);
-          fd.append("items", JSON.stringify(items));
+          items.forEach((it, i) => {
+            fd.append(`items[${i}][orderItemId]`, it.orderItemId);
+            fd.append(`items[${i}][quantity]`, String(it.quantity));
+          });
           fd.append("reason", reason);
           fd.append(
             "note",
@@ -1593,19 +1596,16 @@
           );
           const cityName =
             addrSelectedDistrictName || addrSelectedGovName;
-          fd.append(
-            "pickupAddress",
-            JSON.stringify({
-              firstLine: addrStreet,
-              city: cityName,
-              governorateName: addrSelectedGovName,
-              governorateId: addrSelectedGovId || null,
-              districtId: addrSelectedDistrictId || null,
-              districtName: addrSelectedDistrictName || null,
-            }),
-          );
+          fd.append("pickupAddress[firstLine]", addrStreet);
+          fd.append("pickupAddress[city]", cityName);
+          fd.append("pickupAddress[governorateName]", addrSelectedGovName);
+          if (addrSelectedGovId)
+            fd.append("pickupAddress[governorateId]", addrSelectedGovId);
+          if (addrSelectedDistrictId)
+            fd.append("pickupAddress[districtId]", addrSelectedDistrictId);
+          if (addrSelectedDistrictName)
+            fd.append("pickupAddress[districtName]", addrSelectedDistrictName);
 
-          // ── FIX: field name هو proofImages مش images ──
           proofFiles.forEach((f) => fd.append("proofImages", f));
 
           await apiMultipart("POST", "/returns", fd);
