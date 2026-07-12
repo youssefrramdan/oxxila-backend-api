@@ -2,8 +2,8 @@
 import cron from 'node-cron';
 import Carrier from '../models/Carrier.js';
 import logger from '../config/logger.js';
-import { getBostaCredentials } from '../utils/carriers/bosta.js';
-import { syncBostaCoveredOnly } from '../utils/carriers/bosta/sync.js';
+import { getBostaCredentials } from '../controllers/orderShipping.controller.js';
+import { syncBostaCoveredOnly } from '../controllers/carrier.controller.js';
 
 export const startBostaCoverageSyncJob = () => {
   cron.schedule('0 2 * * *', async () => {
@@ -21,7 +21,7 @@ export const startBostaCoverageSyncJob = () => {
         return;
       }
 
-      const result = await syncBostaCoveredOnly(carrier._id, credentials);
+      const result = await syncBostaCoveredOnly(credentials);
       logger.info('[BostaCoverageSync] Completed', result);
     } catch (err) {
       logger.error('[BostaCoverageSync] Failed', {

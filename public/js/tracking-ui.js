@@ -5,6 +5,8 @@
     confirmed: 'Confirmed',
     processing: 'Processing',
     shipped: 'Shipped',
+    out_for_delivery: 'Out for delivery',
+    failed_attempt: 'Failed attempt',
     delivered: 'Delivered',
     partially_returned: 'Partially returned',
     returned: 'Returned',
@@ -62,7 +64,9 @@
     if (status === 'delivered') return 'os-delivered';
     if (status === 'partially_returned') return 'os-partial-return';
     if (status === 'returned') return 'os-product-returned';
-    if (status === 'shipped') return 'os-shipped';
+    if (status === 'shipped' || status === 'out_for_delivery') return 'os-shipped';
+    if (status === 'failed_attempt') return 'os-failed';
+    if (status === 'cancelled') return 'os-cancelled';
     if (status === 'processing') return 'os-assigned';
     if (status === 'confirmed') return 'os-confirmed';
     return 'os-pending';
@@ -162,9 +166,11 @@
     return Boolean(shipment.externalDeliveryId || shipment.trackingNumber);
   }
 
+  const ASSIGNABLE_STATUSES = ['pending', 'confirmed', 'processing'];
+
   function canAssignOrder(order) {
     return (
-      ['pending', 'confirmed', 'processing'].includes(order?.orderStatus) &&
+      ASSIGNABLE_STATUSES.includes(order?.orderStatus) &&
       !isCommittedShipment(order?.shipment)
     );
   }

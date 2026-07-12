@@ -9,8 +9,10 @@ import sendResponse from '../utils/apiResponse.js';
 const PRODUCT_ON_CARD = 'name slug price images isBundle';
 const PRODUCT_MINIMAL = 'name slug price images';
 
+/** Build a product populate descriptor with the given field select */
 const popProduct = (fields) => ({ path: 'product', select: fields });
 
+/** Normalize a product ref (populated doc or ObjectId) to a string id */
 const productIdOf = (ref) => String(ref?._id ?? ref ?? '');
 
 /** Another non-expired active offer on this product (optional `excludeOfferId` for updates). */
@@ -20,6 +22,7 @@ const findBlockingOffer = (productId, excludeOfferId) => {
   return Offer.findOne(filter);
 };
 
+/** Sync product priceAfterDiscount / offerEndsAt from an offer, or clear when null */
 const syncProductOffer = async (productRef, offer = null) => {
   const id = productRef?._id ?? productRef;
   if (!id) return;

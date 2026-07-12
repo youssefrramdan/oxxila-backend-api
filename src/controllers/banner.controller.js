@@ -1,4 +1,5 @@
 // src/controllers/banner.controller.js
+// Banner CRUD for homepage carousels
 import asyncHandler from 'express-async-handler';
 import Banner from '../models/Banner.js';
 import Product from '../models/Product.js';
@@ -6,10 +7,13 @@ import Category from '../models/Category.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 
+/** Maps banner linkType to Mongoose model */
 const MODEL_BY_LINK = { product: Product, category: Category };
 
+/** Normalize a Mongoose doc or plain object to a plain object */
 const lean = (doc) => (typeof doc?.toObject === 'function' ? doc.toObject() : doc);
 
+/** Shape a banner for public list responses */
 const toListItem = (doc) => {
   const o = lean(doc);
   const out = { id: String(o._id), image: o.image, linkType: o.linkType ?? 'none' };
@@ -19,6 +23,7 @@ const toListItem = (doc) => {
   return out;
 };
 
+/** Shape a banner for admin create/update responses */
 const toAdminBanner = (doc) => ({
   ...toListItem(doc),
   isActive: lean(doc).isActive,
@@ -26,6 +31,7 @@ const toAdminBanner = (doc) => ({
   updatedAt: lean(doc).updatedAt,
 });
 
+/** Validate product/category linkId exists when linkType requires it */
 const checkLinkTarget = async (linkType, linkId, next) => {
   if (!['product', 'category'].includes(linkType)) return true;
   if (!linkId) { next(new ApiError('linkId is required for this link type', 400)); return false; }
@@ -37,6 +43,7 @@ const checkLinkTarget = async (linkType, linkId, next) => {
   return true;
 };
 
+/** Apply allowed body fields onto a banner document in place */
 const mergeBannerBody = (doc, body) => {
   for (const key of ['image', 'title', 'linkType', 'linkId', 'externalUrl', 'isActive']) {
     if (!(key in body)) continue;
@@ -47,13 +54,21 @@ const mergeBannerBody = (doc, body) => {
   }
 };
 
-// GET /api/v1/banners — Public
+/**
+ * @desc    List active banners
+ * @route   GET /api/v1/banners
+ * @access  Public
+ */
 export const getBanners = asyncHandler(async (req, res) => {
   const docs = await Banner.find({ isActive: true }).sort({ createdAt: -1 }).lean();
   sendResponse(res, { message: 'Banners retrieved successfully', data: docs.map(toListItem) || [] });
 });
 
-// POST /api/v1/banners — Admin
+/**
+ * @desc    Create banner
+ * @route   POST /api/v1/banners
+ * @access  Admin
+ */
 export const createBanner = asyncHandler(async (req, res, next) => {
   if (req.file?.path) req.body.image = req.file.path;
   const payload = { ...req.body, linkType: req.body.linkType ?? 'none' };
@@ -62,7 +77,11 @@ export const createBanner = asyncHandler(async (req, res, next) => {
   sendResponse(res, { statusCode: 201, message: 'Banner created successfully', data: toAdminBanner(data) });
 });
 
-// PUT /api/v1/banners/:id — Admin
+/**
+ * @desc    Update banner
+ * @route   PUT /api/v1/banners/:id
+ * @access  Admin
+ */
 export const updateBanner = asyncHandler(async (req, res, next) => {
   const doc = await Banner.findById(req.params.id);
   if (!doc) return next(new ApiError(`No banner found with id: ${req.params.id}`, 404));
@@ -76,7 +95,11 @@ export const updateBanner = asyncHandler(async (req, res, next) => {
   sendResponse(res, { message: 'Banner updated successfully', data: toAdminBanner(doc) });
 });
 
-// DELETE /api/v1/banners/:id — Admin
+/**
+ * @desc    Delete banner
+ * @route   DELETE /api/v1/banners/:id
+ * @access  Admin
+ */
 export const deleteBanner = asyncHandler(async (req, res, next) => {
   const removed = await Banner.findOneAndDelete({ _id: req.params.id });
   if (!removed) return next(new ApiError(`No banner found with id: ${req.params.id}`, 404));

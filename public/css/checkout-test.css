@@ -424,3 +424,81 @@ body {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.section-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.saved-addresses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.addr-card {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border2);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.addr-card input { margin-top: 3px; accent-color: var(--accent); }
+
+.addr-card.active,
+.addr-card:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+.addr-card-body { flex: 1; min-width: 0; }
+
+.addr-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.addr-default-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--green);
+  background: var(--green-bg);
+  border: 1px solid var(--green-border);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.addr-card-line {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.addr-toggle-btn { margin-bottom: 12px; }
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.check-row.compact { margin-top: 8px; }
+
+.save-address-fields {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

@@ -63,5 +63,10 @@ export const deleteCountry = asyncHandler(async (req, res, next) => {
   await Governorate.deleteMany({ country: req.params.id });
   await Country.findByIdAndDelete(req.params.id);
 
-  sendResponse(res, { message: 'Country and all related data deleted successfully' });
+  // Zone ObjectIds on users/orders/returns go stale; stored names remain so
+  // resolveZoneRefs can rematch after the next Bosta zone sync (or on use).
+  sendResponse(res, {
+    message:
+      'Country and all related data deleted successfully. Re-run Bosta zone sync to rematch saved addresses, orders, and returns by name.',
+  });
 });

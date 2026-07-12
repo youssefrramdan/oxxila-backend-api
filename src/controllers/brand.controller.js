@@ -1,4 +1,5 @@
 // src/controllers/brand.controller.js
+// Brand CRUD with category filtering
 import asyncHandler from 'express-async-handler';
 import mongoose from 'mongoose';
 import Brand from '../models/Brand.js';
@@ -6,10 +7,17 @@ import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
 
+/** Restrict public queries to active brands */
 const activeFilter = { isActive: true };
 
+/** Shared category populate for brand responses */
 const categoryPopulate = { path: 'category', select: 'name slug' };
 
+/**
+ * @desc    List active brands (optional category filter)
+ * @route   GET /api/v1/brands
+ * @access  Public
+ */
 export const getAllBrands = asyncHandler(async (req, res, next) => {
   const filter = { ...activeFilter };
 
@@ -43,6 +51,11 @@ export const getAllBrands = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * @desc    Get one active brand
+ * @route   GET /api/v1/brands/:id
+ * @access  Public
+ */
 export const getBrand = asyncHandler(async (req, res, next) => {
   const brand = await Brand.findOne({ _id: req.params.id, ...activeFilter }).populate(
     categoryPopulate
@@ -51,6 +64,11 @@ export const getBrand = asyncHandler(async (req, res, next) => {
   sendResponse(res, { message: 'Brand retrieved successfully', data: brand });
 });
 
+/**
+ * @desc    Create brand
+ * @route   POST /api/v1/brands
+ * @access  Admin
+ */
 export const createBrand = asyncHandler(async (req, res) => {
   if (req.file?.path) req.body.logo = req.file.path;
   delete req.body.slug;
@@ -59,6 +77,11 @@ export const createBrand = asyncHandler(async (req, res) => {
   sendResponse(res, { statusCode: 201, message: 'Brand created successfully', data: brand });
 });
 
+/**
+ * @desc    Update brand
+ * @route   PUT /api/v1/brands/:id
+ * @access  Admin
+ */
 export const updateBrand = asyncHandler(async (req, res, next) => {
   if (req.file?.path) req.body.logo = req.file.path;
   delete req.body.slug;
@@ -70,6 +93,11 @@ export const updateBrand = asyncHandler(async (req, res, next) => {
   sendResponse(res, { message: 'Brand updated successfully', data: brand });
 });
 
+/**
+ * @desc    Delete brand
+ * @route   DELETE /api/v1/brands/:id
+ * @access  Admin
+ */
 export const deleteBrand = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const brand = await Brand.findById(id);

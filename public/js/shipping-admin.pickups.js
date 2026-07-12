@@ -2,6 +2,7 @@
 
 const BostaPickups = (() => {
   let districtsCache = null;
+  let formWired = false;
   const DISTRICTS_TTL_MS = 5 * 60 * 1000;
   const LS_KEY = 'oxxila_bosta_districts';
   const LS_TS = 'oxxila_bosta_districts_ts';
@@ -48,6 +49,7 @@ const BostaPickups = (() => {
         .join('');
     const distSel = $('pickup-district-sel');
     if (distSel) distSel.innerHTML = '<option value="">Select district</option>';
+    updateSaveEnabled();
   };
 
   const onCityChange = () => {
@@ -63,6 +65,7 @@ const BostaPickups = (() => {
           return `<option value="${esc(d.districtId)}" data-zone-id="${esc(d.zoneId || '')}">${esc(label)}</option>`;
         })
         .join('');
+    updateSaveEnabled();
   };
 
   const hideForm = () => $('pickup-inline-form')?.classList.add('hidden');
@@ -72,6 +75,38 @@ const BostaPickups = (() => {
       const input = $(id);
       if (input) input.value = '';
     });
+    const contactName = $('pickup-contact-name');
+    if (contactName && !contactName.value.trim()) contactName.value = '';
+    const def = $('pickup-is-default');
+    if (def) def.checked = true;
+    fillCitySelect();
+    updateSaveEnabled();
+  };
+
+  const isFormValid = () => {
+    const locationName = $('pickup-name')?.value?.trim();
+    const firstLine = $('pickup-first-line')?.value?.trim();
+    const cityId = $('pickup-city-sel')?.value;
+    const distSel = $('pickup-district-sel');
+    const districtId = distSel?.value;
+    const zoneId = distSel?.selectedOptions?.[0]?.dataset?.zoneId || '';
+    const contactPhone = $('pickup-contact-phone')?.value?.trim();
+    return Boolean(locationName && firstLine && cityId && zoneId && districtId && contactPhone);
+  };
+
+  const updateSaveEnabled = () => {
+    const btn = $('pickup-save-btn');
+    if (btn) btn.disabled = !isFormValid();
+  };
+
+  const wireFormValidation = () => {
+    if (formWired) return;
+    formWired = true;
+    ['pickup-name', 'pickup-first-line', 'pickup-contact-phone'].forEach((id) => {
+      $(id)?.addEventListener('input', updateSaveEnabled);
+    });
+    $('pickup-city-sel')?.addEventListener('change', updateSaveEnabled);
+    $('pickup-district-sel')?.addEventListener('change', updateSaveEnabled);
   };
 
   const renderList = (carrierId, pickups) => {
@@ -104,6 +139,13 @@ const BostaPickups = (() => {
       return;
     }
     const listEl = $('pickups-list');
+    const syncBtn = $('pickups-sync-btn');
+    if (syncBtn?.disabled) return;
+    if (syncBtn) {
+      syncBtn.disabled = true;
+      syncBtn.dataset.prevHtml = syncBtn.innerHTML;
+      syncBtn.innerHTML = '<i class="ti ti-loader-2 ti-spin"></i>';
+    }
     if (listEl) listEl.textContent = 'Syncing from Bosta…';
     try {
       const { data } = await api(
@@ -115,6 +157,12 @@ const BostaPickups = (() => {
     } catch (e) {
       if (listEl) listEl.textContent = e.message;
       toast(e.message, true);
+    } finally {
+      if (syncBtn) {
+        syncBtn.disabled = false;
+        syncBtn.innerHTML = syncBtn.dataset.prevHtml || '<i class="ti ti-download"></i>';
+        delete syncBtn.dataset.prevHtml;
+      }
     }
   };
 
@@ -132,6 +180,7 @@ const BostaPickups = (() => {
   const toggleForm = async (show) => {
     const form = $('pickup-inline-form');
     if (!form) return;
+    wireFormValidation();
     const shouldShow = show === undefined ? form.classList.contains('hidden') : show;
     if (!shouldShow) {
       hideForm();
@@ -145,6 +194,7 @@ const BostaPickups = (() => {
       await loadDistricts(editingCarrierId);
       fillCitySelect();
       form.classList.remove('hidden');
+      updateSaveEnabled();
     } catch (e) {
       toast(e.message || 'Could not load Bosta districts', true);
     }
@@ -164,10 +214,16 @@ const BostaPickups = (() => {
     const contactName = $('pickup-contact-name')?.value?.trim() || 'Warehouse';
     const contactPhone = $('pickup-contact-phone')?.value?.trim();
     const isDefault = $('pickup-is-default')?.checked;
+    const saveBtn = $('pickup-save-btn');
 
-    if (!locationName || !firstLine || !cityId || !zoneId || !districtId || !contactPhone) {
+    if (!isFormValid()) {
       toast('Fill all fields including city and district', true);
       return;
+    }
+
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
     }
 
     try {
@@ -180,9 +236,13 @@ const BostaPickups = (() => {
       hideForm();
       clearForm();
       await load(editingCarrierId);
-      toast('Pickup added');
+      toast(isDefault ? 'Pickup added as default' : 'Pickup added');
     } catch (e) {
       toast(e.message, true);
+      updateSaveEnabled();
+    } finally {
+      if (saveBtn) saveBtn.textContent = 'Save pickup';
+      updateSaveEnabled();
     }
   };
 

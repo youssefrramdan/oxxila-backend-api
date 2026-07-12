@@ -5,6 +5,9 @@ let cartData = null;
 let shippingPrice = 0;
 let selectedPay = 'cod';
 let pollTimer = null;
+let savedAddresses = [];
+let addressMode = 'new';
+let selectedAddressId = null;
 
 const BASE = () =>
   (document.getElementById('base-url')?.value || 'https://oxxila-api-01ced6342147.herokuapp.com/api/v1').replace(/\/$/, '');
@@ -108,6 +111,7 @@ async function doLogin() {
     showToast('Logged in');
     await loadCart();
     await loadCountries();
+    await loadAddresses();
     loadMyOrders();
   } else {
     const err = document.getElementById('login-err');
@@ -184,6 +188,132 @@ function updateTotal() {
 
   document.getElementById('sum-total').textContent = `${total.toFixed(0)} EGP`;
   document.getElementById('sum-ship').textContent = shippingPrice ? `${shippingPrice} EGP` : '—';
+}
+
+function formatAddressSummary(addr) {
+  const label = addr.label ? `<strong>${addr.label}</strong> · ` : '';
+  const district = addr.isOther ? 'Other' : addr.district?.name || '—';
+  return `${label}${addr.governorate?.name || '—'} · ${district} · ${addr.addressLine}`;
+}
+
+function updateAddressModeUI() {
+  const hasSaved = savedAddresses.length > 0;
+  const savedWrap = document.getElementById('saved-addresses-wrap');
+  const newForm = document.getElementById('new-address-form');
+  const backBtn = document.getElementById('back-to-saved-btn');
+  const useNewBtn = document.getElementById('use-new-address-btn');
+  const saveWrap = document.getElementById('save-address-wrap');
+
+  savedWrap.style.display = hasSaved && token ? '' : 'none';
+  saveWrap.style.display = token && addressMode === 'new' ? '' : 'none';
+
+  if (addressMode === 'saved' && hasSaved) {
+    newForm.style.display = 'none';
+    backBtn.style.display = 'none';
+    useNewBtn.style.display = '';
+  } else {
+    newForm.style.display = '';
+    backBtn.style.display = hasSaved ? '' : 'none';
+    useNewBtn.style.display = hasSaved ? '' : 'none';
+  }
+}
+
+function renderSavedAddresses() {
+  const box = document.getElementById('saved-addresses-list');
+  if (!savedAddresses.length) {
+    box.innerHTML = '';
+    updateAddressModeUI();
+    return;
+  }
+
+  box.innerHTML = savedAddresses
+    .map((addr) => {
+      const active = selectedAddressId === addr._id ? 'active' : '';
+      const defaultBadge = addr.isDefault ? '<span class="addr-default-badge">Default</span>' : '';
+      return `
+        <label class="addr-card ${active}" data-id="${addr._id}">
+          <input type="radio" name="saved-address" value="${addr._id}" ${active ? 'checked' : ''} onchange="selectSavedAddress('${addr._id}')">
+          <div class="addr-card-body">
+            <div class="addr-card-top">${defaultBadge}</div>
+            <div class="addr-card-line">${formatAddressSummary(addr)}</div>
+          </div>
+        </label>`;
+    })
+    .join('');
+
+  updateAddressModeUI();
+}
+
+async function loadAddresses() {
+  if (!token) {
+    savedAddresses = [];
+    selectedAddressId = null;
+    addressMode = 'new';
+    renderSavedAddresses();
+    return;
+  }
+
+  const data = await api('GET', '/users/profile/addresses');
+  savedAddresses = data?.data?.addresses || [];
+
+  if (savedAddresses.length) {
+    const preferred = savedAddresses.find((a) => a.isDefault) || savedAddresses[0];
+    selectedAddressId = preferred._id;
+    addressMode = 'saved';
+    await applySavedAddressShipping(preferred);
+  } else {
+    selectedAddressId = null;
+    addressMode = 'new';
+  }
+
+  renderSavedAddresses();
+}
+
+async function applySavedAddressShipping(addr) {
+  if (!addr?.governorate?.id) return;
+  const districtId = addr.isOther ? 'other' : addr.district?.id || 'other';
+  const q = new URLSearchParams({ governorateId: addr.governorate.id, districtId });
+  const data = await api('GET', `/shipping/resolve?${q}`, null, true);
+  const price = data?.data?.shippingPrice;
+  if (price != null) {
+    shippingPrice = price;
+    document.getElementById('sum-ship').textContent = `${shippingPrice} EGP`;
+    updateTotal();
+  }
+}
+
+async function selectSavedAddress(id) {
+  selectedAddressId = id;
+  addressMode = 'saved';
+  const addr = savedAddresses.find((a) => a._id === id);
+  document.querySelectorAll('.addr-card').forEach((el) => {
+    el.classList.toggle('active', el.dataset.id === id);
+  });
+  if (addr) await applySavedAddressShipping(addr);
+  updateAddressModeUI();
+}
+
+function showNewAddressForm() {
+  addressMode = 'new';
+  selectedAddressId = null;
+  document.querySelectorAll('input[name="saved-address"]').forEach((el) => {
+    el.checked = false;
+  });
+  document.querySelectorAll('.addr-card').forEach((el) => el.classList.remove('active'));
+  updateAddressModeUI();
+}
+
+function showSavedAddresses() {
+  if (!savedAddresses.length) return;
+  const preferred = savedAddresses.find((a) => a._id === selectedAddressId)
+    || savedAddresses.find((a) => a.isDefault)
+    || savedAddresses[0];
+  selectSavedAddress(preferred._id);
+}
+
+function toggleSaveAddressFields() {
+  const checked = document.getElementById('save-address').checked;
+  document.getElementById('save-address-fields').style.display = checked ? '' : 'none';
 }
 
 async function loadCountries() {
@@ -267,11 +397,24 @@ async function refreshShippingPrice() {
 }
 
 function checkoutPayload() {
-  return {
+  if (addressMode === 'saved' && selectedAddressId) {
+    return { addressId: selectedAddressId };
+  }
+
+  const payload = {
     governorateId: document.getElementById('governorate').value,
     districtId: document.getElementById('district').value || 'other',
     addressLine: document.getElementById('address-line').value.trim(),
   };
+
+  if (document.getElementById('save-address')?.checked) {
+    payload.saveAddress = true;
+    const label = document.getElementById('address-label')?.value?.trim();
+    if (label) payload.label = label;
+    if (document.getElementById('set-as-default')?.checked) payload.setAsDefault = true;
+  }
+
+  return payload;
 }
 
 async function placeOrder() {
@@ -280,7 +423,7 @@ async function placeOrder() {
     return;
   }
   const payload = checkoutPayload();
-  if (!payload.governorateId || !payload.addressLine) {
+  if (!payload.addressId && (!payload.governorateId || !payload.addressLine)) {
     showToast('Complete shipping address', 'err');
     return;
   }
@@ -301,6 +444,7 @@ async function placeOrder() {
       }, 600);
       await loadCart();
       loadMyOrders();
+      if (payload.saveAddress) await loadAddresses();
     } else {
       showToast(data?.message || 'Failed', 'err');
     }
@@ -353,6 +497,7 @@ function pollPaymentSession(id) {
       }, 600);
       await loadCart();
       loadMyOrders();
+      if (payload.saveAddress) await loadAddresses();
     } else if (st === 'failed' || n > 80) {
       clearInterval(pollTimer);
       if (st === 'failed') showToast('Payment failed', 'err');
@@ -515,6 +660,10 @@ function checkPaymentReturn() {
   }
 }
 
+window.selectSavedAddress = selectSavedAddress;
+window.showNewAddressForm = showNewAddressForm;
+window.showSavedAddresses = showSavedAddresses;
+window.toggleSaveAddressFields = toggleSaveAddressFields;
 window.openLogin = openLogin;
 window.closeLogin = closeLogin;
 window.doLogin = doLogin;
@@ -533,6 +682,7 @@ updateLoginUI();
 if (token) {
   loadCart();
   loadCountries();
+  loadAddresses();
   loadMyOrders();
 }
 checkPaymentReturn();

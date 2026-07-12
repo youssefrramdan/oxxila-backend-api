@@ -16,13 +16,13 @@ src/
   config/       # env + db connection
   models/       # Mongoose schemas + instance methods
   routes/       # Express routers (thin, mount validators + controllers)
-  controllers/  # All endpoint logic — DB access + response lives here
+  controllers/  # Endpoint logic — domain helpers live here when tightly coupled
   middlewares/  # auth, validate, error handling
   validators/   # express-validator chain arrays
-  utils/        # ApiError, ApiResponse, jwt, email, ApiFeatures, emailTemplates/
+  utils/        # ApiError, ApiResponse, shared helpers, integrations (Bosta, tracking)
 ```
 
-⚠️ **There is no `services/` layer.** Controllers talk to models directly. Keep helper/pure functions near the top of the controller or in `utils/` when reusable.
+⚠️ **There is no `services/` layer.** Controllers talk to models directly. Keep **domain-specific** logic as private functions at the top of the controller file. Use `utils/` for infrastructure, lightweight shared helpers, and cross-cutting integrations (e.g. Bosta, order tracking).
 
 ## Errors & Responses
 - **Controllers are always wrapped in `asyncHandler`** from `express-async-handler`. Never use `try/catch` in controllers except for rollback scenarios (e.g. email failure after DB write).

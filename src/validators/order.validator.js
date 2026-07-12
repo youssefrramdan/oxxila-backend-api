@@ -1,11 +1,11 @@
 // src/validators/order.validator.js
 import { body, param } from 'express-validator';
 import validate from '../middlewares/validate.middleware.js';
+import ApiError from '../utils/apiError.js';
 
-const addressFields = [
+const inlineAddressFields = [
   body('governorateId')
-    .notEmpty()
-    .withMessage('governorateId is required')
+    .optional()
     .isMongoId()
     .withMessage('Invalid governorate ID'),
 
@@ -18,15 +18,47 @@ const addressFields = [
     }),
 
   body('addressLine')
+    .optional()
     .trim()
-    .notEmpty()
-    .withMessage('addressLine is required')
     .isLength({ min: 6, max: 500 })
     .withMessage('addressLine must be between 6 and 500 characters'),
 ];
 
+const checkoutAddressExtras = [
+  body('addressId').optional().isMongoId().withMessage('Invalid address ID'),
+  body('saveAddress').optional().isBoolean().withMessage('saveAddress must be a boolean'),
+  body('label').optional().trim().isLength({ max: 50 }).withMessage('Label is too long'),
+  body('setAsDefault').optional().isBoolean().withMessage('setAsDefault must be a boolean'),
+];
+
+const ensureCheckoutAddress = (req, res, next) => {
+  const { addressId, governorateId, addressLine, saveAddress } = req.body;
+
+  if (addressId) {
+    if (governorateId || addressLine || req.body.districtId || req.body.saveAddress) {
+      return next(
+        new ApiError('When addressId is provided, omit inline address fields and saveAddress', 400)
+      );
+    }
+    return next();
+  }
+
+  if (!governorateId || !String(addressLine || '').trim()) {
+    return next(new ApiError('Provide addressId or governorateId + addressLine', 400));
+  }
+
+  if (saveAddress && !req.user?.phone?.trim()) {
+    return next(
+      new ApiError('Add your phone number in account settings before saving an address', 400)
+    );
+  }
+
+  next();
+};
+
 export const createOrderValidator = [
-  ...addressFields,
+  ...inlineAddressFields,
+  ...checkoutAddressExtras,
 
   body('paymentMethod')
     .notEmpty()
@@ -35,10 +67,12 @@ export const createOrderValidator = [
     .withMessage('Only cod is supported on this endpoint. Use POST /orders/payment-session for card payments.'),
 
   validate,
+  ensureCheckoutAddress,
 ];
 
 export const createPaymentSessionValidator = [
-  ...addressFields,
+  ...inlineAddressFields,
+  ...checkoutAddressExtras,
 
   body('provider')
     .notEmpty()
@@ -47,6 +81,7 @@ export const createPaymentSessionValidator = [
     .withMessage('provider must be stripe or paymob'),
 
   validate,
+  ensureCheckoutAddress,
 ];
 
 export const paymentSessionIdParamValidator = [

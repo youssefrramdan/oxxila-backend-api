@@ -1,6 +1,27 @@
 // src/routes/user.routes.js
 import { Router } from 'express';
-import * as users from '../controllers/user.controller.js';
+import {
+  getAllUsers,
+  getSpecificUser,
+  createUser,
+  updateUser,
+  deleteUser,
+  activateSpecificUser,
+  changeUserPassword,
+} from '../controllers/userAdmin.controller.js';
+import {
+  getMe,
+  getMyAddresses,
+  addMyAddress,
+  updateMyAddress,
+  deleteMyAddress,
+  setMyDefaultAddress,
+  updateMe,
+  uploadMyAvatar,
+  updateMyPassword,
+  deactivateMe,
+  activateMe,
+} from '../controllers/userProfile.controller.js';
 import {
   clearBrowsingHistory,
   getBrowsingHistory,
@@ -31,24 +52,29 @@ const avatarUpload = createUploader('oxxila/users/avatars', {
 router.use(protectedRoutes);
 
 // ─── Self-service (must come before /:id to avoid route collisions) ───────────
-router.get('/getMe', users.getMe);
-router.get('/profile/addresses', users.getMyAddresses);
-router.post('/profile/addresses', addMyAddressValidator, users.addMyAddress);
+router.get('/getMe', getMe);
+router.get('/profile/addresses', getMyAddresses);
+router.post('/profile/addresses', addMyAddressValidator, addMyAddress);
 router.patch(
   '/profile/addresses/:addressId',
   updateMyAddressValidator,
-  users.updateMyAddress
+  updateMyAddress
+);
+router.patch(
+  '/profile/addresses/:addressId/default',
+  myAddressIdParamValidator,
+  setMyDefaultAddress
 );
 router.delete(
   '/profile/addresses/:addressId',
   myAddressIdParamValidator,
-  users.deleteMyAddress
+  deleteMyAddress
 );
-router.patch('/updateMe', updateMeValidator, users.updateMe);
-router.patch('/updateMyAvatar', avatarUpload.single('avatar'), users.uploadMyAvatar);
-router.patch('/updateMyPassword', updateMyPasswordValidator, users.updateMyPassword);
-router.patch('/deactivateMe', users.deactivateMe);
-router.patch('/activateMe', users.activateMe);
+router.patch('/updateMe', updateMeValidator, updateMe);
+router.patch('/updateMyAvatar', avatarUpload.single('avatar'), uploadMyAvatar);
+router.patch('/updateMyPassword', updateMyPasswordValidator, updateMyPassword);
+router.patch('/deactivateMe', deactivateMe);
+router.patch('/activateMe', activateMe);
 
 router.get('/browsing-history', getBrowsingHistory);
 router.delete('/browsing-history', clearBrowsingHistory);
@@ -58,15 +84,15 @@ router.get('/recommendations', getRecommendations);
 router.use(allowTo('admin'));
 
 router.route('/')
-  .get(users.getAllUsers)
-  .post(createUserValidator, users.createUser);
+  .get(getAllUsers)
+  .post(createUserValidator, createUser);
 
-router.patch('/activate/:id', userIdParamValidator, users.activateSpecificUser);
-router.patch('/changePassword/:id', changeUserPasswordValidator, users.changeUserPassword);
+router.patch('/activate/:id', userIdParamValidator, activateSpecificUser);
+router.patch('/changePassword/:id', changeUserPasswordValidator, changeUserPassword);
 
 router.route('/:id')
-  .get(userIdParamValidator, users.getSpecificUser)
-  .put(updateUserValidator, users.updateUser)
-  .delete(userIdParamValidator, users.deleteUser);
+  .get(userIdParamValidator, getSpecificUser)
+  .put(updateUserValidator, updateUser)
+  .delete(userIdParamValidator, deleteUser);
 
 export default router;

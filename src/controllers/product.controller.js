@@ -2,14 +2,41 @@
 import asyncHandler from 'express-async-handler';
 import mongoose from 'mongoose';
 import Product from '../models/Product.js';
+import User from '../models/User.js';
 import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
-import { addToBrowsingHistory } from '../utils/browsingHistory.js';
 import { productPopulate, productSelect } from '../utils/populate/productPopulate.js';
 
+/** Mongo filter for active (listed) products */
 const activeFilter = { isActive: true };
 
+/** Upsert a product view into the user's browsing history (max 20) */
+const addToBrowsingHistory = async (userId, productId, categoryId) => {
+  const pid =
+    productId instanceof mongoose.Types.ObjectId
+      ? productId
+      : new mongoose.Types.ObjectId(String(productId));
+
+  const updated = await User.findOneAndUpdate(
+    { _id: userId, 'browsingHistory.product': pid },
+    { $set: { 'browsingHistory.$.viewedAt': new Date() } }
+  );
+
+  if (!updated) {
+    await User.findByIdAndUpdate(userId, {
+      $push: {
+        browsingHistory: {
+          $each: [{ product: pid, category: categoryId, viewedAt: new Date() }],
+          $position: 0,
+          $slice: 20,
+        },
+      },
+    });
+  }
+};
+
+/** Build a Mongo filter from public product list query params */
 const buildFilter = (query) => {
   const filter = { ...activeFilter };
 

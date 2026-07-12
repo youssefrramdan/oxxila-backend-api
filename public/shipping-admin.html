@@ -137,22 +137,41 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
 .icon-btn.primary:hover{color:var(--accent);border-color:var(--accent-border);background:var(--accent-dim);}
 
 /* ORDERS TABLE */
-.order-filter{display:flex;gap:6px;}
-.order-filter-btn{padding:5px 13px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;color:var(--muted);background:var(--card);border:1px solid var(--border2);transition:all .15s;}
+.order-filter{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:min(720px,100%);}
+.order-filter-btn{padding:5px 11px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;color:var(--muted);background:var(--card);border:1px solid var(--border2);transition:all .15s;white-space:nowrap;}
 .order-filter-btn.active{color:var(--text);border-color:var(--text);}
 .order-filter-btn:hover:not(.active){color:var(--text);}
-.order-status{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:500;}
+.order-status{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:500;display:inline-block;}
 .os-shipped{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(96,165,250,.22);}
 .os-pending{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(251,191,36,.22);}
 .os-delivered{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
 .os-partial-return{background:rgba(251,191,36,.12);color:var(--amber);border:1px solid rgba(251,191,36,.25);}
 .os-product-returned{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,.22);}
 .os-assigned{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border);}
+.os-confirmed{background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.22);}
+.os-failed{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,.22);}
+.os-cancelled{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border2);}
 .tracking-code{font-family:var(--mono);font-size:11px;color:var(--muted);}
+.tracking-sub{font-size:10px;color:var(--muted2);margin-top:2px;}
+.order-actions{display:flex;flex-direction:column;gap:4px;align-items:stretch;min-width:88px;}
+.order-action-btn{font-size:11px;padding:5px 10px;justify-content:center;width:100%;}
+#orders-table tbody tr.order-row{cursor:pointer;transition:background .15s;}
+#orders-table tbody tr.order-row:hover{background:rgba(255,255,255,.03);}
+.order-detail-meta{display:grid;gap:10px;margin-bottom:18px;}
+.order-detail-row{display:flex;justify-content:space-between;gap:12px;font-size:12px;}
+.order-detail-row span:first-child{color:var(--muted);}
+.order-detail-row span:last-child{text-align:right;font-weight:500;}
+.manual-status-note{font-size:11px;color:var(--muted);line-height:1.45;margin:0 0 14px;}
+.manual-status-readonly{padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--card);font-size:12px;color:var(--muted);line-height:1.45;}
 .method-cell{font-size:11px;color:var(--muted);text-transform:uppercase;font-family:var(--mono);letter-spacing:.04em;}
 .update-btn{font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;padding:4px 8px;border-radius:5px;transition:background .15s;}
 .update-btn:hover{background:var(--accent-dim);}
 .order-id{font-family:var(--mono);font-size:12px;font-weight:500;}
+.btn:disabled,.save-btn:disabled{opacity:.55;cursor:not-allowed;pointer-events:none;}
+.ti-spin{animation:ti-spin 1s linear infinite;display:inline-block;}
+@keyframes ti-spin{to{transform:rotate(360deg);}}
+.section-header.orders-header{align-items:flex-start;gap:12px;flex-wrap:wrap;}
+.section-header.orders-header .order-filter{margin-left:auto;}
 
 /* ZONES PANEL — min-height:0 so column bodies scroll inside the grid */
 .zones-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;height:min(52vh,480px);min-height:280px;}
@@ -191,6 +210,11 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
 .pickup-inline-form.hidden{display:none;}
 .pickup-inline-actions{display:flex;gap:8px;margin-top:10px;}
 .pickup-inline-actions .btn{flex:1;justify-content:center;}
+.pickup-req{color:var(--accent);margin-left:2px;}
+.pickup-default-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin:4px 0 10px;border-radius:8px;border:1px solid var(--border2);background:var(--card2);cursor:pointer;}
+.pickup-default-row input{margin-top:2px;accent-color:var(--accent);width:15px;height:15px;flex-shrink:0;}
+.pickup-default-row strong{display:block;font-size:12px;font-weight:500;}
+.pickup-default-row span{display:block;font-size:10px;color:var(--muted);margin-top:2px;line-height:1.35;}
 .cov-yes{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
 .cov-no{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,.2);}
 .price-inp{width:58px;background:var(--card2);border:1px solid var(--border2);border-radius:5px;padding:3px 6px;font-size:11px;font-family:var(--mono);color:var(--text);text-align:center;outline:none;}
@@ -461,7 +485,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
 
     <!-- ORDERS SHIPPING -->
     <div class="section">
-      <div class="section-header">
+      <div class="section-header orders-header">
         <div>
           <h3>Orders Shipping</h3>
           <p>Assign carriers and track fulfillment</p>
@@ -472,9 +496,12 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
           <div class="order-filter-btn" onclick="filterOrders('confirmed',this)">Confirmed</div>
           <div class="order-filter-btn" onclick="filterOrders('processing',this)">Processing</div>
           <div class="order-filter-btn" onclick="filterOrders('shipped',this)">Shipped</div>
+          <div class="order-filter-btn" onclick="filterOrders('out_for_delivery',this)">Out for delivery</div>
+          <div class="order-filter-btn" onclick="filterOrders('failed_attempt',this)">Failed attempt</div>
           <div class="order-filter-btn" onclick="filterOrders('delivered',this)">Delivered</div>
           <div class="order-filter-btn" onclick="filterOrders('partially_returned',this)">Partial return</div>
           <div class="order-filter-btn" onclick="filterOrders('returned',this)">Returned</div>
+          <div class="order-filter-btn" onclick="filterOrders('cancelled',this)">Cancelled</div>
         </div>
       </div>
       <table>
@@ -551,7 +578,7 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
         <div class="form-divider">Bosta Pickup Locations</div>
         <div class="pickups-toolbar">
           <div id="pickups-list" class="pickups-list-main">Save carrier with API key first</div>
-          <button type="button" class="btn btn-secondary pickups-add-btn" title="Import from Bosta" onclick="BostaPickups.syncFromBosta()">
+          <button type="button" class="btn btn-secondary pickups-add-btn" id="pickups-sync-btn" title="Import from Bosta" onclick="BostaPickups.syncFromBosta()">
             <i class="ti ti-download"></i>
           </button>
           <button type="button" class="btn btn-secondary pickups-add-btn" title="Add pickup" onclick="togglePickupInlineForm()">
@@ -560,40 +587,43 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
         </div>
         <div id="pickup-inline-form" class="pickup-inline-form hidden">
           <div class="form-group">
-            <label class="form-label">Location name</label>
-            <input class="form-input" id="pickup-name" placeholder="Warehouse">
+            <label class="form-label">Location name <span class="pickup-req">*</span></label>
+            <input class="form-input" id="pickup-name" placeholder="Warehouse" autocomplete="off">
           </div>
           <div class="form-group">
-            <label class="form-label">Address line</label>
-            <input class="form-input" id="pickup-first-line" placeholder="Street address">
+            <label class="form-label">Address line <span class="pickup-req">*</span></label>
+            <input class="form-input" id="pickup-first-line" placeholder="Street address" autocomplete="off">
           </div>
           <div class="form-group">
-            <label class="form-label">City (Bosta)</label>
+            <label class="form-label">City (Bosta) <span class="pickup-req">*</span></label>
             <select class="form-select" id="pickup-city-sel" onchange="onPickupCityChange()">
               <option value="">Select city</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">District / zone (Bosta)</label>
+            <label class="form-label">District / zone (Bosta) <span class="pickup-req">*</span></label>
             <select class="form-select" id="pickup-district-sel">
               <option value="">Select district</option>
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">Contact name</label>
-            <input class="form-input" id="pickup-contact-name" placeholder="Name">
+            <input class="form-input" id="pickup-contact-name" placeholder="Name" autocomplete="name">
           </div>
           <div class="form-group">
-            <label class="form-label">Contact phone</label>
-            <input class="form-input" id="pickup-contact-phone" placeholder="01xxxxxxxxx">
+            <label class="form-label">Contact phone <span class="pickup-req">*</span></label>
+            <input class="form-input" id="pickup-contact-phone" placeholder="01xxxxxxxxx" autocomplete="tel">
           </div>
-          <label style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:8px;cursor:pointer">
+          <label class="pickup-default-row" for="pickup-is-default">
             <input type="checkbox" id="pickup-is-default" checked>
-            Set as default pickup
+            <div>
+              <strong>Set as default pickup</strong>
+              <span>Used first when assigning Bosta orders. You can change this later from the list.</span>
+            </div>
           </label>
           <div class="pickup-inline-actions">
             <button type="button" class="btn btn-secondary" onclick="togglePickupInlineForm(false)">Cancel</button>
-            <button type="button" class="btn btn-primary" onclick="submitPickupInlineForm()">Save pickup</button>
+            <button type="button" class="btn btn-primary" id="pickup-save-btn" onclick="submitPickupInlineForm()" disabled>Save pickup</button>
           </div>
         </div>
       </div>
@@ -651,6 +681,18 @@ tbody tr:hover{background:rgba(255,255,255,.015);}
   <div class="drawer-body" id="assign-body"></div>
   <div class="drawer-footer">
     <button class="save-btn" onclick="confirmAssign()">Confirm Assignment</button>
+  </div>
+</div>
+
+<!--  DRAWER: Order Status (manual)  -->
+<div class="drawer" id="order-status-drawer">
+  <div class="drawer-header">
+    <h3 id="order-status-drawer-title">Order</h3>
+    <div class="close-btn" onclick="closeAll()"><i class="ti ti-x"></i></div>
+  </div>
+  <div class="drawer-body" id="order-status-body"></div>
+  <div class="drawer-footer" id="order-status-footer" style="display:none">
+    <button class="save-btn" onclick="saveManualOrderStatus()">Update Status</button>
   </div>
 </div>
 

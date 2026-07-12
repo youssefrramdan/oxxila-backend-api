@@ -4,19 +4,118 @@ import User from '../models/User.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import { deleteAsset } from '../middlewares/cloudnairyMiddleware.js';
+import { appendUserAddress, buildShippingSnapshot, healUserAddressEntry } from './order.controller.js';
 
+/** Build a stored user address subdoc from a shipping snapshot */
+const buildUserAddressFromSnapshot = (shippingAddress, { label = '', isDefault = false } = {}) => ({
+  label: String(label || '').trim(),
+  governorate: {
+    id: shippingAddress.governorateId,
+    name: shippingAddress.governorateName,
+  },
+  district: shippingAddress.isOther
+    ? null
+    : {
+        id: shippingAddress.districtId,
+        name: shippingAddress.districtName,
+      },
+  addressLine: shippingAddress.addressLine,
+  isOther: shippingAddress.isOther,
+  isDefault: Boolean(isDefault),
+});
+
+/** Clear isDefault on all addresses except the one kept */
+const clearOtherDefaults = (addresses, keepId = null) => {
+  for (const entry of addresses) {
+    if (keepId && String(entry._id) === String(keepId)) continue;
+    entry.isDefault = false;
+  }
+};
+
+/** Apply address field updates (rebuilds geo when location fields change) */
+const applyUserAddressUpdates = async (user, sub, updates) => {
+  const geoChanged = ['governorateId', 'districtId', 'addressLine'].some(
+    (key) => updates[key] !== undefined
+  );
+
+  if (geoChanged) {
+    const input = {
+      governorateId: updates.governorateId ?? sub.governorate.id,
+      districtId:
+        updates.districtId ?? (sub.isOther ? 'other' : sub.district?.id ?? 'other'),
+      addressLine: updates.addressLine ?? sub.addressLine,
+    };
+    const { shippingAddress } = await buildShippingSnapshot(input);
+    const rebuilt = buildUserAddressFromSnapshot(shippingAddress, {
+      label: updates.label ?? sub.label,
+      isDefault: updates.isDefault ?? sub.isDefault,
+    });
+    Object.assign(sub, rebuilt);
+  } else {
+    await healUserAddressEntry(sub, { soft: true });
+    if (updates.label !== undefined) sub.label = String(updates.label).trim();
+    if (updates.isDefault === true) {
+      clearOtherDefaults(user.addresses, sub._id);
+      sub.isDefault = true;
+    } else if (updates.isDefault === false) {
+      sub.isDefault = false;
+    }
+  }
+
+  if (!user.addresses.some((a) => a.isDefault) && user.addresses.length) {
+    user.addresses[0].isDefault = true;
+  }
+
+  await user.save();
+  return sub;
+};
+
+/**
+ * @desc    Get the current user's profile
+ * @route   GET /api/v1/users/getMe
+ * @access  Private
+ */
 export const getMe = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.user._id).lean();
+  const user = await User.findById(req.user._id);
   if (!user) return next(new ApiError('Your account no longer exists', 404));
+
+  let dirty = false;
+  for (const entry of user.addresses || []) {
+    const result = await healUserAddressEntry(entry, { soft: true });
+    if (result.healed) dirty = true;
+  }
+  if (dirty) await user.save();
+
   sendResponse(res, { message: 'Profile retrieved successfully', data: user });
 });
 
+/**
+ * @desc    List the current user's addresses
+ * @route   GET /api/v1/users/profile/addresses
+ * @access  Private
+ */
 export const getMyAddresses = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.user._id).select('addresses').lean();
+  const user = await User.findById(req.user._id).select('addresses');
   if (!user) return next(new ApiError('Your account no longer exists', 404));
-  sendResponse(res, { message: 'Addresses retrieved successfully', data: { addresses: user.addresses } });
+
+  let dirty = false;
+  for (const entry of user.addresses) {
+    const result = await healUserAddressEntry(entry, { soft: true });
+    if (result.healed) dirty = true;
+  }
+  if (dirty) await user.save();
+
+  sendResponse(res, {
+    message: 'Addresses retrieved successfully',
+    data: { addresses: user.addresses },
+  });
 });
 
+/**
+ * @desc    Add an address to the current user
+ * @route   POST /api/v1/users/profile/addresses
+ * @access  Private
+ */
 export const addMyAddress = asyncHandler(async (req, res, next) => {
   const user = await User.findById(req.user._id);
   if (!user) return next(new ApiError('Your account no longer exists', 404));
@@ -27,11 +126,13 @@ export const addMyAddress = asyncHandler(async (req, res, next) => {
     );
   }
 
-  const { city, address } = req.body;
-  user.addresses.push({ city, address });
-  await user.save();
+  const { governorateId, districtId, addressLine, label, isDefault } = req.body;
+  const created = await appendUserAddress(
+    user._id,
+    { governorateId, districtId, addressLine },
+    { label, isDefault }
+  );
 
-  const created = user.addresses[user.addresses.length - 1];
   sendResponse(res, {
     statusCode: 201,
     message: 'Address added successfully',
@@ -39,6 +140,11 @@ export const addMyAddress = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * @desc    Update one of the current user's addresses
+ * @route   PATCH /api/v1/users/profile/addresses/:addressId
+ * @access  Private
+ */
 export const updateMyAddress = asyncHandler(async (req, res, next) => {
   const user = await User.findById(req.user._id);
   if (!user) return next(new ApiError('Your account no longer exists', 404));
@@ -48,14 +154,44 @@ export const updateMyAddress = asyncHandler(async (req, res, next) => {
     return next(new ApiError(`No address found with id: ${req.params.addressId}`, 404));
   }
 
-  const { city, address } = req.body;
-  if (city !== undefined) sub.city = city;
-  if (address !== undefined) sub.address = address;
+  const { governorateId, districtId, addressLine, label, isDefault } = req.body;
+  const updated = await applyUserAddressUpdates(user, sub, {
+    governorateId,
+    districtId,
+    addressLine,
+    label,
+    isDefault,
+  });
 
-  await user.save();
-  sendResponse(res, { message: 'Address updated successfully', data: { address: sub } });
+  sendResponse(res, { message: 'Address updated successfully', data: { address: updated } });
 });
 
+/**
+ * @desc    Set an address as the default
+ * @route   PATCH /api/v1/users/profile/addresses/:addressId/default
+ * @access  Private
+ */
+export const setMyDefaultAddress = asyncHandler(async (req, res, next) => {
+  const user = await User.findById(req.user._id);
+  if (!user) return next(new ApiError('Your account no longer exists', 404));
+
+  const sub = user.addresses.id(req.params.addressId);
+  if (!sub) {
+    return next(new ApiError(`No address found with id: ${req.params.addressId}`, 404));
+  }
+
+  clearOtherDefaults(user.addresses, sub._id);
+  sub.isDefault = true;
+  await user.save();
+
+  sendResponse(res, { message: 'Default address updated successfully', data: { address: sub } });
+});
+
+/**
+ * @desc    Delete one of the current user's addresses
+ * @route   DELETE /api/v1/users/profile/addresses/:addressId
+ * @access  Private
+ */
 export const deleteMyAddress = asyncHandler(async (req, res, next) => {
   const user = await User.findById(req.user._id);
   if (!user) return next(new ApiError('Your account no longer exists', 404));
@@ -65,11 +201,21 @@ export const deleteMyAddress = asyncHandler(async (req, res, next) => {
     return next(new ApiError(`No address found with id: ${req.params.addressId}`, 404));
   }
 
+  const wasDefault = sub.isDefault;
   sub.deleteOne();
+  if (wasDefault && user.addresses.length) {
+    user.addresses[0].isDefault = true;
+  }
+
   await user.save();
   sendResponse(res, { message: 'Address deleted successfully' });
 });
 
+/**
+ * @desc    Update the current user's profile fields
+ * @route   PATCH /api/v1/users/updateMe
+ * @access  Private
+ */
 export const updateMe = asyncHandler(async (req, res, next) => {
   if (req.body.password || req.body.oldPassword) {
     return next(new ApiError('This route is not for password updates..', 400));
@@ -101,6 +247,11 @@ export const updateMe = asyncHandler(async (req, res, next) => {
   sendResponse(res, { message: 'Profile updated successfully', data: user });
 });
 
+/**
+ * @desc    Upload or replace the current user's avatar
+ * @route   PATCH /api/v1/users/updateMyAvatar
+ * @access  Private
+ */
 export const uploadMyAvatar = asyncHandler(async (req, res, next) => {
   if (!req.file) return next(new ApiError('Please upload an avatar image', 400));
 
@@ -122,6 +273,11 @@ export const uploadMyAvatar = asyncHandler(async (req, res, next) => {
   sendResponse(res, { message: 'Avatar updated successfully', data: user });
 });
 
+/**
+ * @desc    Change the current user's password
+ * @route   PATCH /api/v1/users/updateMyPassword
+ * @access  Private
+ */
 export const updateMyPassword = asyncHandler(async (req, res, next) => {
   const { oldPassword, newPassword } = req.body;
 
@@ -138,11 +294,21 @@ export const updateMyPassword = asyncHandler(async (req, res, next) => {
   sendResponse(res, { message: 'Your password has been updated successfully' });
 });
 
+/**
+ * @desc    Deactivate the current user's account
+ * @route   PATCH /api/v1/users/deactivateMe
+ * @access  Private
+ */
 export const deactivateMe = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(req.user._id, { active: false });
   sendResponse(res, { message: 'Your account has been deactivated' });
 });
 
+/**
+ * @desc    Reactivate the current user's account
+ * @route   PATCH /api/v1/users/activateMe
+ * @access  Private
+ */
 export const activateMe = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(req.user._id, { active: true });
   sendResponse(res, { message: 'Your account has been reactivated' });

@@ -2613,12 +2613,24 @@
                     "addresses"
                   ]
                 },
-                "description": "Returns `data.addresses` — use each entry’s `_id` in orders (e.g. dropdown). Phone for delivery is on the user (`GET getMe` / `phone` field), not on each address."
+                "description": "Returns `data.addresses` — each entry has `label`, `governorate: { id, name }`, `district: { id, name } | null`, `addressLine`, `isOther`, `isDefault`. Use `_id` as `addressId` at checkout."
               },
               "response": []
             },
             {
               "name": "Add address",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?.address?._id) pm.environment.set('addressId', res.data.address._id);"
+                    ]
+                  }
+                }
+              ],
               "request": {
                 "method": "POST",
                 "header": [
@@ -2629,7 +2641,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"city\": \"Cairo\",\n  \"address\": \"12 Tahrir St, floor 3\"\n}"
+                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3\",\n  \"label\": \"Home\",\n  \"isDefault\": true\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/profile/addresses",
@@ -2644,7 +2656,7 @@
                     "addresses"
                   ]
                 },
-                "description": "`POST` with `city` + `address` (required). **Requires** a non-empty `phone` on the user profile (`PATCH updateMe` first) — otherwise `400` with message about adding phone in account settings. Response includes the new subdocument in `data.address` (with `_id`)."
+                "description": "`POST` with `governorateId`, `districtId` (or `other`), `addressLine` (required). Optional: `label`, `isDefault`. **Requires** a non-empty `phone` on the user profile (`PATCH updateMe` first). Response includes the new subdocument in `data.address` (with `_id`). Saves `{{addressId}}`."
               },
               "response": []
             },
@@ -2660,7 +2672,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"city\": \"Giza\",\n  \"address\": \"Updated full address line\"\n}"
+                  "raw": "{\n  \"label\": \"Work\",\n  \"addressLine\": \"Updated full address line\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/users/profile/addresses/:addressId",
@@ -2683,7 +2695,38 @@
                     }
                   ]
                 },
-                "description": "Send at least one of `city`, `address`. `404` if the id is not in your `addresses` array."
+                "description": "Send at least one of `label`, `governorateId`, `districtId`, `addressLine`, `isDefault`. `404` if the id is not in your `addresses` array."
+              },
+              "response": []
+            },
+            {
+              "name": "Set default address",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/profile/addresses/:addressId/default",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "profile",
+                    "addresses",
+                    ":addressId",
+                    "default"
+                  ],
+                  "variable": [
+                    {
+                      "key": "addressId",
+                      "value": "{{addressId}}",
+                      "description": "Subdocument _id to mark as default"
+                    }
+                  ]
+                },
+                "description": "Marks one saved address as default and clears `isDefault` on the others."
               },
               "response": []
             },
@@ -2718,7 +2761,7 @@
               "response": []
             }
           ],
-          "description": "CRUD for embedded `user.addresses`. Requires Bearer token. Add flow depends on `phone` on the user; see **Update Current User**."
+          "description": "CRUD for embedded `user.addresses` (governorate/district snapshot shape). Requires Bearer token. Add flow depends on `phone` on the user; see **Update Current User**."
         },
         {
           "name": "Browsing & recommendations",
@@ -3182,7 +3225,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Cairo\",\n  \"paymentMethod\": \"cod\"\n}"
+                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Apt\",\n  \"paymentMethod\": \"cod\",\n  \"saveAddress\": true,\n  \"label\": \"Home\",\n  \"setAsDefault\": true\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders",
@@ -3195,7 +3238,48 @@
                     "orders"
                   ]
                 },
-                "description": "**User** Bearer. Non-empty cart required. Validates stock, coupon, and shipping. Creates order immediately with `paymentMethod: cod`, `paymentStatus: pending`, decrements stock, clears cart, commits coupon usage. `districtId` may be a Mongo id or `\"other\"` for governorate fallback. Saves `{{orderId}}`."
+                "description": "**User** Bearer. Non-empty cart required. Send either `addressId` (saved address) **or** inline `governorateId` + `addressLine` (+ optional `districtId`). Optional on inline: `saveAddress`, `label`, `setAsDefault`. Creates order with `paymentMethod: cod`. Saves `{{orderId}}`."
+              },
+              "response": []
+            },
+            {
+              "name": "Create COD Order (saved address)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?._id) pm.environment.set('orderId', res.data._id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"addressId\": \"{{addressId}}\",\n  \"paymentMethod\": \"cod\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders"
+                  ]
+                },
+                "description": "**User** Bearer. Checkout with a saved profile address (`{{addressId}}` from **Current User → Profile addresses**). Do not mix `addressId` with inline `governorateId` / `saveAddress`."
               },
               "response": []
             },
@@ -3226,7 +3310,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Cairo\",\n  \"provider\": \"stripe\"\n}"
+                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Apt\",\n  \"provider\": \"stripe\",\n  \"saveAddress\": false\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/payment-session",
@@ -3240,7 +3324,7 @@
                     "payment-session"
                   ]
                 },
-                "description": "**User** Bearer. Snapshots cart into a `PaymentSession` (24h TTL). Returns `paymentSessionId`, `provider`, `totalPrice`, `expiresAt`, and `url` (Stripe Checkout) — open `url` in a browser to pay. Order is created on Stripe webhook `checkout.session.completed`. Card payments must not use `POST /orders` with `paymentMethod: card`."
+                "description": "**User** Bearer. Same address rules as COD (`addressId` or inline geo fields; optional `saveAddress` / `label` / `setAsDefault`). Required `provider`: `stripe` | `paymob`. Snapshots cart into a `PaymentSession` (24h TTL). Returns `paymentSessionId`, `provider`, `totalPrice`, `expiresAt`, and `url` (Stripe Checkout)."
               },
               "response": []
             },
@@ -3271,7 +3355,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Cairo\",\n  \"provider\": \"paymob\"\n}"
+                  "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"12 Tahrir St, floor 3, Apt\",\n  \"provider\": \"paymob\",\n  \"saveAddress\": false\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/payment-session",
@@ -3285,7 +3369,7 @@
                     "payment-session"
                   ]
                 },
-                "description": "**User** Bearer. Same flow as Stripe but `provider: paymob`. Response includes `paymentSessionId`, `totalPrice`, `expiresAt`, and `iframeUrl` — open the iframe URL in a browser to pay. Fulfillment runs on Paymob processed webhook or redirect callback when `success: true` and HMAC is valid."
+                "description": "**User** Bearer. Same address rules as COD. Required `provider`: `paymob`. Returns Paymob payment details / iframe URL."
               },
               "response": []
             },
@@ -3443,7 +3527,7 @@
               "response": []
             }
           ],
-          "description": "Requires Bearer token + non-empty cart (except poll after payment). Use **Shipping (Checkout)** first to obtain `{{governorateId}}` / `{{districtId}}`. Typical card flow: payment-session → pay in browser → poll session status."
+          "description": "Requires Bearer token + non-empty cart. Checkout accepts `addressId` from **Profile addresses** or inline `governorateId`/`districtId`/`addressLine`. Typical card flow: payment-session → pay in browser → poll session status."
         },
         {
           "name": "Admin",
@@ -3563,7 +3647,7 @@
                     }
                   ]
                 },
-                "description": "**Admin** Bearer. Body `{ orderStatus }` — pending, confirmed, processing, shipped, out_for_delivery, failed_attempt, delivered, partially_returned, returned, cancelled. `delivered` sets `deliveredAt`."
+                "description": "**Admin** Bearer. Generic order status (`PATCH /orders/:id/status`). Full enum: pending, confirmed, processing, shipped, out_for_delivery, failed_attempt, delivered, partially_returned, returned, cancelled. For **manual carrier** fulfillment prefer **Shipping Admin → Update Manual Order Shipping Status** (keeps shipment timeline in sync)."
               },
               "response": []
             },
@@ -5383,7 +5467,7 @@
                     ],
                     "body": {
                       "mode": "raw",
-                      "raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"pickupId\": \"{{pickupId}}\",\n  \"size\": \"MEDIUM\",\n  \"notes\": \"\",\n  \"markShipped\": true\n}"
+                      "raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"pickupId\": \"{{pickupId}}\",\n  \"size\": \"MEDIUM\",\n  \"allowToOpenPackage\": true,\n  \"notes\": \"\",\n  \"markShipped\": true\n}"
                     },
                     "url": {
                       "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/assign",
@@ -5406,7 +5490,7 @@
                         }
                       ]
                     },
-                    "description": "**Admin** Bearer. Bosta API carrier (`type: api`, `apiProvider: bosta`): `pickupId` required. Run **Get Order Shipping Detail** first to populate `{{carrierId}}` / `{{pickupId}}`. Saves `{{trackingNumber}}` when Bosta returns one."
+                    "description": "**Admin** Bearer. Bosta API carrier (`type: api`, `apiProvider: bosta`): `pickupId` **required**. Optional: `size` (`SMALL|MEDIUM|LARGE|XLARGE`), `allowToOpenPackage` (boolean), `notes`, `markShipped`. Run **Get Order Shipping Detail** first to populate `{{carrierId}}` / `{{pickupId}}`. Saves `{{trackingNumber}}` when Bosta returns one."
                   },
                   "response": []
                 },
@@ -5435,7 +5519,7 @@
                     ],
                     "body": {
                       "mode": "raw",
-                      "raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"driverName\": \"Ahmed Driver\",\n  \"driverPhone\": \"01012345678\",\n  \"trackingNumber\": \"MANUAL-TRACK-001\",\n  \"notes\": \"Internal / known carrier\",\n  \"markShipped\": true\n}"
+                      "raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"driverName\": \"Ahmed Driver\",\n  \"driverPhone\": \"01012345678\",\n  \"trackingNumber\": \"\",\n  \"notes\": \"Internal / known carrier\",\n  \"markShipped\": true\n}"
                     },
                     "url": {
                       "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/assign",
@@ -5458,7 +5542,46 @@
                         }
                       ]
                     },
-                    "description": "**Admin** Bearer. For `known` or `internal` carriers — set `driverName`, `driverPhone`, and `trackingNumber` (no `pickupId`). Saves `{{trackingNumber}}` for **Tracking → Track By Tracking Number**."
+                    "description": "**Admin** Bearer. For `known` or `internal` carriers — set `driverName`, `driverPhone`, optional `trackingNumber` (auto-generated if empty), `notes`, `markShipped`. No `pickupId`. After assign, use **Update Manual Order Shipping Status** to progress fulfillment. Saves `{{trackingNumber}}`."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Manual Order Shipping Status",
+                  "request": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"orderStatus\": \"shipped\",\n  \"notes\": \"Handed to Cairo Courier\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/status",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "shipping",
+                        "orders",
+                        ":id",
+                        "status"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{orderId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Manual carriers only (`known` / `internal`) after assign. Required `orderStatus`: `processing` | `shipped` | `out_for_delivery` | `failed_attempt` | `delivered` | `returned` | `cancelled`. Optional `notes` (max 500) — used as cancellation reason when status is `cancelled`. Updates both order + shipment and appends an admin timeline event. Rejected for Bosta/API carriers (status syncs via webhook)."
                   },
                   "response": []
                 },
@@ -5511,10 +5634,10 @@
                   "response": []
                 }
               ],
-              "description": "`GET|POST /api/v1/admin/shipping/orders/:id`"
+              "description": "`GET|POST /api/v1/admin/shipping/orders/:id` + `PATCH .../status` (manual carriers only)"
             }
           ],
-          "description": "`/api/v1/admin/carriers` + coverage + Bosta sync/pickups + order assign. Env: `{{carrierId}}`, `{{pickupId}}`, `{{orderId}}`."
+          "description": "`/api/v1/admin/carriers` + coverage + Bosta sync/pickups + order assign/manual status. Env: `{{carrierId}}`, `{{pickupId}}`, `{{orderId}}`."
         }
       ],
       "description": "`/api/v1/admin/*` — all routes require admin Bearer. Ops UI: `GET /shipping-admin.html`. Env: `{{countryId}}`, `{{governorateId}}`, `{{districtId}}`, `{{carrierId}}`."

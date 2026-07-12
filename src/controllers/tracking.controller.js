@@ -4,11 +4,12 @@ import Order from '../models/Order.js';
 import Shipment from '../models/Shipment.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
-import { enrichOrderDocument } from '../utils/orderTracking.js';
+import { enrichOrderDocument } from './order.controller.js';
 
 const publicTrackFields =
   '_id orderStatus paymentStatus paymentMethod totalPrice createdAt shippingAddress';
 
+/** Build the public tracking payload from an order and optional shipment */
 const buildTrackResponse = (order, shipment) => {
   const enriched = enrichOrderDocument(order, shipment);
   return {

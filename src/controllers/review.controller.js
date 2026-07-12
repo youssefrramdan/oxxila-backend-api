@@ -6,9 +6,11 @@ import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 
-// @desc    Get all reviews for a product
-// @route   GET /api/v1/products/:productId/reviews
-// @access  Public
+/**
+ * @desc    Get all reviews for a product
+ * @route   GET /api/v1/products/:productId/reviews
+ * @access  Public
+ */
 export const getProductReviews = asyncHandler(async (req, res, next) => {
   const { productId } = req.params;
 
@@ -29,9 +31,11 @@ export const getProductReviews = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Get single review
-// @route   GET /api/v1/reviews/:id
-// @access  Public
+/**
+ * @desc    Get a single review
+ * @route   GET /api/v1/reviews/:id
+ * @access  Public
+ */
 export const getReview = asyncHandler(async (req, res, next) => {
   const review = await Review.findById(req.params.id).populate('user', 'name avatar');
   if (!review) return next(new ApiError(`No review found with id: ${req.params.id}`, 404));
@@ -39,9 +43,11 @@ export const getReview = asyncHandler(async (req, res, next) => {
   sendResponse(res, { message: 'Review retrieved successfully', data: review });
 });
 
-// @desc    Create review
-// @route   POST /api/v1/products/:productId/reviews
-// @access  Private (user, admin)
+/**
+ * @desc    Create a review for a product
+ * @route   POST /api/v1/products/:productId/reviews
+ * @access  Private
+ */
 export const createReview = asyncHandler(async (req, res, next) => {
   const { productId } = req.params;
 
@@ -67,9 +73,11 @@ export const createReview = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Update own review
-// @route   PUT /api/v1/reviews/:id
-// @access  Private (owner)
+/**
+ * @desc    Update own review
+ * @route   PUT /api/v1/reviews/:id
+ * @access  Private
+ */
 export const updateReview = asyncHandler(async (req, res, next) => {
   const review = await Review.findById(req.params.id);
   if (!review) return next(new ApiError(`No review found with id: ${req.params.id}`, 404));
@@ -90,9 +98,11 @@ export const updateReview = asyncHandler(async (req, res, next) => {
   sendResponse(res, { message: 'Review updated successfully', data: review });
 });
 
-// @desc    Delete own review (or admin)
-// @route   DELETE /api/v1/reviews/:id
-// @access  Private (owner | admin)
+/**
+ * @desc    Delete own review (or admin)
+ * @route   DELETE /api/v1/reviews/:id
+ * @access  Private
+ */
 export const deleteReview = asyncHandler(async (req, res, next) => {
   const review = await Review.findById(req.params.id);
   if (!review) return next(new ApiError(`No review found with id: ${req.params.id}`, 404));
@@ -109,9 +119,11 @@ export const deleteReview = asyncHandler(async (req, res, next) => {
   sendResponse(res, { message: 'Review deleted successfully' });
 });
 
-// @desc    Toggle like on a review
-// @route   POST /api/v1/reviews/:id/like
-// @access  Private
+/**
+ * @desc    Toggle like on a review
+ * @route   POST /api/v1/reviews/:id/like
+ * @access  Private
+ */
 export const toggleLike = asyncHandler(async (req, res, next) => {
   const review = await Review.findById(req.params.id);
   if (!review) return next(new ApiError(`No review found with id: ${req.params.id}`, 404));
@@ -135,9 +147,11 @@ export const toggleLike = asyncHandler(async (req, res, next) => {
   });
 });
 
-// @desc    Get rating breakdown for a product
-// @route   GET /api/v1/products/:productId/reviews/stats
-// @access  Public
+/**
+ * @desc    Get rating breakdown for a product
+ * @route   GET /api/v1/products/:productId/reviews/stats
+ * @access  Public
+ */
 export const getProductRatingStats = asyncHandler(async (req, res, next) => {
   const { productId } = req.params;
 

@@ -45,22 +45,41 @@ const userSchema = new Schema(
 
     phone: { type: String, trim: true, maxlength: 30, default: '' },
 
-    // Each item gets its own _id (default) for order dropdowns.
+    // Each item gets its own _id (default) for checkout address selection.
     addresses: {
       type: [
         {
-          city: {
-            type: String,
-            required: [true, 'City is required'],
-            trim: true,
-            maxlength: 100,
+          label: { type: String, trim: true, maxlength: 50, default: '' },
+          governorate: {
+            id: {
+              type: Schema.Types.ObjectId,
+              ref: 'Governorate',
+              required: [true, 'Governorate is required'],
+            },
+            name: {
+              type: String,
+              required: [true, 'Governorate name is required'],
+              trim: true,
+            },
           },
-          address: {
+          district: {
+            type: new Schema(
+              {
+                id: { type: Schema.Types.ObjectId, ref: 'District' },
+                name: { type: String, trim: true },
+              },
+              { _id: false }
+            ),
+            default: null,
+          },
+          addressLine: {
             type: String,
-            required: [true, 'Address is required'],
+            required: [true, 'Address line is required'],
             trim: true,
             maxlength: 500,
           },
+          isOther: { type: Boolean, default: false },
+          isDefault: { type: Boolean, default: false },
         },
       ],
       default: [],

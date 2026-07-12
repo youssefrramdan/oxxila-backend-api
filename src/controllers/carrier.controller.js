@@ -3,21 +3,304 @@ import asyncHandler from "express-async-handler";
 import Carrier from "../models/Carrier.js";
 import CarrierCoverage from "../models/CarrierCoverage.js";
 import CarrierPickup from "../models/CarrierPickup.js";
-import District from "../models/District.js";
+import Country from "../models/Country.js";
 import Governorate from "../models/Governorate.js";
+import District from "../models/District.js";
+import CarrierZoneMapping from "../models/CarrierZoneMapping.js";
 import ApiError from "../utils/apiError.js";
 import sendResponse from "../utils/apiResponse.js";
 import {
   normalizeBostaBaseUrl,
-  getBostaCredentials,
-} from "../utils/carriers/bosta.js";
-import {
-  syncBostaCarrierCoverage,
-  syncBostaCoveredOnly,
-} from "../utils/carriers/bostaFulfillment.js";
-import { mapCarrierForAdmin } from "../utils/carriers/bosta/admin.js";
+  fetchBostaCityDistricts,
+  getBostaCarrierContext,
+} from "./orderShipping.controller.js";
+import { remapAllZoneRefsAfterSync } from "./order.controller.js";
 
-const MAX_PICKUP_LOCATIONS = 200;
+/** Convert a Mongoose doc to a plain object when needed. */
+const toPlainDoc = (doc) => (typeof doc?.toObject === "function" ? doc.toObject() : doc);
+
+// ── Admin presentation ──
+
+/** Strip apiKey and attach coverage governorate names for admin list/detail. */
+const mapCarrierForAdmin = (c, coverages) => ({
+  ...toPlainDoc(c),
+  hasApiKey: Boolean(c.apiKey),
+  apiBaseUrl: c.apiBaseUrl ? normalizeBostaBaseUrl(c.apiBaseUrl) : null,
+  apiKey: undefined,
+  coverage: coverages
+    .filter((cv) => cv.carrier.toString() === c._id.toString())
+    .map((cv) => cv.governorate?.name)
+    .filter(Boolean),
+});
+
+// ── Bosta zone / coverage sync ──
+
+/** Normalize a zone label for fuzzy matching. */
+const normalizeLabel = (value) => String(value || "").trim().toLowerCase();
+
+/** Single fuzzy label matcher shared by governorate and district matching below. */
+const fuzzyLabelMatch = (needles, candidates, getName) => {
+  const normalizedNeedles = needles.map(normalizeLabel).filter(Boolean);
+  return candidates.find((candidate) => {
+    const name = normalizeLabel(getName(candidate));
+    return normalizedNeedles.some(
+      (needle) => needle.length > 2 && (needle === name || name.includes(needle) || needle.includes(name))
+    );
+  });
+};
+
+/** Match a Bosta city to a local Governorate by name/code aliases. */
+const matchGovernorate = (governorates, city) =>
+  fuzzyLabelMatch([city.cityName, city.cityOtherName, city.cityCode], governorates, (g) => g.name);
+
+/** Match a Bosta district/zone to a local District by name aliases. */
+const matchDistrict = (districts, bostaDistrict) =>
+  fuzzyLabelMatch(
+    [bostaDistrict.districtName, bostaDistrict.districtOtherName, bostaDistrict.zoneName, bostaDistrict.zoneOtherName],
+    districts,
+    (d) => d.name
+  );
+
+/** Build a CarrierZoneMapping bulkWrite upsert op. */
+const mappingUpsertOp = (carrierId, zoneType, zoneId, data) => ({
+  updateOne: {
+    filter: { carrier: carrierId, zoneType, zoneId },
+    update: { $set: { carrier: carrierId, zoneType, zoneId, ...data } },
+    upsert: true,
+  },
+});
+
+/** Index districts by governorate id for O(1) lookups during sync. */
+const buildDistrictsByGov = (allDistricts) => {
+  const districtsByGov = new Map();
+  for (const d of allDistricts) {
+    const key = String(d.governorate);
+    if (!districtsByGov.has(key)) districtsByGov.set(key, []);
+    districtsByGov.get(key).push(d);
+  }
+  return districtsByGov;
+};
+
+/** Flatten Bosta cities into serviceable (city, district) pairs. */
+const collectBostaServiceableDistricts = (cities) => {
+  const items = [];
+  for (const city of cities) {
+    if (city.dropOffAvailability === false) continue;
+    for (const bd of city.districts || []) {
+      if (bd.dropOffAvailability === false) continue;
+      items.push({ city, bd });
+    }
+  }
+  return items;
+};
+
+/** Mark unmatched districts in affected governorates as bostaCovered: false. */
+const markUnmatchedBostaCoveredFalse = (affectedGovIds, matchedDistrictIds, districtsByGov, bulkOps) => {
+  let bostaCoveredFalse = 0;
+  for (const govId of affectedGovIds) {
+    const districts = districtsByGov.get(govId) ?? [];
+    for (const d of districts) {
+      if (matchedDistrictIds.has(String(d._id))) continue;
+      bulkOps.push({ updateOne: { filter: { _id: d._id }, update: { $set: { bostaCovered: false } } } });
+      bostaCoveredFalse += 1;
+    }
+  }
+  return bostaCoveredFalse;
+};
+
+/** Load an active Country by ISO code or throw. */
+const requireActiveCountry = async (countryCode) => {
+  const country = await Country.findOne({ code: countryCode.toUpperCase(), isActive: true });
+  if (!country) {
+    throw new ApiError(`No active country found with code: ${countryCode}`, 400);
+  }
+  return country;
+};
+
+/** Lightweight sync — updates District.bostaCovered only, no zones/mappings/coverage. */
+export const syncBostaCoveredOnly = async (credentials, { countryCode = "EG" } = {}) => {
+  const cities = await fetchBostaCityDistricts(credentials);
+  const country = await requireActiveCountry(countryCode);
+
+  const existingGovs = await Governorate.find({ country: country._id });
+  const govIds = existingGovs.map((g) => g._id);
+  const allDistricts = await District.find({ governorate: { $in: govIds } });
+  const districtsByGov = buildDistrictsByGov(allDistricts);
+
+  const matchedDistrictIds = new Set();
+  const affectedGovIds = new Set();
+  const bulkOps = [];
+  let bostaCoveredTrue = 0;
+
+  for (const { city, bd } of collectBostaServiceableDistricts(cities)) {
+    const governorate = matchGovernorate(existingGovs, city);
+    if (!governorate) continue;
+
+    const govKey = String(governorate._id);
+    affectedGovIds.add(govKey);
+    const existingDistricts = districtsByGov.get(govKey) ?? [];
+    const matched = matchDistrict(existingDistricts, bd);
+    if (!matched) continue;
+
+    matchedDistrictIds.add(String(matched._id));
+    bulkOps.push({ updateOne: { filter: { _id: matched._id }, update: { $set: { bostaCovered: true } } } });
+    bostaCoveredTrue += 1;
+  }
+
+  const bostaCoveredFalse = markUnmatchedBostaCoveredFalse(affectedGovIds, matchedDistrictIds, districtsByGov, bulkOps);
+
+  if (bulkOps.length) await District.bulkWrite(bulkOps, { ordered: false });
+
+  return { bostaCoveredTrue, bostaCoveredFalse };
+};
+
+/** Full sync — creates missing governorates/districts and upserts CarrierZoneMapping rows. */
+const syncBostaZones = async (credentials, carrierId, { countryCode = "EG" } = {}) => {
+  const cities = await fetchBostaCityDistricts(credentials);
+  const country = await requireActiveCountry(countryCode);
+
+  let governoratesMatched = 0;
+  let districtsCreated = 0;
+  let districtsUpdated = 0;
+  let governoratesCreated = 0;
+
+  const existingGovs = await Governorate.find({ country: country._id });
+  const govIds = existingGovs.map((g) => g._id);
+  const allDistricts = await District.find({ governorate: { $in: govIds } });
+  const districtsByGov = buildDistrictsByGov(allDistricts);
+
+  const districtBulkOps = [];
+  const mappingBulkOps = [];
+  const matchedDistrictIds = new Set();
+  const affectedGovIds = new Set();
+
+  for (const city of cities) {
+    if (city.dropOffAvailability === false) continue;
+
+    let governorate = matchGovernorate(existingGovs, city);
+    if (!governorate) {
+      governorate = await Governorate.create({
+        country: country._id,
+        name: city.cityName || city.cityOtherName || city.cityCode,
+        shippingPrice: 0,
+        isActive: true,
+      });
+      existingGovs.push(governorate);
+      govIds.push(governorate._id);
+      districtsByGov.set(String(governorate._id), []);
+      governoratesCreated += 1;
+    } else {
+      governoratesMatched += 1;
+    }
+
+    const govKey = String(governorate._id);
+    affectedGovIds.add(govKey);
+
+    if (carrierId) {
+      mappingBulkOps.push(
+        mappingUpsertOp(carrierId, "governorate", governorate._id, {
+          isServiceable: true,
+          externalCityId: city.cityId,
+          dropOffAvailable: true,
+        })
+      );
+    }
+
+    const existingDistricts = districtsByGov.get(govKey) ?? [];
+    const bostaDistricts = city.districts || [];
+
+    for (const bd of bostaDistricts) {
+      if (bd.dropOffAvailability === false) continue;
+
+      const matched = matchDistrict(existingDistricts, bd);
+      if (matched) {
+        matchedDistrictIds.add(String(matched._id));
+        districtBulkOps.push({ updateOne: { filter: { _id: matched._id }, update: { $set: { bostaCovered: true } } } });
+        districtsUpdated += 1;
+        if (carrierId) {
+          mappingBulkOps.push(
+            mappingUpsertOp(carrierId, "district", matched._id, {
+              isServiceable: true,
+              externalCityId: city.cityId,
+              externalDistrictId: bd.districtId,
+              externalZoneId: bd.zoneId ?? null,
+              dropOffAvailable: bd.dropOffAvailability !== false,
+            })
+          );
+        }
+      } else {
+        const [created] = await District.create([
+          {
+            governorate: governorate._id,
+            name: bd.districtName || bd.zoneName || "District",
+            shippingPrice: governorate.shippingPrice ?? 0,
+            isCovered: true,
+            bostaCovered: true,
+          },
+        ]);
+        matchedDistrictIds.add(String(created._id));
+        existingDistricts.push(created);
+        districtsByGov.set(govKey, existingDistricts);
+        districtsCreated += 1;
+        if (carrierId) {
+          mappingBulkOps.push(
+            mappingUpsertOp(carrierId, "district", created._id, {
+              isServiceable: true,
+              externalCityId: city.cityId,
+              externalDistrictId: bd.districtId,
+              externalZoneId: bd.zoneId ?? null,
+              dropOffAvailable: bd.dropOffAvailability !== false,
+            })
+          );
+        }
+      }
+    }
+  }
+
+  markUnmatchedBostaCoveredFalse(affectedGovIds, matchedDistrictIds, districtsByGov, districtBulkOps);
+
+  if (districtBulkOps.length) await District.bulkWrite(districtBulkOps, { ordered: false });
+  if (mappingBulkOps.length) await CarrierZoneMapping.bulkWrite(mappingBulkOps, { ordered: false });
+
+  return {
+    governoratesMatched,
+    governoratesCreated,
+    districtsCreated,
+    districtsUpdated,
+    mappingsUpserted: mappingBulkOps.length,
+    citiesProcessed: cities.length,
+  };
+};
+
+/** Full Bosta sync: zones + CarrierCoverage rebuild + remap stale zone refs. */
+export const syncBostaCarrierCoverage = async (carrierId, credentials, options = {}) => {
+  const zoneStats = await syncBostaZones(credentials, carrierId, options);
+
+  const districtZoneIds = await CarrierZoneMapping.find({
+    carrier: carrierId,
+    zoneType: "district",
+    isServiceable: true,
+    dropOffAvailable: { $ne: false },
+  }).distinct("zoneId");
+
+  const coveredGovIds = await District.find({
+    _id: { $in: districtZoneIds },
+    isCovered: true,
+  }).distinct("governorate");
+
+  await CarrierCoverage.deleteMany({ carrier: carrierId });
+  if (coveredGovIds.length > 0) {
+    await CarrierCoverage.insertMany(
+      coveredGovIds.map((governorate) => ({ carrier: carrierId, governorate, isActive: true }))
+    );
+  }
+
+  const zoneRefRemap = await remapAllZoneRefsAfterSync();
+
+  return { ...zoneStats, coverageGovernorates: coveredGovIds.length, zoneRefRemap };
+};
+
+// ── Route handlers ──
 
 /**
  * @desc    List carriers with coverage summary (admin)
@@ -25,9 +308,7 @@ const MAX_PICKUP_LOCATIONS = 200;
  * @access  Admin
  */
 export const getCarriers = asyncHandler(async (req, res) => {
-  const carriers = await Carrier.find()
-    .select("+apiKey +apiBaseUrl")
-    .sort({ name: 1 });
+  const carriers = await Carrier.find().select("+apiKey +apiBaseUrl").sort({ name: 1 });
 
   const coverages = await CarrierCoverage.find({
     carrier: { $in: carriers.map((c) => c._id) },
@@ -44,16 +325,7 @@ export const getCarriers = asyncHandler(async (req, res) => {
  * @access  Admin
  */
 export const createCarrier = asyncHandler(async (req, res, next) => {
-  const {
-    name,
-    code,
-    type,
-    deliveryDays,
-    logo,
-    apiProvider,
-    apiKey,
-    apiBaseUrl,
-  } = req.body;
+  const { name, code, type, deliveryDays, logo, apiProvider, apiKey, apiBaseUrl } = req.body;
 
   const exists = await Carrier.findOne({ code: code.toUpperCase() });
   if (exists) return next(new ApiError("Carrier code already exists", 400));
@@ -62,16 +334,10 @@ export const createCarrier = asyncHandler(async (req, res, next) => {
     if (apiProvider !== "bosta") {
       return next(new ApiError("Only Bosta is supported as an API carrier", 400));
     }
-    const bostaExists = await Carrier.findOne({
-      type: "api",
-      apiProvider: "bosta",
-    });
+    const bostaExists = await Carrier.findOne({ type: "api", apiProvider: "bosta" });
     if (bostaExists) {
       return next(
-        new ApiError(
-          "A Bosta API carrier already exists. Edit the existing carrier instead.",
-          400,
-        ),
+        new ApiError("A Bosta API carrier already exists. Edit the existing carrier instead.", 400)
       );
     }
   }
@@ -83,19 +349,11 @@ export const createCarrier = asyncHandler(async (req, res, next) => {
     deliveryDays,
     logo,
     ...(type === "api"
-      ? {
-          apiProvider,
-          apiKey,
-          apiBaseUrl: apiBaseUrl ? normalizeBostaBaseUrl(apiBaseUrl) : null,
-        }
+      ? { apiProvider, apiKey, apiBaseUrl: apiBaseUrl ? normalizeBostaBaseUrl(apiBaseUrl) : null }
       : {}),
   });
 
-  sendResponse(res, {
-    statusCode: 201,
-    message: "Carrier created successfully",
-    data: { carrier },
-  });
+  sendResponse(res, { statusCode: 201, message: "Carrier created successfully", data: { carrier } });
 });
 
 /**
@@ -107,65 +365,31 @@ export const updateCarrier = asyncHandler(async (req, res, next) => {
   delete req.body.type;
   delete req.body.apiProvider;
 
-  const existing = await Carrier.findById(req.params.id).select(
-    "+apiKey +apiBaseUrl",
-  );
-  if (!existing)
-    return next(
-      new ApiError(`No carrier found with id: ${req.params.id}`, 404),
-    );
+  const existing = await Carrier.findById(req.params.id).select("+apiKey +apiBaseUrl");
+  if (!existing) return next(new ApiError(`No carrier found with id: ${req.params.id}`, 404));
 
   const update = { ...req.body };
-  if (update.apiBaseUrl) {
-    update.apiBaseUrl = normalizeBostaBaseUrl(update.apiBaseUrl);
-  }
-  if (update.apiKey === "" || update.apiKey === undefined) {
-    delete update.apiKey;
-  }
+  if (update.apiBaseUrl) update.apiBaseUrl = normalizeBostaBaseUrl(update.apiBaseUrl);
+  if (update.apiKey === "" || update.apiKey === undefined) delete update.apiKey;
 
   const carrier = await Carrier.findByIdAndUpdate(req.params.id, update, {
     returnDocument: "after",
     runValidators: true,
   }).select("+apiKey +apiBaseUrl");
 
-  sendResponse(res, {
-    message: "Carrier updated successfully",
-    data: { carrier: mapCarrierForAdmin(carrier, []) },
-  });
+  sendResponse(res, { message: "Carrier updated successfully", data: { carrier: mapCarrierForAdmin(carrier, []) } });
 });
-
-const loadBostaCarrierForSync = async (carrierId, next) => {
-  const carrier = await Carrier.findById(carrierId).select("+apiKey +apiBaseUrl");
-  if (!carrier) {
-    next(new ApiError(`No carrier found with id: ${carrierId}`, 404));
-    return null;
-  }
-  if (carrier.apiProvider !== "bosta") {
-    next(new ApiError("Carrier is not a Bosta API carrier", 400));
-    return null;
-  }
-  const credentials = await getBostaCredentials(carrier);
-  if (!credentials) {
-    next(new ApiError("Bosta API key is not configured", 400));
-    return null;
-  }
-  return { carrier, credentials };
-};
 
 /**
  * @desc    Full Bosta sync — governorates, districts, mappings, carrier coverage
  * @route   POST /api/v1/admin/carriers/:id/bosta/sync-zones
  * @access  Admin
  */
-export const syncBostaZonesForCarrier = asyncHandler(async (req, res, next) => {
-  const ctx = await loadBostaCarrierForSync(req.params.id, next);
-  if (!ctx) return;
+export const syncBostaZonesForCarrier = asyncHandler(async (req, res) => {
+  const ctx = await getBostaCarrierContext(req.params.id);
 
   const zoneStats = await syncBostaCarrierCoverage(ctx.carrier._id, ctx.credentials);
-  sendResponse(res, {
-    message: "Bosta governorates and districts synced successfully",
-    data: zoneStats,
-  });
+  sendResponse(res, { message: "Bosta governorates and districts synced successfully", data: zoneStats });
 });
 
 /**
@@ -174,24 +398,15 @@ export const syncBostaZonesForCarrier = asyncHandler(async (req, res, next) => {
  * @access  Admin
  */
 export const syncBostaCoverageForCarrier = asyncHandler(async (req, res, next) => {
-  const ctx = await loadBostaCarrierForSync(req.params.id, next);
-  if (!ctx) return;
+  const ctx = await getBostaCarrierContext(req.params.id);
 
   const districtCount = await District.countDocuments();
   if (districtCount === 0) {
-    return next(
-      new ApiError(
-        "No districts in database. Run full Bosta zone sync first.",
-        400,
-      ),
-    );
+    return next(new ApiError("No districts in database. Run full Bosta zone sync first.", 400));
   }
 
-  const stats = await syncBostaCoveredOnly(ctx.carrier._id, ctx.credentials);
-  sendResponse(res, {
-    message: "Bosta district coverage updated successfully",
-    data: stats,
-  });
+  const stats = await syncBostaCoveredOnly(ctx.credentials);
+  sendResponse(res, { message: "Bosta district coverage updated successfully", data: stats });
 });
 
 /**
@@ -201,10 +416,7 @@ export const syncBostaCoverageForCarrier = asyncHandler(async (req, res, next) =
  */
 export const deleteCarrier = asyncHandler(async (req, res, next) => {
   const carrier = await Carrier.findById(req.params.id);
-  if (!carrier)
-    return next(
-      new ApiError(`No carrier found with id: ${req.params.id}`, 404),
-    );
+  if (!carrier) return next(new ApiError(`No carrier found with id: ${req.params.id}`, 404));
 
   await CarrierCoverage.deleteMany({ carrier: req.params.id });
   await CarrierPickup.deleteMany({ carrier: req.params.id });
@@ -220,19 +432,11 @@ export const deleteCarrier = asyncHandler(async (req, res, next) => {
  */
 export const getCarrierCoverage = asyncHandler(async (req, res, next) => {
   const carrier = await Carrier.findById(req.params.id);
-  if (!carrier)
-    return next(
-      new ApiError(`No carrier found with id: ${req.params.id}`, 404),
-    );
+  if (!carrier) return next(new ApiError(`No carrier found with id: ${req.params.id}`, 404));
 
-  const coverage = await CarrierCoverage.find({
-    carrier: req.params.id,
-  }).populate("governorate", "name");
+  const coverage = await CarrierCoverage.find({ carrier: req.params.id }).populate("governorate", "name");
 
-  sendResponse(res, {
-    message: "Carrier coverage retrieved successfully",
-    data: coverage,
-  });
+  sendResponse(res, { message: "Carrier coverage retrieved successfully", data: coverage });
 });
 
 /**
@@ -244,10 +448,7 @@ export const updateCarrierCoverage = asyncHandler(async (req, res, next) => {
   const { governorateIds = [] } = req.body;
 
   const carrier = await Carrier.findById(req.params.id);
-  if (!carrier)
-    return next(
-      new ApiError(`No carrier found with id: ${req.params.id}`, 404),
-    );
+  if (!carrier) return next(new ApiError(`No carrier found with id: ${req.params.id}`, 404));
 
   const govs = await Governorate.find({ _id: { $in: governorateIds } });
   if (govs.length !== governorateIds.length) {
@@ -258,38 +459,9 @@ export const updateCarrierCoverage = asyncHandler(async (req, res, next) => {
 
   if (governorateIds.length > 0) {
     await CarrierCoverage.insertMany(
-      governorateIds.map((govId) => ({
-        carrier: req.params.id,
-        governorate: govId,
-        isActive: true,
-      })),
+      governorateIds.map((govId) => ({ carrier: req.params.id, governorate: govId, isActive: true }))
     );
   }
 
-  sendResponse(res, {
-    message: "Coverage updated successfully",
-    data: { count: governorateIds.length },
-  });
-});
-
-export const getBostaPickupLocations = asyncHandler(async (req, res) => {
-  const bostaCarriers = await Carrier.find({
-    apiProvider: "bosta",
-    type: "api",
-    isActive: true,
-  }).select("_id name");
-
-  const pickups = await CarrierPickup.find({
-    carrier: { $in: bostaCarriers.map((c) => c._id) },
-  })
-    .select("carrier locationName bostaLocationId isDefault address")
-    .populate("carrier", "name")
-    .sort({ isDefault: -1, locationName: 1 })
-    .limit(MAX_PICKUP_LOCATIONS)
-    .lean();
-
-  sendResponse(res, {
-    message: "Bosta pickup locations retrieved successfully",
-    data: pickups,
-  });
+  sendResponse(res, { message: "Coverage updated successfully", data: { count: governorateIds.length } });
 });

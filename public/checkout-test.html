@@ -34,21 +34,46 @@
 
       <section class="card">
         <h2>Shipping</h2>
-        <div class="form-group">
-          <label class="form-label">Country</label>
-          <select class="form-input" id="country" onchange="onCountryChange()"><option>Loading…</option></select>
+        <div id="saved-addresses-wrap" class="saved-addresses-wrap" style="display:none">
+          <p class="section-hint">Choose a saved address or enter a new one</p>
+          <div id="saved-addresses-list" class="saved-addresses-list"></div>
+          <button type="button" class="btn-secondary btn-sm addr-toggle-btn" id="use-new-address-btn" onclick="showNewAddressForm()">
+            <i class="ti ti-plus"></i> Enter new address
+          </button>
         </div>
-        <div class="form-group">
-          <label class="form-label">Governorate</label>
-          <select class="form-input" id="governorate" onchange="onGovernorateChange()" disabled><option>Select country</option></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">District</label>
-          <select class="form-input" id="district" onchange="onDistrictChange()" disabled><option>Select governorate</option></select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Address line</label>
-          <input class="form-input" id="address-line" value="123 Test Street, Cairo" onblur="refreshShippingPrice()">
+        <div id="new-address-form">
+          <div class="form-group" id="save-address-wrap" style="display:none">
+            <label class="check-row">
+              <input type="checkbox" id="save-address" onchange="toggleSaveAddressFields()">
+              Save this address to my profile
+            </label>
+            <div id="save-address-fields" class="save-address-fields" style="display:none">
+              <input class="form-input" id="address-label" placeholder='Label (optional) e.g. "Home", "Work"'>
+              <label class="check-row compact">
+                <input type="checkbox" id="set-as-default">
+                Set as default address
+              </label>
+            </div>
+          </div>
+          <button type="button" class="btn-secondary btn-sm addr-toggle-btn" id="back-to-saved-btn" style="display:none" onclick="showSavedAddresses()">
+            <i class="ti ti-map-pin"></i> Use saved address
+          </button>
+          <div class="form-group">
+            <label class="form-label">Country</label>
+            <select class="form-input" id="country" onchange="onCountryChange()"><option>Loading…</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Governorate</label>
+            <select class="form-input" id="governorate" onchange="onGovernorateChange()" disabled><option>Select country</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">District</label>
+            <select class="form-input" id="district" onchange="onDistrictChange()" disabled><option>Select governorate</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Address line</label>
+            <input class="form-input" id="address-line" value="123 Test Street, Cairo" onblur="refreshShippingPrice()">
+          </div>
         </div>
       </section>
 

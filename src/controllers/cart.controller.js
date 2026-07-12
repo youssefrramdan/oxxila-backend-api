@@ -1,22 +1,132 @@
 // src/controllers/cart.controller.js
 import asyncHandler from 'express-async-handler';
 import Cart from '../models/Cart.js';
+import Coupon from '../models/Coupon.js';
 import Product from '../models/Product.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
-import {
-  assertCouponApplicable,
-  calculateCouponDiscount,
-  findActiveCouponByCode,
-} from '../utils/couponHelpers.js';
-import {
-  resolveProductPrice,
-  getCartSubtotal,
-  formatCartResponse,
-  getUpdatedCart,
-} from '../utils/cartPricing.js';
-import { getStoreCreditBalance } from '../utils/storeCredit.js';
+import { getCartSubtotal, getStoreCreditBalance, computeStoreCreditApplied } from './order.controller.js';
 
+// --- coupon validation (single source of truth — order.controller.js reuses assertCouponApplicable) ---
+
+/** Compute coupon discount amount capped at the cart subtotal */
+export const calculateCouponDiscount = (coupon, subtotal) => {
+  const raw =
+    coupon.discountType === 'percentage'
+      ? (subtotal * coupon.discountValue) / 100
+      : coupon.discountValue;
+
+  return Math.round(Math.min(raw, subtotal) * 100) / 100;
+};
+
+/** Return an ApiError if the coupon cannot be applied; otherwise null */
+export const assertCouponApplicable = (coupon, userId, subtotal) => {
+  if (!coupon?.isActive) return new ApiError('Invalid or inactive coupon', 400);
+  if (coupon.expiresAt && coupon.expiresAt < new Date())
+    return new ApiError('Coupon has expired', 400);
+  if (coupon.maxUsage != null && coupon.usageCount >= coupon.maxUsage)
+    return new ApiError('Coupon usage limit has been reached', 400);
+
+  const alreadyUsed = coupon.usedBy?.some((id) => id.toString() === userId.toString());
+  if (alreadyUsed) return new ApiError('You have already used this coupon', 400);
+
+  if (subtotal <= 0) return new ApiError('Cart is empty', 400);
+
+  if (subtotal < (coupon.minOrderAmount || 0)) {
+    return new ApiError(
+      `Minimum order amount for this coupon is ${coupon.minOrderAmount} EGP`,
+      400
+    );
+  }
+
+  return null;
+};
+
+/** Find an active coupon by its uppercase code */
+const findActiveCouponByCode = (code) =>
+  Coupon.findOne({ code: String(code).toUpperCase(), isActive: true });
+
+// --- cart pricing/formatting ---
+
+/** Resolve the effective unit price (discounted when present) */
+const resolveProductPrice = (product) => product.priceAfterDiscount ?? product.price;
+
+/** Shape cart + pricing fields for API responses */
+const formatCartResponse = (result) => ({
+  _id: result.cart._id,
+  items: result.cart.items,
+  couponCode: result.cart.couponCode,
+  discountAmount: result.cart.discountAmount,
+  storeCreditBalance: result.storeCreditBalance ?? 0,
+  storeCreditApplied: result.storeCreditApplied ?? 0,
+  subtotal: result.subtotal,
+  totalPrice: result.totalPrice,
+});
+
+/** Refresh item prices, coupon validity, and store-credit totals for a user's cart */
+const getUpdatedCart = async (userId) => {
+  const cart = await Cart.findOne({ user: userId }).populate(
+    'items.product',
+    'name images price priceAfterDiscount stock isActive'
+  );
+  if (!cart) return null;
+
+  let changed = false;
+  for (const item of cart.items) {
+    if (!item.product) continue;
+    const currentPrice = resolveProductPrice(item.product);
+    if (item.price !== currentPrice) {
+      item.price = currentPrice;
+      changed = true;
+    }
+  }
+
+  const subtotal = getCartSubtotal(cart);
+
+  if (cart.couponId) {
+    const coupon = await Coupon.findById(cart.couponId);
+
+    if (assertCouponApplicable(coupon, userId, subtotal)) {
+      cart.couponCode = null;
+      cart.couponId = null;
+      cart.discountAmount = 0;
+      changed = true;
+    } else {
+      const discount = calculateCouponDiscount(coupon, subtotal);
+      if (cart.discountAmount !== discount) {
+        cart.discountAmount = discount;
+        changed = true;
+      }
+    }
+  }
+
+  if (changed) await cart.save();
+
+  const finalSubtotal = getCartSubtotal(cart);
+  const couponDiscount = cart.discountAmount || 0;
+  const payableBeforeCredit = Math.max(0, finalSubtotal - couponDiscount);
+  const storeCreditBalance = await getStoreCreditBalance(userId);
+  const { storeCreditApplied, payableAfterCredit } = computeStoreCreditApplied(
+    storeCreditBalance,
+    payableBeforeCredit
+  );
+
+  return {
+    cart,
+    subtotal: finalSubtotal,
+    storeCreditBalance,
+    storeCreditApplied,
+    totalPrice: payableAfterCredit,
+  };
+};
+
+// --- handlers ---
+
+/**
+ * @desc    Get the current user's cart
+ * @route   GET /api/v1/cart
+ * @access  Private
+ */
 export const getCart = asyncHandler(async (req, res) => {
   const result = await getUpdatedCart(req.user._id);
 
@@ -42,6 +152,11 @@ export const getCart = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * @desc    Add a product to the cart
+ * @route   POST /api/v1/cart
+ * @access  Private
+ */
 export const addToCart = asyncHandler(async (req, res, next) => {
   const { productId, quantity = 1 } = req.body;
 
@@ -90,6 +205,11 @@ export const addToCart = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * @desc    Update quantity of a cart item
+ * @route   PUT /api/v1/cart/:itemId
+ * @access  Private
+ */
 export const updateCartItem = asyncHandler(async (req, res, next) => {
   const { quantity } = req.body;
 
@@ -115,6 +235,11 @@ export const updateCartItem = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * @desc    Remove an item from the cart
+ * @route   DELETE /api/v1/cart/:itemId
+ * @access  Private
+ */
 export const removeCartItem = asyncHandler(async (req, res, next) => {
   const cart = await Cart.findOne({ user: req.user._id });
   if (!cart) return next(new ApiError('Cart not found', 404));
@@ -133,11 +258,21 @@ export const removeCartItem = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * @desc    Clear the entire cart
+ * @route   DELETE /api/v1/cart
+ * @access  Private
+ */
 export const clearCart = asyncHandler(async (req, res) => {
   await Cart.findOneAndDelete({ user: req.user._id });
   sendResponse(res, { message: 'Cart cleared' });
 });
 
+/**
+ * @desc    Apply a coupon to the cart
+ * @route   POST /api/v1/cart/coupon
+ * @access  Private
+ */
 export const applyCoupon = asyncHandler(async (req, res, next) => {
   const { code } = req.body;
 
@@ -164,6 +299,11 @@ export const applyCoupon = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * @desc    Remove the applied coupon from the cart
+ * @route   DELETE /api/v1/cart/coupon
+ * @access  Private
+ */
 export const removeCoupon = asyncHandler(async (req, res, next) => {
   const cart = await Cart.findOne({ user: req.user._id });
   if (!cart) return next(new ApiError('Cart not found', 404));

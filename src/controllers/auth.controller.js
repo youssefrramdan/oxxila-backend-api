@@ -24,6 +24,11 @@ import {
   issueOAuthTokensAndRedirect,
 } from '../utils/auth/oauth.js';
 
+/**
+ * @desc    Register a new user
+ * @route   POST /api/v1/auth/register
+ * @access  Public
+ */
 export const register = asyncHandler(async (req, res, next) => {
   if (await User.findOne({ email: req.body.email })) {
     return next(new ApiError('Email already in use', 409));
@@ -36,6 +41,11 @@ export const register = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * @desc    Log in with email and password
+ * @route   POST /api/v1/auth/login
+ * @access  Public
+ */
 export const login = asyncHandler(async (req, res, next) => {
   const user = await User.findOne({ email: req.body.email }).select('+password');
   if (!user || !(await user.comparePassword(req.body.password))) {
@@ -61,6 +71,11 @@ export const login = asyncHandler(async (req, res, next) => {
   });
 });
 
+/**
+ * @desc    Rotate refresh token and issue a new access token
+ * @route   POST /api/v1/auth/refresh
+ * @access  Public
+ */
 export const refreshAccessToken = asyncHandler(async (req, res, next) => {
   const token = req.cookies?.refreshToken;
   if (!token) return next(new ApiError('No refresh token', 401));
@@ -92,6 +107,11 @@ export const refreshAccessToken = asyncHandler(async (req, res, next) => {
   sendResponse(res, { message: 'Token refreshed', data: { accessToken } });
 });
 
+/**
+ * @desc    Log out and clear the refresh-token cookie
+ * @route   POST /api/v1/auth/logout
+ * @access  Public
+ */
 export const logout = asyncHandler(async (req, res) => {
   const token = req.cookies?.refreshToken;
   if (token) await RefreshToken.deleteOne({ token });
@@ -99,10 +119,20 @@ export const logout = asyncHandler(async (req, res) => {
   sendResponse(res, { message: 'Logged out successfully' });
 });
 
+/**
+ * @desc    Get the authenticated user
+ * @route   GET /api/v1/auth/me
+ * @access  Private
+ */
 export const me = asyncHandler(async (req, res) => {
   sendResponse(res, { data: publicUser(req.user) });
 });
 
+/**
+ * @desc    Send a password-reset email if the account exists
+ * @route   POST /api/v1/auth/forgot-password
+ * @access  Public
+ */
 export const forgetPassword = asyncHandler(async (req, res) => {
   const genericResponse = {
     message: `If an account exists for this email, a reset link has been sent. The link will expire in ${RESET_TOKEN_TTL_MIN} minutes.`,
@@ -137,6 +167,11 @@ export const forgetPassword = asyncHandler(async (req, res) => {
   sendResponse(res, genericResponse);
 });
 
+/**
+ * @desc    Verify a password-reset token is still valid
+ * @route   GET /api/v1/auth/reset-password/:token
+ * @access  Public
+ */
 export const verifyResetToken = asyncHandler(async (req, res, next) => {
   const user = await User.findOne({
     passwordResetToken: sha256(req.params.token),
@@ -148,6 +183,11 @@ export const verifyResetToken = asyncHandler(async (req, res, next) => {
   sendResponse(res, { message: 'Reset token is valid' });
 });
 
+/**
+ * @desc    Reset password with a valid reset token
+ * @route   POST /api/v1/auth/reset-password/:token
+ * @access  Public
+ */
 export const resetPassword = asyncHandler(async (req, res, next) => {
   const { newPassword, confirmPassword } = req.body;
   if (newPassword !== confirmPassword) {
@@ -171,12 +211,22 @@ export const resetPassword = asyncHandler(async (req, res, next) => {
   sendResponse(res, { message: 'Your password has been reset successfully' });
 });
 
+/**
+ * @desc    Start Google OAuth
+ * @route   GET /api/v1/auth/google
+ * @access  Public
+ */
 export const googleRedirect = passport.authenticate('google', {
   session: false,
   scope: ['profile', 'email'],
   prompt: 'select_account',
 });
 
+/**
+ * @desc    Google OAuth callback — issue tokens and redirect
+ * @route   GET /api/v1/auth/google/callback
+ * @access  Public
+ */
 export const googleCallback = [
   passport.authenticate('google', {
     session: false,
@@ -186,6 +236,11 @@ export const googleCallback = [
   issueOAuthTokensAndRedirect,
 ];
 
+/**
+ * @desc    Start Facebook OAuth
+ * @route   GET /api/v1/auth/facebook
+ * @access  Public
+ */
 export const facebookRedirect = (req, res, next) => {
   if (!facebookOAuthEnabled) {
     return redirectFacebookNotConfigured(res);
@@ -196,6 +251,11 @@ export const facebookRedirect = (req, res, next) => {
   })(req, res, next);
 };
 
+/**
+ * @desc    Facebook OAuth callback — issue tokens and redirect
+ * @route   GET /api/v1/auth/facebook/callback
+ * @access  Public
+ */
 export const facebookCallback = [
   (req, res, next) => {
     if (!facebookOAuthEnabled) {

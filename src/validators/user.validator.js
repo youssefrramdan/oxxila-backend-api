@@ -60,41 +60,61 @@ export const updateMyPasswordValidator = [
   validate,
 ];
 
-const addressFields = {
-  city: (chain) => chain
-    .trim()
-    .notEmpty().withMessage('City is required')
-    .isLength({ max: 100 }).withMessage('City is too long'),
-  address: (chain) => chain
-    .trim()
-    .notEmpty().withMessage('Address is required')
-    .isLength({ max: 500 }).withMessage('Address is too long'),
+const districtIdRule = (chain) =>
+  chain
+    .optional({ values: 'null' })
+    .custom((value) => {
+      if (value === 'other') return true;
+      if (typeof value === 'string' && /^[a-f\d]{24}$/i.test(value)) return true;
+      throw new Error('Invalid district ID');
+    });
+
+const addressGeoFields = {
+  governorateId: (chain) =>
+    chain
+      .notEmpty()
+      .withMessage('governorateId is required')
+      .isMongoId()
+      .withMessage('Invalid governorate ID'),
+  districtId: districtIdRule,
+  addressLine: (chain) =>
+    chain
+      .trim()
+      .notEmpty()
+      .withMessage('addressLine is required')
+      .isLength({ min: 6, max: 500 })
+      .withMessage('addressLine must be between 6 and 500 characters'),
+  label: (chain) =>
+    chain.optional().trim().isLength({ max: 50 }).withMessage('Label is too long'),
+  isDefault: (chain) => chain.optional().isBoolean().withMessage('isDefault must be a boolean'),
 };
 
 export const addMyAddressValidator = [
-  addressFields.city(body('city')),
-  addressFields.address(body('address')),
+  addressGeoFields.governorateId(body('governorateId')),
+  addressGeoFields.districtId(body('districtId')),
+  addressGeoFields.addressLine(body('addressLine')),
+  addressGeoFields.label(body('label')),
+  addressGeoFields.isDefault(body('isDefault')),
   validate,
 ];
 
 export const updateMyAddressValidator = [
   objectId('addressId'),
-  body('city')
+  body('governorateId').optional().isMongoId().withMessage('Invalid governorate ID'),
+  addressGeoFields.districtId(body('districtId')),
+  body('addressLine')
     .optional()
     .trim()
-    .notEmpty().withMessage('City cannot be empty')
-    .isLength({ max: 100 })
-    .withMessage('City is too long'),
-  body('address')
-    .optional()
-    .trim()
-    .notEmpty().withMessage('Address cannot be empty')
-    .isLength({ max: 500 })
-    .withMessage('Address is too long'),
+    .notEmpty()
+    .withMessage('addressLine cannot be empty')
+    .isLength({ min: 6, max: 500 })
+    .withMessage('addressLine must be between 6 and 500 characters'),
+  addressGeoFields.label(body('label')),
+  addressGeoFields.isDefault(body('isDefault')),
   validate,
   (req, res, next) => {
-    const { city, address } = req.body;
-    if ([city, address].every((v) => v === undefined)) {
+    const { governorateId, districtId, addressLine, label, isDefault } = req.body;
+    if ([governorateId, districtId, addressLine, label, isDefault].every((v) => v === undefined)) {
       return next(new ApiError('Provide at least one field to update', 400));
     }
     next();

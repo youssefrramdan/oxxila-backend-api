@@ -94,37 +94,6 @@ app.get("/reset-password/:token", (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "reset-password.html"));
 });
 
-app.get("/admin-test.html", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "admin-test.html"));
-});
-
-app.get("/shipping-admin.html", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "shipping-admin.html"));
-});
-
-app.get("/cart-test.html", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "cart-test.html"));
-});
-
-app.get("/checkout-test.html", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "checkout-test.html"));
-});
-
-app.get("/returns-admin.html", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "returns-admin.html"));
-});
-
-app.get("/returns-test.html", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "returns-test.html"));
-});
-
-app.get("/return-page.html", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "return-page.html"));
-});
-
-app.get("/track-order.html", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "track-order.html"));
-});
 app.use(express.static(PUBLIC_DIR));
 
 app.use("/api/v1/auth", authRouter);

@@ -5,8 +5,9 @@ import Governorate from '../models/Governorate.js';
 import District from '../models/District.js';
 import sendResponse from '../utils/apiResponse.js';
 import ApiError from '../utils/apiError.js';
-import resolveShipping from '../utils/resolveShipping.js';
+import { resolveShipping } from './order.controller.js';
 
+/** Mongo filter for active countries */
 const activeCountryFilter = { isActive: true };
 
 /**

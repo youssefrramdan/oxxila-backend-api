@@ -43,7 +43,6 @@ import {
   updateCarrierCoverage,
   syncBostaZonesForCarrier,
   syncBostaCoverageForCarrier,
-  getBostaPickupLocations,
 } from "../controllers/carrier.controller.js";
 import {
   getCarrierPickups,
@@ -52,10 +51,12 @@ import {
   setDefaultCarrierPickup,
   getBostaDistrictsLookup,
   syncBostaPickupsForCarrier,
+  getBostaPickupLocations,
 } from "../controllers/carrierPickup.controller.js";
 import {
   getOrderShippingDetail,
   assignOrderShipping,
+  updateManualOrderShippingStatus,
 } from "../controllers/orderShipping.controller.js";
 import {
   createCarrierValidator,
@@ -71,6 +72,7 @@ import {
 import {
   assignOrderShippingValidator,
   orderShippingDetailValidator,
+  updateManualOrderShippingStatusValidator,
 } from "../validators/orderShipping.validator.js";
 
 const router = Router();
@@ -166,6 +168,11 @@ router.get(
   "/shipping/orders/:id",
   orderShippingDetailValidator,
   getOrderShippingDetail,
+);
+router.patch(
+  "/shipping/orders/:id/status",
+  updateManualOrderShippingStatusValidator,
+  updateManualOrderShippingStatus,
 );
 router.post(
   "/shipping/orders/:id/assign",

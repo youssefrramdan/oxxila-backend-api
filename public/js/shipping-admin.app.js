@@ -16,6 +16,18 @@ let coverageOnlyMode = false;
 let orders = [];
 let assigningOrderId = null;
 let assignDetail = null;
+let statusOrderId = null;
+let statusDetail = null;
+
+const MANUAL_STATUS_OPTIONS = [
+  { value: "processing", label: "Processing" },
+  { value: "shipped", label: "Shipped" },
+  { value: "out_for_delivery", label: "Out for delivery" },
+  { value: "failed_attempt", label: "Failed attempt" },
+  { value: "delivered", label: "Delivered" },
+  { value: "returned", label: "Returned" },
+  { value: "cancelled", label: "Cancelled" },
+];
 
 function selectedCountry() {
   return countries.find((c) => c._id === selCountry);
@@ -416,6 +428,12 @@ async function syncBostaZonesManual() {
     toast("Save carrier first", true);
     return;
   }
+  const btn = document.getElementById("bosta-sync-btn");
+  if (btn?.disabled) return;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ti ti-loader-2 ti-spin"></i> Syncing…';
+  }
   try {
     const { data: countryList } = await api("GET", "/admin/countries");
     let totalDistricts = 0;
@@ -449,13 +467,15 @@ async function syncBostaZonesManual() {
 
     const currentGov = selGov;
     await loadZones();
-    updateBostaSyncButton();
     if (currentGov) {
       await loadDistrictsForGov(currentGov);
       renderDistricts();
     }
   } catch (e) {
     toast(e.message, true);
+  } finally {
+    if (btn) btn.disabled = false;
+    updateBostaSyncButton();
   }
 }
 
@@ -756,20 +776,26 @@ async function loadOrders() {
 function updateOrdersBadge() {
   const badge = document.querySelector(".nav-item .nav-badge");
   if (!badge) return;
-  const n = orders.filter(
-    (o) =>
-      ["confirmed", "pending", "processing"].includes(o.orderStatus) &&
-      !o.shipment?.carrier,
+  const n = orders.filter((o) =>
+    window.OxxilaTracking
+      ? OxxilaTracking.canAssignOrder(o)
+      : ["confirmed", "pending", "processing"].includes(o.orderStatus) &&
+        !(
+          o.shipment?.carrier &&
+          (o.shipment?.externalDeliveryId || o.shipment?.trackingNumber)
+        ),
   ).length;
   badge.textContent = n > 0 ? String(n) : "0";
 }
 
 function orderStatusClass(status) {
   if (window.OxxilaTracking) return OxxilaTracking.orderStatusClass(status);
-  if (status === "shipped") return "os-shipped";
+  if (status === "shipped" || status === "out_for_delivery") return "os-shipped";
   if (status === "delivered") return "os-delivered";
   if (status === "partially_returned") return "os-partial-return";
   if (status === "returned") return "os-product-returned";
+  if (status === "failed_attempt") return "os-failed";
+  if (status === "cancelled") return "os-cancelled";
   if (status === "processing") return "os-assigned";
   if (status === "confirmed") return "os-confirmed";
   return "os-pending";
@@ -836,39 +862,152 @@ function renderOrders() {
         o.shipment?.trackingNumber ||
         o.shipment?.driverName ||
         "";
-      const tracking = trackingNum ? esc(trackingNum) : "—";
+      const providerLabel = o.shipment?.providerStateLabel || "";
+      const trackingCell = trackingNum
+        ? `<div class="tracking-code">${esc(trackingNum)}</div>${
+            providerLabel
+              ? `<div class="tracking-sub">${esc(providerLabel)}</div>`
+              : ""
+          }`
+        : providerLabel
+          ? `<div class="tracking-sub">${esc(providerLabel)}</div>`
+          : "—";
       const canAssign = window.OxxilaTracking
         ? OxxilaTracking.canAssignOrder(o)
         : ["confirmed", "pending", "processing"].includes(o.orderStatus) &&
-          !(o.shipment?.carrier && (o.shipment?.externalDeliveryId || o.shipment?.trackingNumber));
-      const needsConfirm = window.OxxilaTracking?.needsConfirmOrder(o);
+          !(
+            o.shipment?.carrier &&
+            (o.shipment?.externalDeliveryId || o.shipment?.trackingNumber)
+          );
+      const needsConfirm = window.OxxilaTracking
+        ? OxxilaTracking.needsConfirmOrder(o)
+        : o.orderStatus === "pending";
       const showReturns =
         o.orderStatus === "partially_returned" || o.orderStatus === "returned";
       const actions = [
         needsConfirm
-          ? `<button class="btn btn-secondary" style="font-size:11px;padding:5px 10px;margin-right:4px" onclick="confirmOrder('${o._id}')">Confirm</button>`
+          ? `<button type="button" class="btn btn-secondary order-action-btn" onclick="event.stopPropagation();confirmOrder('${o._id}')">Confirm</button>`
           : "",
         canAssign
-          ? `<button class="btn btn-primary" style="font-size:11px;padding:5px 10px" onclick="openAssign('${o._id}')">Assign</button>`
+          ? `<button type="button" class="btn btn-primary order-action-btn" onclick="event.stopPropagation();openAssign('${o._id}')">Assign</button>`
           : "",
         showReturns
-          ? `<a class="btn btn-secondary" style="font-size:11px;padding:5px 10px;text-decoration:none" href="/returns-admin.html?orderId=${o._id}">Returns</a>`
+          ? `<a class="btn btn-secondary order-action-btn" style="text-decoration:none" href="/returns-admin.html?orderId=${o._id}" onclick="event.stopPropagation()">Returns</a>`
           : "",
       ]
         .filter(Boolean)
         .join("") || '<span style="color:var(--muted2);font-size:11px">—</span>';
       return `
-    <tr>
+    <tr class="order-row" onclick="openOrderStatusDrawer('${o._id}')">
       <td style="font-family:var(--mono);font-size:12px">#${shortId(o._id)}</td>
       <td><div style="font-size:13px">${esc(user.name || "—")}</div><div style="font-size:10px;color:var(--muted)">${esc(user.email || "")}</div></td>
       <td style="font-size:12px">${esc(zone)}</td>
       <td style="font-size:12px">${esc(carrier)}</td>
       <td><span class="order-status ${orderStatusClass(o.orderStatus)}">${esc(orderStatusLabel(o.orderStatus))}</span></td>
-      <td style="font-size:11px;font-family:var(--mono);color:var(--muted)">${esc(tracking)}</td>
-      <td style="white-space:nowrap">${actions}</td>
+      <td>${trackingCell}</td>
+      <td><div class="order-actions">${actions}</div></td>
     </tr>`;
     })
     .join("");
+}
+
+async function openOrderStatusDrawer(orderId) {
+  statusOrderId = orderId;
+  try {
+    const { data } = await api("GET", "/admin/shipping/orders/" + orderId);
+    statusDetail = data;
+    renderOrderStatusDrawer();
+    openDrawer("order-status-drawer");
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+function renderOrderStatusDrawer() {
+  const body = document.getElementById("order-status-body");
+  const footer = document.getElementById("order-status-footer");
+  const title = document.getElementById("order-status-drawer-title");
+  if (!statusDetail || !body) return;
+
+  const o = statusDetail.order;
+  const shipment = statusDetail.shipment || o.shipment || {};
+  const user = o.user || {};
+  const zone = `${o.shippingAddress?.governorateName || ""} / ${o.shippingAddress?.districtName || ""}`;
+  const carrierType = shipment.carrierType || o.shipment?.carrierType;
+  const isManual = carrierType === "known" || carrierType === "internal";
+  const hasCarrier = Boolean(shipment.carrier || o.shipment?.carrier);
+  const tracking =
+    shipment.trackingNumber ||
+    o.tracking?.trackingNumber ||
+    o.shipment?.trackingNumber ||
+    "—";
+
+  if (title) title.textContent = `Order #${shortId(o._id)}`;
+
+  const statusOptions = MANUAL_STATUS_OPTIONS.map(
+    (opt) =>
+      `<option value="${opt.value}" ${o.orderStatus === opt.value ? "selected" : ""}>${esc(opt.label)}</option>`
+  ).join("");
+
+  let statusSection = "";
+  if (isManual && hasCarrier) {
+    footer.style.display = "";
+    statusSection = `
+      <p class="manual-status-note">Manual carrier — update fulfillment status as the shipment progresses.</p>
+      <div class="form-group">
+        <label class="form-label">Order status</label>
+        <select class="form-select" id="manual-order-status">${statusOptions}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes (optional)</label>
+        <input class="form-input" id="manual-status-notes" placeholder="e.g. customer not available" value="${esc(shipment.notes || "")}">
+      </div>`;
+  } else if (carrierType === "api") {
+    footer.style.display = "none";
+    statusSection = `
+      <div class="manual-status-readonly">
+        Status for API carriers (e.g. Bosta) syncs automatically from the carrier.
+        You cannot change it manually here.
+      </div>`;
+  } else {
+    footer.style.display = "none";
+    statusSection = `
+      <div class="manual-status-readonly" style="margin-bottom:12px">
+        No carrier assigned yet. Assign a known or internal carrier to manage status manually.
+      </div>
+      <button type="button" class="btn btn-primary" style="width:100%" onclick="closeAll();openAssign('${o._id}')">Assign Carrier</button>`;
+  }
+
+  body.innerHTML = `
+    <div class="order-detail-meta">
+      <div class="order-detail-row"><span>Customer</span><span>${esc(user.name || "—")}</span></div>
+      <div class="order-detail-row"><span>Zone</span><span>${esc(zone)}</span></div>
+      <div class="order-detail-row"><span>Carrier</span><span>${esc(shipment.carrierName || o.shipment?.carrierName || "—")}</span></div>
+      <div class="order-detail-row"><span>Tracking</span><span style="font-family:var(--mono)">${esc(tracking)}</span></div>
+      <div class="order-detail-row"><span>Current status</span><span class="order-status ${orderStatusClass(o.orderStatus)}">${esc(orderStatusLabel(o.orderStatus))}</span></div>
+    </div>
+    ${statusSection}`;
+}
+
+async function saveManualOrderStatus() {
+  if (!statusOrderId) return;
+  const orderStatus = document.getElementById("manual-order-status")?.value;
+  const notes = document.getElementById("manual-status-notes")?.value?.trim();
+  if (!orderStatus) {
+    toast("Select a status", true);
+    return;
+  }
+  try {
+    await api("PATCH", "/admin/shipping/orders/" + statusOrderId + "/status", {
+      orderStatus,
+      notes: notes || undefined,
+    });
+    toast("Status updated");
+    closeAll();
+    await loadOrders();
+  } catch (e) {
+    toast(e.message, true);
+  }
 }
 
 function filterOrders(type, el) {
