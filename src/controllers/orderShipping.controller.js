@@ -514,12 +514,10 @@ export const buildBostaDeliveryBody = ({
     body.goodsInfo = { amount: Math.round(goodsAmount) };
   }
 
-  if (businessLocationId) {
-    body.businessLocationId = businessLocationId;
-  } else if (dropOffAddress) {
-    body.dropOffAddress = dropOffAddress;
-  }
-
+  // Outbound needs both: pickup (businessLocationId / pickupAddress) + customer dropOff.
+  // Returns usually send only one of businessLocationId or dropOffAddress (merchant destination).
+  if (businessLocationId) body.businessLocationId = businessLocationId;
+  if (dropOffAddress) body.dropOffAddress = dropOffAddress;
   if (pickupAddress) body.pickupAddress = pickupAddress;
 
   return body;

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "4062f907-628a-430c-9f5d-c9c39c20a46e",
     "name": "Oxxila-backend-api",
-    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n- **FAQs** — public list per product; user **ask specialist** (email to `ADMIN_EMAIL`); admin CRUD on `/faqs` + create under product.\n    \n- **Coupons** — admin CRUD. User apply/remove on **Cart** (`POST /cart/coupon`, `DELETE /cart/coupon`).\n    \n- **Tracking** — `GET /track/order/:orderId` (owner), public `GET /track/:trackingNumber`.\n    \n- **Orders** — COD checkout, card payment sessions (Stripe/Paymob), my-orders, admin list/status/refund. Test UI: `GET /checkout-test.html`.\n    \n- **Returns** — eligible delivered orders (14-day window), partial returns, flattened multipart create (`items[0][…]` / `pickupAddress[…]` + `proofImages`), admin workflow through refund (Stripe/Paymob auto, COD manual).\n    \n- **Webhooks** — Stripe (`checkout.session.completed`, `charge.refunded`); Paymob processed POST + browser redirect GET (HMAC-signed; not for manual testing without valid signatures).\n    \n- **Shipping (Checkout)** — public countries, governorates, zones, resolve price.\n    \n- **Shipping Admin** — countries, governorates, districts, carriers, coverage, Bosta sync/pickups, order assign (`/api/v1/admin/*`).\n    \n- **Cart** — authenticated shopping cart: add/update/remove lines, apply/remove coupon, clear cart. Line prices sync from product on every read/write.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
+    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n- **FAQs** — public list per product; user **ask specialist** (email to `ADMIN_EMAIL`); admin CRUD on `/faqs` + create under product.\n    \n- **Coupons** — admin CRUD. User apply/remove on **Cart** (`POST /cart/coupon`, `DELETE /cart/coupon`).\n    \n- **Tracking** — `GET /track/order/:orderId` (owner), public `GET /track/:trackingNumber`.\n    \n- **Orders** — COD checkout, card payment sessions (Stripe/Paymob), my-orders, admin list/status/refund. Test UI: `GET /checkout-test.html`.\n    \n- **Returns** — eligible delivered orders (14-day window), partial returns, flattened multipart create (`items[0][…]` / `pickupAddress[…]` + `proofImages`), admin workflow through refund (Stripe/Paymob auto, COD manual).\n    \n- **Webhooks** — Stripe (`checkout.session.completed`, `charge.refunded`); Paymob processed POST + browser redirect GET (HMAC-signed; not for manual testing without valid signatures).\n    \n- **Shipping (Checkout)** — public countries, governorates, zones, resolve price.\n    \n- **Shipping Admin** — countries, governorates, districts, carriers, coverage, Bosta sync/pickups, order assign (`/api/v1/admin/*`).\n    \n- **Cart** — authenticated shopping cart: add/update/remove lines, apply/remove coupon, clear cart. Line prices sync from product on every read/write.\n    \n- **Wishlist** — authenticated wishlist: add/remove by `productId`, get populated list, clear. Duplicate add returns `400`; missing/inactive product returns `404`.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "54107413",
     "_collection_link": "https://go.postman.co/collection/54107413-4062f907-628a-430c-9f5d-c9c39c20a46e?source=collection_link"
@@ -3194,6 +3194,121 @@
         }
       ],
       "description": "`/api/v1/cart` — all routes require Bearer token. Env: `{{productId}}`, `{{cartItemId}}`, `{{cartId}}`. Test UI: `GET /cart-test.html`."
+    },
+    {
+      "name": "Wishlist",
+      "item": [
+        {
+          "name": "Get Wishlist",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wishlist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wishlist"
+              ]
+            },
+            "description": "**User** Bearer. Returns wishlist with products populated (`name`, `images`, `price`, `priceAfterDiscount`, `stock`, `isActive`, `slug`). Items whose product is missing are omitted. Empty wishlist → `{ items: [] }`."
+          },
+          "response": []
+        },
+        {
+          "name": "Add to Wishlist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res?.data?._id) pm.environment.set('wishlistId', res.data._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wishlist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wishlist"
+              ]
+            },
+            "description": "**User** Bearer. Body `{ productId }`. Creates wishlist or appends product. `404` inactive/missing product; `400` if already in wishlist."
+          },
+          "response": []
+        },
+        {
+          "name": "Remove from Wishlist",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wishlist/:productId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wishlist",
+                ":productId"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "{{productId}}",
+                  "description": "Product ObjectId to remove"
+                }
+              ]
+            },
+            "description": "**User** Bearer. Removes one product by `productId`. `404` if wishlist or item missing."
+          },
+          "response": []
+        },
+        {
+          "name": "Clear Wishlist",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/wishlist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "wishlist"
+              ]
+            },
+            "description": "**User** Bearer. Deletes the entire wishlist document for the current user."
+          },
+          "response": []
+        }
+      ],
+      "description": "`/api/v1/wishlist` — all routes require Bearer token. Env: `{{productId}}`, `{{wishlistId}}`."
     },
     {
       "name": "Orders",
