@@ -10,15 +10,60 @@ import {
   getProductRatingStats,
 } from '../controllers/review.controller.js';
 import {
+  getReviewsAdminOverview,
+  getReviewsAdminSummary,
+  getReviewsAdminRatingDistribution,
+  getReviewsAdminFlagged,
+  getReviewsAdminList,
+  getReviewsAdminDetail,
+  updateReviewVisibility,
+  flagReview,
+  resolveReviewFlag,
+} from '../controllers/reviewAdmin.controller.js';
+import {
   createProductReviewValidator,
   updateReviewValidator,
   reviewIdValidator,
   getProductReviewsValidator,
   getProductRatingStatsValidator,
+  adminReviewsListValidator,
+  adminReviewsOverviewValidator,
+  adminFlaggedQueueValidator,
+  updateReviewVisibilityValidator,
+  flagReviewValidator,
+  resolveReviewFlagValidator,
 } from '../validators/review.validator.js';
 import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
 
 const router = Router();
+
+const adminRouter = Router();
+adminRouter.use(protectedRoutes, allowTo('admin'));
+
+adminRouter.get('/overview', adminReviewsOverviewValidator, getReviewsAdminOverview);
+adminRouter.get('/summary', getReviewsAdminSummary);
+adminRouter.get('/rating-distribution', getReviewsAdminRatingDistribution);
+adminRouter.get('/flagged', adminFlaggedQueueValidator, getReviewsAdminFlagged);
+adminRouter.get('/', adminReviewsListValidator, getReviewsAdminList);
+adminRouter.get('/:id', reviewIdValidator, getReviewsAdminDetail);
+
+router.use('/admin', adminRouter);
+
+router.patch(
+  '/:id/visibility',
+  protectedRoutes,
+  allowTo('admin'),
+  updateReviewVisibilityValidator,
+  updateReviewVisibility
+);
+router.post('/:id/flag', protectedRoutes, allowTo('admin'), flagReviewValidator, flagReview);
+router.patch(
+  '/:id/flag/resolve',
+  protectedRoutes,
+  allowTo('admin'),
+  resolveReviewFlagValidator,
+  resolveReviewFlag
+);
 
 router.get('/:id', reviewIdValidator, getReview);
 router.put('/:id', protectedRoutes, updateReviewValidator, updateReview);

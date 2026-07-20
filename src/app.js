@@ -29,6 +29,9 @@ import wishlistRouter from "./routes/wishlist.routes.js";
 import orderRouter from "./routes/order.routes.js";
 import returnRouter from "./routes/return.routes.js";
 import trackingRouter from "./routes/tracking.routes.js";
+import dashboardRouter from "./routes/dashboard.routes.js";
+import adminUserRouter from "./routes/adminUser.routes.js";
+import paymentAdminRouter from "./routes/paymentAdmin.routes.js";
 import {
   stripeWebhook,
   paymobWebhook,
@@ -117,6 +120,9 @@ app.use("/api/v1/wishlist", wishlistRouter);
 app.use("/api/v1/orders", orderRouter);
 app.use("/api/v1/returns", returnRouter);
 app.use("/api/v1/track", trackingRouter);
+app.use("/api/v1/dashboard", dashboardRouter);
+app.use("/api/v1/admins", adminUserRouter);
+app.use("/api/v1/payments", paymentAdminRouter);
 
 app.all(/(.*)/, (req, res, next) => {
   next(new ApiError(`Route ${req.originalUrl} not found`, 404));

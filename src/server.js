@@ -2,8 +2,10 @@
 import app from './app.js';
 import logger from './config/logger.js';
 import databaseConnection from './config/db.js';
+import PaymentGateway from './models/PaymentGateway.js';
 
 await databaseConnection();
+await PaymentGateway.ensureDefaults();
 
 const PORT = process.env.PORT || 3000;
 

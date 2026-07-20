@@ -15,6 +15,7 @@ import {
   syncOrderRefundedFromStripe,
   toMinorUnits,
 } from './order.controller.js';
+import PaymentGateway from '../models/PaymentGateway.js';
 
 // How long a PaymentSession stays valid before checkout fulfillment is rejected
 const PAYMENT_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -468,6 +469,11 @@ export const createPaymentSession = asyncHandler(async (req, res, next) => {
   const { addressId, governorateId, districtId, addressLine, provider, saveAddress, label, setAsDefault } =
     req.body;
   const userId = req.user._id;
+
+  const enabled = await PaymentGateway.isGatewayEnabled(provider);
+  if (!enabled) {
+    return next(new ApiError(`Payment provider "${provider}" is currently disabled`, 400));
+  }
 
   const addressInput = { addressId, governorateId, districtId, addressLine };
   const resolved = await resolveCheckoutAddressInput(userId, addressInput);

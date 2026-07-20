@@ -17,7 +17,7 @@ export const getProductReviews = asyncHandler(async (req, res, next) => {
   const product = await Product.findById(productId).select('_id');
   if (!product) return next(new ApiError(`No product found with id: ${productId}`, 404));
 
-  const query = Review.find({ product: productId }).populate('user', 'name avatar');
+  const query = Review.find({ product: productId, isVisible: true }).populate('user', 'name avatar');
 
   const features = new ApiFeatures(query, req.query).sort();
   await features.paginate();
@@ -37,7 +37,10 @@ export const getProductReviews = asyncHandler(async (req, res, next) => {
  * @access  Public
  */
 export const getReview = asyncHandler(async (req, res, next) => {
-  const review = await Review.findById(req.params.id).populate('user', 'name avatar');
+  const review = await Review.findOne({ _id: req.params.id, isVisible: true }).populate(
+    'user',
+    'name avatar'
+  );
   if (!review) return next(new ApiError(`No review found with id: ${req.params.id}`, 404));
 
   sendResponse(res, { message: 'Review retrieved successfully', data: review });
@@ -62,6 +65,8 @@ export const createReview = asyncHandler(async (req, res, next) => {
     ...req.body,
     user: req.user._id,
     product: productId,
+    isVisible: true,
+    moderationStatus: 'none',
   });
 
   await review.populate('user', 'name avatar');
@@ -127,6 +132,7 @@ export const deleteReview = asyncHandler(async (req, res, next) => {
 export const toggleLike = asyncHandler(async (req, res, next) => {
   const review = await Review.findById(req.params.id);
   if (!review) return next(new ApiError(`No review found with id: ${req.params.id}`, 404));
+  if (!review.isVisible) return next(new ApiError('Review is not available', 404));
 
   const userId = req.user._id;
   const alreadyLiked = review.likes.some((id) => id.equals(userId));
@@ -159,7 +165,7 @@ export const getProductRatingStats = asyncHandler(async (req, res, next) => {
   if (!product) return next(new ApiError(`No product found with id: ${productId}`, 404));
 
   const stats = await Review.aggregate([
-    { $match: { product: product._id } },
+    { $match: { product: product._id, isVisible: true } },
     {
       $group: {
         _id: '$rating',

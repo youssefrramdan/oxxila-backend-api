@@ -1,13 +1,3952 @@
 {
   "info": {
-    "_postman_id": "4062f907-628a-430c-9f5d-c9c39c20a46e",
+    "_postman_id": "302d9ad3-97fb-47e2-b4a0-6e01ce08c475",
     "name": "Oxxila-backend-api",
-    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). Updates product `ratingsAverage` / `ratingsQuantity` automatically.\n    \n- **FAQs** — public list per product; user **ask specialist** (email to `ADMIN_EMAIL`); admin CRUD on `/faqs` + create under product.\n    \n- **Coupons** — admin CRUD. User apply/remove on **Cart** (`POST /cart/coupon`, `DELETE /cart/coupon`).\n    \n- **Tracking** — `GET /track/order/:orderId` (owner), public `GET /track/:trackingNumber`.\n    \n- **Orders** — COD checkout, card payment sessions (Stripe/Paymob), my-orders, admin list/status/refund. Test UI: `GET /checkout-test.html`.\n    \n- **Returns** — eligible delivered orders (14-day window), partial returns, flattened multipart create (`items[0][…]` / `pickupAddress[…]` + `proofImages`), admin workflow through refund (Stripe/Paymob auto, COD manual).\n    \n- **Webhooks** — Stripe (`checkout.session.completed`, `charge.refunded`); Paymob processed POST + browser redirect GET (HMAC-signed; not for manual testing without valid signatures).\n    \n- **Shipping (Checkout)** — public countries, governorates, zones, resolve price.\n    \n- **Shipping Admin** — countries, governorates, districts, carriers, coverage, Bosta sync/pickups, order assign (`/api/v1/admin/*`).\n    \n- **Cart** — authenticated shopping cart: add/update/remove lines, apply/remove coupon, clear cart. Line prices sync from product on every read/write.\n    \n- **Wishlist** — authenticated wishlist: add/remove by `productId`, get populated list, clear. Duplicate add returns `400`; missing/inactive product returns `404`.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
+    "description": "Oxxila e-commerce REST API.\n\n## Structure\n\n- **System** — `GET /` health (no `/api` prefix).\n    \n- **Authentication** — register/login, `GET /auth/me`, refresh, OAuth (Google/Facebook), forgot/verify/reset password.\n    \n- **Current User** — getMe, updateMe, avatar, password, active flags, **Profile addresses**, **Browsing history**, **Recommendations**.\n    \n- **Admin Dashboard** — grouped admin APIs (Overview, Products, Orders, Customers, Admins, Reviews, Shipping, Returns, Payments).\n    \n- **Admin User Management** — admin-only user CRUD + moderation actions.\n    \n- **Categories & Sub-categories** — Categories, Sub-categories, nested routes, Brands. See `docs/CATEGORIES_API.md`.\n    \n- **Products** — list/filter (e.g. `isBestSeller`, `isBundle`, `allOffers`, `todayOffers`, `noOffers`, facets), optional-auth detail (`catalog` in response; browsing history when Bearer), admin multipart CRUD + toggle best seller.\n    \n- **Offers** — public list/upcoming/detail; admin CRUD + delete all (syncs `priceAfterDiscount` / `offerEndsAt` on products).\n    \n- **Banners** — public active banners; admin multipart create/update/delete.\n    \n- **Reviews** — nested under products (list, stats, create); flat routes (get/update/delete, like). **Admin Reviews Management**: overview, summary, rating-distribution, flagged queue, list tabs, visibility toggle, flag/resolve (`/api/v1/reviews/admin/*`). Public lists only `isVisible=true` reviews.\n    \n- **FAQs** — public list per product; user **ask specialist** (email to `ADMIN_EMAIL`); admin CRUD on `/faqs` + create under product.\n    \n- **Coupons** — admin CRUD. User apply/remove on **Cart** (`POST /cart/coupon`, `DELETE /cart/coupon`).\n    \n- **Dashboard** — admin analytics home: KPIs with trends, revenue chart, customer segments, top products, low-stock alerts, recent orders (`/api/v1/dashboard`).\n    \n- **Tracking** — `GET /track/order/:orderId` (owner), public `GET /track/:trackingNumber`.\n    \n- **Orders** — COD checkout, card payment sessions (Stripe/Paymob), my-orders, admin list/status/refund. Test UI: `GET /checkout-test.html`.\n    \n- **Returns** — eligible delivered orders (14-day window), partial returns, flattened multipart create (`items[0][…]` / `pickupAddress[…]` + `proofImages`), admin workflow through refund (Stripe/Paymob auto, COD manual).\n    \n- **Webhooks** — Stripe (`checkout.session.completed`, `charge.refunded`); Paymob processed POST + browser redirect GET (HMAC-signed; not for manual testing without valid signatures).\n    \n- **Shipping (Checkout)** — public countries, governorates, zones, resolve price.\n    \n- **Shipping Admin** — countries, governorates, districts, carriers, coverage, Bosta sync/pickups, order assign (`/api/v1/admin/*`).\n    \n- **Cart** — authenticated shopping cart: add/update/remove lines, apply/remove coupon, clear cart. Line prices sync from product on every read/write.\n    \n- **Wishlist** — authenticated wishlist: add/remove by `productId`, get populated list, clear. Duplicate add returns `400`; missing/inactive product returns `404`.\n    \n\n## Tokens\n\n- **Access token** (15m) — returned in the response body and stored in the `token` env var. Sent via `Authorization: Bearer {{token}}`.\n    \n- **Refresh token** (7d) — set by the server as an `httpOnly`, `Secure`, `SameSite=Strict` cookie scoped to `/api/v1/auth`. Postman's Cookie Jar sends it automatically.\n    \n\n## Typical flow\n\nSignup/Login → call protected endpoints → when the access token expires, call **Authentication / Signup & Login / Refresh Access Token** → new access token is saved to `{{token}}` → **Logout** revokes the session.\n\nSelect the `Oxxila Dev` or `Oxxila Prod` environment before sending requests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "54107413",
-    "_collection_link": "https://go.postman.co/collection/54107413-4062f907-628a-430c-9f5d-c9c39c20a46e?source=collection_link"
+    "_exporter_id": "43569199",
+    "_collection_link": "https://go.postman.co/collection/43569199-302d9ad3-97fb-47e2-b4a0-6e01ce08c475?source=collection_link"
   },
   "item": [
+    {
+      "name": "Admin Dashboard",
+      "item": [
+        {
+          "name": "Overview",
+          "item": [
+            {
+              "name": "Get Dashboard Overview",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/dashboard?period=30&limit=5&lowStockThreshold=10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "dashboard"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "30",
+                      "description": "Days for KPI comparison (1–365)"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "5",
+                      "description": "List size for top products, low stock, recent orders (1–50)"
+                    },
+                    {
+                      "key": "lowStockThreshold",
+                      "value": "10",
+                      "description": "Stock level at or below which products appear in low-stock alerts"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Full dashboard page in one request: greeting, KPIs, customer segments, top products, low-stock, recent orders. Revenue chart is separate: `GET /dashboard/revenue`."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Dashboard Revenue",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/dashboard/revenue?period=30&interval=daily",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "dashboard",
+                    "revenue"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "30",
+                      "description": "Days of paid-order revenue (1–365)"
+                    },
+                    {
+                      "key": "interval",
+                      "value": "daily",
+                      "description": "daily | weekly"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Revenue chart only (`daily` | `weekly`). Call this separately when the chart toggle changes — not included in overview."
+              },
+              "response": []
+            }
+          ],
+          "description": "Admin home KPIs + revenue chart."
+        },
+        {
+          "name": "Products",
+          "item": [
+            {
+              "name": "Get All Products",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/products?page=1&limit=10&sort=-createdAt",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "products"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "-createdAt",
+                      "description": "e.g. price, -soldCount"
+                    },
+                    {
+                      "key": "keyword",
+                      "value": "",
+                      "description": "Search product name",
+                      "disabled": true
+                    },
+                    {
+                      "key": "category",
+                      "value": "{{categoryId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "subCategory",
+                      "value": "{{subCategoryId}}",
+                      "description": "Comma-separated Mongo ids",
+                      "disabled": true
+                    },
+                    {
+                      "key": "brand",
+                      "value": "{{brandId}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "concerns",
+                      "value": "acne,pigmentation",
+                      "description": "Comma-separated concern slugs",
+                      "disabled": true
+                    },
+                    {
+                      "key": "isSensitiveSkin",
+                      "value": "true",
+                      "disabled": true
+                    },
+                    {
+                      "key": "isCertified",
+                      "value": "true",
+                      "disabled": true
+                    },
+                    {
+                      "key": "isBestSeller",
+                      "value": "true",
+                      "disabled": true
+                    },
+                    {
+                      "key": "isBundle",
+                      "value": "true",
+                      "disabled": true
+                    },
+                    {
+                      "key": "priceMin",
+                      "value": "10",
+                      "disabled": true
+                    },
+                    {
+                      "key": "priceMax",
+                      "value": "500",
+                      "disabled": true
+                    },
+                    {
+                      "key": "allOffers",
+                      "value": "true",
+                      "description": "Products with active discounted price",
+                      "disabled": true
+                    },
+                    {
+                      "key": "todayOffers",
+                      "value": "true",
+                      "description": "Offers ending today (by offerEndsAt)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "noOffers",
+                      "value": "true",
+                      "description": "Products with no active discount (no priceAfterDiscount or offer ended)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "fields",
+                      "value": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Public listing with ApiFeatures pagination/sort/keyword. Filters: category, subCategory (comma ids), brand, concerns (comma), `isSensitiveSkin`, `isCertified`, `isBestSeller`, `isBundle`, price range, `allOffers`, `todayOffers`, `noOffers`."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Product By ID",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/products/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "products",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{productId}}",
+                      "description": "Product Mongo _id"
+                    }
+                  ]
+                },
+                "description": "Public. If you send **Bearer** (logged-in user), the server appends this product to **Browsing history**."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Product",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "name",
+                      "value": "Sample serum",
+                      "type": "text"
+                    },
+                    {
+                      "key": "price",
+                      "value": "120",
+                      "type": "text"
+                    },
+                    {
+                      "key": "stock",
+                      "value": "50",
+                      "type": "text"
+                    },
+                    {
+                      "key": "category",
+                      "value": "{{categoryId}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "subCategory",
+                      "value": "{{subCategoryId}}",
+                      "type": "text",
+                      "description": "Repeat field or JSON array per client; at least one id"
+                    },
+                    {
+                      "key": "brand",
+                      "value": "{{brandId}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "description",
+                      "value": "Short description",
+                      "type": "text"
+                    },
+                    {
+                      "key": "advantages",
+                      "value": "",
+                      "type": "text",
+                      "uuid": "ec6bba11-cbd9-400d-84a2-b6e6f3d8f546"
+                    },
+                    {
+                      "key": "composition",
+                      "value": "",
+                      "type": "text",
+                      "uuid": "f7a99d12-2136-4745-bc14-e0f329b3d13f"
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "type": "text"
+                    },
+                    {
+                      "key": "isBestSeller",
+                      "value": "false",
+                      "type": "text",
+                      "description": "Optional; can also use PATCH .../best-seller"
+                    },
+                    {
+                      "key": "isBundle",
+                      "value": "false",
+                      "type": "text",
+                      "description": "Product is a bundle"
+                    },
+                    {
+                      "key": "images",
+                      "type": "file",
+                      "value": null
+                    },
+                    {
+                      "key": "certificationImage",
+                      "type": "file",
+                      "value": null
+                    },
+                    {
+                      "key": "catalog",
+                      "type": "file",
+                      "description": "PDF/image; stored URL on product.catalog",
+                      "value": null
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/products",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "products"
+                  ]
+                },
+                "description": "**Admin** Bearer. Multipart: required `name`, `price`, `stock`, `category`, `subCategory` (array rules). Optional: `isBestSeller`, `isBundle`, images (max 5), `certificationImage`, `catalog` file (URL saved on `catalog`)."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Product",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "name",
+                      "value": "Updated name",
+                      "type": "text"
+                    },
+                    {
+                      "key": "price",
+                      "value": "110",
+                      "type": "text"
+                    },
+                    {
+                      "key": "stock",
+                      "value": "40",
+                      "type": "text"
+                    },
+                    {
+                      "key": "isBestSeller",
+                      "value": "false",
+                      "type": "text"
+                    },
+                    {
+                      "key": "isBundle",
+                      "value": "false",
+                      "type": "text"
+                    },
+                    {
+                      "key": "images",
+                      "type": "file",
+                      "value": null
+                    },
+                    {
+                      "key": "certificationImage",
+                      "type": "file",
+                      "value": null
+                    },
+                    {
+                      "key": "catalog",
+                      "type": "file",
+                      "value": null
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/products/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "products",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{productId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Partial updates via multipart; new files replace/add per controller logic. Optional booleans: `isBestSeller`, `isBundle`."
+              },
+              "response": []
+            },
+            {
+              "name": "Toggle Best Seller",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/products/:id/best-seller",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "products",
+                    ":id",
+                    "best-seller"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{productId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Flips `isBestSeller`."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Product",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/products/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "products",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{productId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Categories",
+          "item": [
+            {
+              "name": "Categories",
+              "item": [
+                {
+                  "name": "Create Category",
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "name",
+                          "value": "Baby Care",
+                          "type": "text"
+                        },
+                        {
+                          "key": "isActive",
+                          "value": "true",
+                          "type": "text",
+                          "description": "boolean"
+                        },
+                        {
+                          "key": "image",
+                          "type": "file",
+                          "description": "Optional — jpg, png, webp",
+                          "src": "/C:/Users/rmdan/OneDrive/Desktop/oxxila categories/Baby Care.png"
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories"
+                      ]
+                    },
+                    "description": "Admin. **multipart** (`form-data`) — `name` (required), optional `isActive`, optional `image` file. Slug is generated from `name`."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get All Categories",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories"
+                      ],
+                      "query": [
+                        {
+                          "key": "keyword",
+                          "value": "care",
+                          "description": "Search name (optional)",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "name",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "Public. Active categories with `subcategories` (active) populated. Optional `keyword`, `sort`, `fields`."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Category By ID",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{categoryId}}",
+                          "description": "MongoDB ObjectId"
+                        }
+                      ]
+                    },
+                    "description": "Public. One active category with subcategories. Set `{{categoryId}}` from Get All."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Category",
+                  "request": {
+                    "method": "PUT",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "name",
+                          "value": "Updated Name",
+                          "type": "text",
+                          "disabled": true
+                        },
+                        {
+                          "key": "isActive",
+                          "value": "true",
+                          "type": "text",
+                          "disabled": true
+                        },
+                        {
+                          "key": "image",
+                          "type": "file",
+                          "description": "Optional replace",
+                          "value": null
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{categoryId}}"
+                        }
+                      ]
+                    },
+                    "description": "Admin. **multipart** — at least one of `name`, `isActive`, `image`."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Category",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{categoryId}}",
+                          "description": "Removes this category and all its sub-categories"
+                        }
+                      ]
+                    },
+                    "description": "Admin. Deletes category and every nested sub-category."
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Sub-categories",
+              "item": [
+                {
+                  "name": "Create Sub-category",
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "name",
+                          "value": "Example Sub",
+                          "type": "text"
+                        },
+                        {
+                          "key": "isActive",
+                          "value": "true",
+                          "type": "text"
+                        },
+                        {
+                          "key": "image",
+                          "type": "file",
+                          "description": "Optional",
+                          "value": null
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories/:categoryId/subcategories",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories",
+                        ":categoryId",
+                        "subcategories"
+                      ],
+                      "variable": [
+                        {
+                          "key": "categoryId",
+                          "value": "{{categoryId}}",
+                          "description": "Parent category"
+                        }
+                      ]
+                    },
+                    "description": "Admin. `POST` is **only** nested (parent in URL). `category` in body is set from `:categoryId` by the server. Slug from `name`."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get All Sub-categories",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/subcategories",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "subcategories"
+                      ],
+                      "query": [
+                        {
+                          "key": "keyword",
+                          "value": "",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "name",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "Public. Flat list of all active sub-categories. Optional `?category=<ObjectId>` to filter in query."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Sub-category By ID",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/subcategories/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "subcategories",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{subCategoryId}}",
+                          "description": "Sub-category ObjectId"
+                        }
+                      ]
+                    },
+                    "description": "Public. Single sub-category by id (not scoped to a parent in path)."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Sub-category",
+                  "request": {
+                    "method": "PUT",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "name",
+                          "value": "Updated Sub Name",
+                          "type": "text",
+                          "disabled": true
+                        },
+                        {
+                          "key": "isActive",
+                          "value": "true",
+                          "type": "text",
+                          "disabled": true
+                        },
+                        {
+                          "key": "image",
+                          "type": "file",
+                          "description": "Optional",
+                          "value": null
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories/:categoryId/subcategories/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories",
+                        ":categoryId",
+                        "subcategories",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "categoryId",
+                          "value": "{{categoryId}}",
+                          "description": "Current parent"
+                        },
+                        {
+                          "key": "id",
+                          "value": "{{subCategoryId}}",
+                          "description": "Sub-category id"
+                        }
+                      ]
+                    },
+                    "description": "Admin. **Nested** only — `PUT` must match the parent. Optional move to another `category` in body (ObjectId)."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Sub-category",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories/:categoryId/subcategories/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories",
+                        ":categoryId",
+                        "subcategories",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "categoryId",
+                          "value": "{{categoryId}}",
+                          "description": "Parent"
+                        },
+                        {
+                          "key": "id",
+                          "value": "{{subCategoryId}}",
+                          "description": "Sub-category"
+                        }
+                      ]
+                    },
+                    "description": "Admin. **Nested** only. Deletes one sub-category under the given parent."
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Brands",
+              "item": [
+                {
+                  "name": "Create Brand",
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "name",
+                          "value": "Acme Co",
+                          "type": "text"
+                        },
+                        {
+                          "key": "description",
+                          "value": "Optional short description.",
+                          "type": "text",
+                          "disabled": true
+                        },
+                        {
+                          "key": "isActive",
+                          "value": "true",
+                          "type": "text",
+                          "description": "boolean"
+                        },
+                        {
+                          "key": "logo",
+                          "type": "file",
+                          "description": "Optional — jpg, png, webp (field name: logo)",
+                          "value": null
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/brands",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "brands"
+                      ]
+                    },
+                    "description": "Admin. **multipart** (`form-data`) — `name` (required 2–50 chars), optional `description`, optional `isActive`, optional `logo` file. **Slug** is generated from `name` (not accepted in body)."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get All Brands",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/brands",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "brands"
+                      ],
+                      "query": [
+                        {
+                          "key": "keyword",
+                          "value": "acme",
+                          "description": "Search name (optional)",
+                          "disabled": true
+                        },
+                        {
+                          "key": "sort",
+                          "value": "name",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "Public. Active brands only. Optional `keyword`, `sort`."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Brand By ID",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/brands/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "brands",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{brandId}}",
+                          "description": "MongoDB ObjectId"
+                        }
+                      ]
+                    },
+                    "description": "Public. One active brand. Set `{{brandId}}` from **Get All Brands**."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Brand",
+                  "request": {
+                    "method": "PUT",
+                    "header": [],
+                    "body": {
+                      "mode": "formdata",
+                      "formdata": [
+                        {
+                          "key": "name",
+                          "value": "Updated Brand Name",
+                          "type": "text",
+                          "disabled": true
+                        },
+                        {
+                          "key": "description",
+                          "value": "",
+                          "type": "text",
+                          "disabled": true
+                        },
+                        {
+                          "key": "isActive",
+                          "value": "true",
+                          "type": "text",
+                          "disabled": true
+                        },
+                        {
+                          "key": "logo",
+                          "type": "file",
+                          "description": "Optional replace",
+                          "src": "/C:/Users/rmdan/OneDrive/Desktop/oxxila categories/test.png"
+                        }
+                      ]
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/brands/69f3ca12780a969d8b9c05a1",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "brands",
+                        "69f3ca12780a969d8b9c05a1"
+                      ]
+                    },
+                    "description": "Admin. **multipart** — optional `name`, `description`, `isActive`, `logo`. Slug follows `name` on save hooks where applicable."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Brand",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/brands/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "brands",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{brandId}}"
+                        }
+                      ]
+                    },
+                    "description": "Admin. Deletes one brand."
+                  },
+                  "response": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Orders",
+          "item": [
+            {
+              "name": "Get All Orders",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders?page=1&limit=10&sort=-createdAt",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "-createdAt"
+                    },
+                    {
+                      "key": "orderStatus",
+                      "value": "processing",
+                      "disabled": true
+                    },
+                    {
+                      "key": "paymentMethod",
+                      "value": "card",
+                      "disabled": true
+                    },
+                    {
+                      "key": "paymentProvider",
+                      "value": "stripe",
+                      "description": "stripe | paymob (card orders only)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "paymentStatus",
+                      "value": "paid",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. All orders with `user` populated (`name`, `email`, `phone`). Supports filter/sort/pagination."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Order By ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{orderId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Single order with populated user."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Order Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"orderStatus\": \"processing\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{orderId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Generic order status (`PATCH /orders/:id/status`). Full enum: pending, confirmed, processing, shipped, out_for_delivery, failed_attempt, delivered, partially_returned, returned, cancelled. For **manual carrier** fulfillment prefer **Shipping Admin → Update Manual Order Shipping Status** (keeps shipment timeline in sync)."
+              },
+              "response": []
+            },
+            {
+              "name": "Refund Order (Card)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "const gatewayRefundId = res?.data?.gatewayRefundId;",
+                      "if (gatewayRefundId) console.log('Gateway refund id:', gatewayRefundId);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/orders/:id/refund",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "orders",
+                    ":id",
+                    "refund"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{orderId}}",
+                      "description": "Paid card order (Stripe or Paymob)"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Full gateway + DB refund for paid card orders (`paymentProvider: stripe` or `paymob`, `paymentStatus: paid`). Stripe refunds via Payment Intent; Paymob refunds via transaction id in `paymentReference`. Restores stock; sets `paymentStatus: refunded`, `orderStatus: cancelled`. Response includes `gatewayRefundId` and legacy `stripeRefundId` when provider is Stripe. Idempotent if already refunded. COD → `400`."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Customers",
+          "item": [
+            {
+              "name": "Get All Customers",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users?page=1&limit=10&sort=-createdAt",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "-createdAt",
+                      "description": "Comma-separated fields, prefix `-` for desc"
+                    },
+                    {
+                      "key": "fields",
+                      "value": "name,email,role",
+                      "disabled": true
+                    },
+                    {
+                      "key": "keyword",
+                      "value": "mohamed",
+                      "description": "Search in name + email (case-insensitive)",
+                      "disabled": true
+                    },
+                    {
+                      "key": "role",
+                      "value": "user",
+                      "disabled": false
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. List customers — use `?role=user`."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Customer By ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{userId}}",
+                      "description": "Mongo ObjectId"
+                    }
+                  ]
+                },
+                "description": "Fetches a single user by Mongo ObjectId. Returns 404 if not found."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Customer",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"New Name\",\n  \"active\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Updates arbitrary fields on a user. Password and role changes are stripped — use **Change Specific User Password** for passwords, and a future dedicated endpoint for role changes."
+              },
+              "response": []
+            },
+            {
+              "name": "Activate Customer",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/activate/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "activate",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{userId}}"
+                    }
+                  ]
+                },
+                "description": "Reactivates a previously deactivated account. Useful when a user's `deactivateMe` call needs to be undone by support."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Customer",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/users/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{userId}}"
+                    }
+                  ]
+                },
+                "description": "Hard-deletes a user document. Prefer **Deactivate Current User** for user-initiated offboarding."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Admins",
+          "item": [
+            {
+              "name": "Get All Admins",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admins?page=1&limit=10&sort=-createdAt",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admins"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "-createdAt"
+                    },
+                    {
+                      "key": "keyword",
+                      "value": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Lists users with `role=admin` including `adminTitle`."
+              },
+              "response": []
+            },
+            {
+              "name": "Add Admin",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admins",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admins"
+                  ]
+                },
+                "description": "**Admin** Bearer. Creates an admin. Optional `adminTitle` (free string).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Store Manager\",\n  \"email\": \"manager@oxxila.com\",\n  \"password\": \"AdminPass123\",\n  \"adminTitle\": \"Store Manager\",\n  \"phone\": \"+201000000000\"\n}"
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?._id) pm.environment.set('adminId', res.data._id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Admin By ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admins/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admins",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{adminId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Admin",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admins/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admins",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{adminId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Update name/email/phone/adminTitle/active.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Store Manager\",\n  \"adminTitle\": \"Operations Lead\",\n  \"active\": true\n}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Admin",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admins/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "admins",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{adminId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Cannot delete your own account."
+              },
+              "response": []
+            }
+          ],
+          "description": "Admin accounts with optional `adminTitle` display field."
+        },
+        {
+          "name": "Banners",
+          "item": [
+            {
+              "name": "Get Active Banners",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/banners",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "banners"
+                  ]
+                },
+                "description": "Public list of `isActive` banners, newest `createdAt` first."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Banner",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "src": "/C:/Users/rmdan/OneDrive/Desktop/oxxila categories/slider-1.png"
+                    },
+                    {
+                      "key": "title",
+                      "value": "rawAfrican website",
+                      "type": "text"
+                    },
+                    {
+                      "key": "linkType",
+                      "value": "url",
+                      "type": "text",
+                      "description": "none | product | category | url"
+                    },
+                    {
+                      "key": "linkId",
+                      "value": "{{productId}}",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "externalUrl",
+                      "value": "https://rawafrican.net/",
+                      "type": "text"
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/banners",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "banners"
+                  ]
+                },
+                "description": "**Admin** Bearer. `image` file required. For `linkType` url use `externalUrl`; for product/category use `linkId`."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Banner",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "value": "Updated title",
+                      "type": "text"
+                    },
+                    {
+                      "key": "linkType",
+                      "value": "none",
+                      "type": "text"
+                    },
+                    {
+                      "key": "isActive",
+                      "value": "true",
+                      "type": "text"
+                    },
+                    {
+                      "key": "image",
+                      "type": "file",
+                      "value": null
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/banners/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "banners",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{bannerId}}",
+                      "description": "Mongo ObjectId"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Optional new `image`; other fields merged."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Banner",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/banners/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "banners",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{bannerId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Reviews",
+          "item": [
+            {
+              "name": "Get Reviews Overview",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/admin/overview?page=1&limit=10&queueLimit=5&tab=all",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    "admin",
+                    "overview"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "queueLimit",
+                      "value": "5",
+                      "description": "Flagged queue size"
+                    },
+                    {
+                      "key": "tab",
+                      "value": "all",
+                      "description": "all | visible | hidden | flagged | resolved"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Full Reviews Management page: averageRating, ratingDistribution, flaggedQueue, recentReviews."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Reviews Summary",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/admin/summary",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    "admin",
+                    "summary"
+                  ]
+                },
+                "description": "**Admin** Bearer. Store-wide average rating + star breakdown (visible reviews only)."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Rating Distribution",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/admin/rating-distribution",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    "admin",
+                    "rating-distribution"
+                  ]
+                },
+                "description": "**Admin** Bearer. Brand Reputation Index: Positive (4–5), Neutral (3), Negative (1–2) percentages from visible ratings."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Flagged Queue",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/admin/flagged?limit=5",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    "admin",
+                    "flagged"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "5"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Active flagged reviews (`moderationStatus=flagged`) for the moderation queue card."
+              },
+              "response": []
+            },
+            {
+              "name": "List Reviews",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/admin?page=1&limit=10&tab=all&sort=-createdAt",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    "admin"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "tab",
+                      "value": "all",
+                      "description": "all | visible | hidden | flagged | resolved"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "-createdAt"
+                    },
+                    {
+                      "key": "keyword",
+                      "value": "serum",
+                      "description": "Search comment/title",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Paginated table with user (name, avatar, totalOrders), product, rating, feedback snippet, isVisible, moderationBadge."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Review Detail (Eye)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?.id) pm.environment.set('reviewId', res.data.id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/admin/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    "admin",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{reviewId}}",
+                      "description": "Review Mongo ObjectId"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Full review + user (`name`, `email`, `phone`, `avatar`, `totalOrders`) + product. For the eye/view modal."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Review Visibility",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"isVisible\": false\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/:id/visibility",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    ":id",
+                    "visibility"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{reviewId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Visibility switch — independent of flag. Recalculates product ratings (only visible reviews count)."
+              },
+              "response": []
+            },
+            {
+              "name": "Flag Review",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"medical_claim\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/:id/flag",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    ":id",
+                    "flag"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{reviewId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Sets `moderationStatus=flagged`. Reasons: `medical_claim` | `profanity` | `spam` | `misinformation` | `other`. Does **not** change `isVisible`."
+              },
+              "response": []
+            },
+            {
+              "name": "Resolve Review Flag",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"resolvedNote\": \"Verified claim; kept visible after clarification.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/:id/flag/resolve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    ":id",
+                    "flag",
+                    "resolve"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{reviewId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Sets `moderationStatus=resolved` (Resolved badge). Keeps `flagReason`. Optional `resolvedNote`."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Shipping",
+          "item": [
+            {
+              "name": "Countries",
+              "item": [
+                {
+                  "name": "Get All Countries",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/countries",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "countries"
+                      ]
+                    },
+                    "description": "**Admin** Bearer. All countries (including inactive)."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Create Country",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "const res = pm.response.json();",
+                          "if (res?.data?._id) pm.environment.set('countryId', res.data._id);"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"Egypt\",\n  \"code\": \"EG\",\n  \"currency\": \"EGP\",\n  \"flag\": \"🇪🇬\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/countries",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "countries"
+                      ]
+                    },
+                    "description": "**Admin** Bearer. `code` must be 2 chars (uppercased on save). `400` if code already exists."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Country",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"Egypt\",\n  \"isActive\": true\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/countries/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "countries",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{countryId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Country",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/countries/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "countries",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{countryId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Cascades delete to all governorates and districts."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Governorates by Country",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/countries/:countryId/governorates",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "countries",
+                        ":countryId",
+                        "governorates"
+                      ],
+                      "variable": [
+                        {
+                          "key": "countryId",
+                          "value": "{{countryId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. All governorates for country (including inactive)."
+                  },
+                  "response": []
+                }
+              ],
+              "description": "`/api/v1/admin/countries`"
+            },
+            {
+              "name": "Governorates",
+              "item": [
+                {
+                  "name": "Create Governorate",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "const res = pm.response.json();",
+                          "if (res?.data?._id) pm.environment.set('governorateId', res.data._id);"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"country\": \"{{countryId}}\",\n  \"name\": \"Cairo\",\n  \"shippingPrice\": 50\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/governorates",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "governorates"
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Body `{ country, name, shippingPrice }`. `shippingPrice` is fallback when no districts or when checkout selects Other."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Governorate",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"Cairo\",\n  \"shippingPrice\": 60,\n  \"isActive\": true\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/governorates/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "governorates",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{governorateId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Governorate",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/governorates/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "governorates",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{governorateId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Deletes governorate and all its districts."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Districts by Governorate",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/governorates/:governorateId/districts",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "governorates",
+                        ":governorateId",
+                        "districts"
+                      ],
+                      "variable": [
+                        {
+                          "key": "governorateId",
+                          "value": "{{governorateId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. All districts (including `isCovered: false`)."
+                  },
+                  "response": []
+                }
+              ],
+              "description": "`/api/v1/admin/governorates`"
+            },
+            {
+              "name": "Districts",
+              "item": [
+                {
+                  "name": "Create District",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "const res = pm.response.json();",
+                          "if (res?.data?._id) pm.environment.set('districtId', res.data._id);"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"governorate\": \"{{governorateId}}\",\n  \"name\": \"Nasr City\",\n  \"shippingPrice\": 40\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/districts",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "districts"
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Body `{ governorate, name, shippingPrice }`. Default `isCovered: true`."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update District",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"Nasr City\",\n  \"shippingPrice\": 45,\n  \"isCovered\": true\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/districts/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "districts",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{districtId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Set `isCovered: false` to hide from public zone listing."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete District",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/districts/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "districts",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{districtId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer."
+                  },
+                  "response": []
+                }
+              ],
+              "description": "`/api/v1/admin/districts`"
+            },
+            {
+              "name": "Carriers",
+              "item": [
+                {
+                  "name": "Order shipping",
+                  "item": [
+                    {
+                      "name": "Assign Order Shipping (Bosta)",
+                      "event": [
+                        {
+                          "listen": "test",
+                          "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                              "const res = pm.response.json();",
+                              "const tn = res?.data?.shipment?.trackingNumber;",
+                              "if (tn) pm.environment.set('trackingNumber', tn);"
+                            ]
+                          }
+                        }
+                      ],
+                      "request": {
+                        "method": "POST",
+                        "header": [
+                          {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                          }
+                        ],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"pickupId\": \"{{pickupId}}\",\n  \"size\": \"MEDIUM\",\n  \"allowToOpenPackage\": true,\n  \"notes\": \"\",\n  \"markShipped\": true\n}"
+                        },
+                        "url": {
+                          "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/assign",
+                          "host": [
+                            "{{baseUrl}}"
+                          ],
+                          "path": [
+                            "api",
+                            "v1",
+                            "admin",
+                            "shipping",
+                            "orders",
+                            ":id",
+                            "assign"
+                          ],
+                          "variable": [
+                            {
+                              "key": "id",
+                              "value": "{{orderId}}"
+                            }
+                          ]
+                        },
+                        "description": "**Admin** Bearer. Bosta API carrier (`type: api`, `apiProvider: bosta`): `pickupId` **required**. Optional: `size` (`SMALL|MEDIUM|LARGE|XLARGE`), `allowToOpenPackage` (boolean), `notes`, `markShipped`. Run **Get Order Shipping Detail** first to populate `{{carrierId}}` / `{{pickupId}}`. Saves `{{trackingNumber}}` when Bosta returns one."
+                      },
+                      "response": []
+                    },
+                    {
+                      "name": "Assign Order Shipping (Manual)",
+                      "event": [
+                        {
+                          "listen": "test",
+                          "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                              "const res = pm.response.json();",
+                              "const tn = res?.data?.shipment?.trackingNumber;",
+                              "if (tn) pm.environment.set('trackingNumber', tn);"
+                            ]
+                          }
+                        }
+                      ],
+                      "request": {
+                        "method": "POST",
+                        "header": [
+                          {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                          }
+                        ],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"driverName\": \"Ahmed Driver\",\n  \"driverPhone\": \"01012345678\",\n  \"trackingNumber\": \"\",\n  \"notes\": \"Internal / known carrier\",\n  \"markShipped\": true\n}"
+                        },
+                        "url": {
+                          "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/assign",
+                          "host": [
+                            "{{baseUrl}}"
+                          ],
+                          "path": [
+                            "api",
+                            "v1",
+                            "admin",
+                            "shipping",
+                            "orders",
+                            ":id",
+                            "assign"
+                          ],
+                          "variable": [
+                            {
+                              "key": "id",
+                              "value": "{{orderId}}"
+                            }
+                          ]
+                        },
+                        "description": "**Admin** Bearer. For `known` or `internal` carriers — set `driverName`, `driverPhone`, optional `trackingNumber` (auto-generated if empty), `notes`, `markShipped`. No `pickupId`. After assign, use **Update Manual Order Shipping Status** to progress fulfillment. Saves `{{trackingNumber}}`."
+                      },
+                      "response": []
+                    },
+                    {
+                      "name": "Update Manual Order Shipping Status",
+                      "request": {
+                        "method": "PATCH",
+                        "header": [
+                          {
+                            "key": "Content-Type",
+                            "value": "application/json"
+                          }
+                        ],
+                        "body": {
+                          "mode": "raw",
+                          "raw": "{\n  \"orderStatus\": \"shipped\",\n  \"notes\": \"Handed to Cairo Courier\"\n}"
+                        },
+                        "url": {
+                          "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/status",
+                          "host": [
+                            "{{baseUrl}}"
+                          ],
+                          "path": [
+                            "api",
+                            "v1",
+                            "admin",
+                            "shipping",
+                            "orders",
+                            ":id",
+                            "status"
+                          ],
+                          "variable": [
+                            {
+                              "key": "id",
+                              "value": "{{orderId}}"
+                            }
+                          ]
+                        },
+                        "description": "**Admin** Bearer. Manual carriers only (`known` / `internal`) after assign. Required `orderStatus`: `processing` | `shipped` | `out_for_delivery` | `failed_attempt` | `delivered` | `returned` | `cancelled`. Optional `notes` (max 500) — used as cancellation reason when status is `cancelled`. Updates both order + shipment and appends an admin timeline event. Rejected for Bosta/API carriers (status syncs via webhook)."
+                      },
+                      "response": []
+                    },
+                    {
+                      "name": "Get Order Shipping Detail",
+                      "event": [
+                        {
+                          "listen": "test",
+                          "script": {
+                            "type": "text/javascript",
+                            "exec": [
+                              "const res = pm.response.json();",
+                              "const carriers = res?.data?.carriers || [];",
+                              "const bosta = carriers.find((c) => c.apiProvider === 'bosta' && c.hasPickups);",
+                              "const manual = carriers.find((c) => c.type === 'known' || c.type === 'internal');",
+                              "const pick = bosta || manual || carriers[0];",
+                              "if (pick?._id) pm.environment.set('carrierId', pick._id);",
+                              "const pickups = res?.data?.pickupsByCarrier?.[pick?._id] || [];",
+                              "const def = pickups.find((p) => p.isDefault) || pickups[0];",
+                              "if (def?._id) pm.environment.set('pickupId', def._id);"
+                            ]
+                          }
+                        }
+                      ],
+                      "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                          "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id",
+                          "host": [
+                            "{{baseUrl}}"
+                          ],
+                          "path": [
+                            "api",
+                            "v1",
+                            "admin",
+                            "shipping",
+                            "orders",
+                            ":id"
+                          ],
+                          "variable": [
+                            {
+                              "key": "id",
+                              "value": "{{orderId}}"
+                            }
+                          ]
+                        },
+                        "description": "**Admin** Bearer. Order + carriers available for assign drawer."
+                      },
+                      "response": []
+                    }
+                  ],
+                  "description": "`GET|POST /api/v1/admin/shipping/orders/:id` + `PATCH .../status` (manual carriers only)"
+                },
+                {
+                  "name": "Get All Carriers",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers"
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Each carrier includes a `coverage` array of governorate names."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Create Carrier",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "const res = pm.response.json();",
+                          "if (res?.data?._id) pm.environment.set('carrierId', res.data._id);"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"Oxxila Delivery\",\n  \"code\": \"OXXILA\",\n  \"type\": \"internal\",\n  \"deliveryDays\": \"1-2 days\",\n  \"logo\": \"https://example.com/logo.png\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers"
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Create carriers. Only one `type: api` + `apiProvider: bosta` carrier is allowed — use seed:carriers or shipping-admin; returns 400 if a second Bosta API carrier is created."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Carrier",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"Oxxila Delivery\",\n  \"deliveryDays\": \"Same day\",\n  \"isActive\": true\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{carrierId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. `type` and `apiProvider` cannot be changed."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Carrier",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{carrierId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Deletes carrier and all coverage rows."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Carrier Coverage",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/coverage",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers",
+                        ":id",
+                        "coverage"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{carrierId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Coverage rows with populated governorate `name`."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Carrier Coverage",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"governorateIds\": [\"{{governorateId}}\"]\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/coverage",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers",
+                        ":id",
+                        "coverage"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{carrierId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Replaces all coverage — body `{ governorateIds: [] }`. Empty array clears coverage."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Sync Bosta Zones",
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/bosta/sync-zones",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers",
+                        ":id",
+                        "bosta",
+                        "sync-zones"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{carrierId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Bosta carrier only. Syncs zones from Bosta API and replaces CarrierCoverage."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "List Carrier Pickups",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/pickups",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers",
+                        ":id",
+                        "pickups"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{carrierId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Bosta pickup locations stored locally + synced to Bosta."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Sync Bosta Pickups",
+                  "request": {
+                    "method": "POST",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/bosta/sync-pickups",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers",
+                        ":id",
+                        "bosta",
+                        "sync-pickups"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{carrierId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Import pickup locations from Bosta into DB. Run after sync-zones."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Bosta Pickup Locations (API)",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers/bosta-pickups",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers",
+                        "bosta-pickups"
+                      ]
+                    },
+                    "description": "**Admin** Live list from Bosta API (before import)."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Create Carrier Pickup",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"locationName\": \"Main warehouse\",\n  \"isDefault\": true,\n  \"contactPerson\": {\n    \"name\": \"Ahmed\",\n    \"phone\": \"01012345678\",\n    \"email\": \"ahmed@oxxila.com\"\n  },\n  \"address\": {\n    \"city\": \"Cairo\",\n    \"firstLine\": \"15 Industry St\",\n    \"zoneId\": \"BOSTA_ZONE_ID\",\n    \"districtId\": \"BOSTA_DISTRICT_ID\"\n  }\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/pickups",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers",
+                        ":id",
+                        "pickups"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{carrierId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Create pickup on Bosta + save locally. Requires Bosta zone/district ids in address."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Set Default Pickup",
+                  "request": {
+                    "method": "PUT",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/pickups/:pickupId/default",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers",
+                        ":id",
+                        "pickups",
+                        ":pickupId",
+                        "default"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{carrierId}}"
+                        },
+                        {
+                          "key": "pickupId",
+                          "value": "{{pickupId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Mark one pickup as default for assign UI."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Carrier Pickup",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/pickups/:pickupId",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers",
+                        ":id",
+                        "pickups",
+                        ":pickupId"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{carrierId}}"
+                        },
+                        {
+                          "key": "pickupId",
+                          "value": "{{pickupId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Deletes locally and on Bosta."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Bosta Districts Lookup",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/bosta/districts-lookup",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "carriers",
+                        ":id",
+                        "bosta",
+                        "districts-lookup"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{carrierId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Map local districts to Bosta IDs for pickup address."
+                  },
+                  "response": []
+                }
+              ],
+              "description": "`/api/v1/admin/carriers` + coverage + Bosta sync/pickups + order assign/manual status. Env: `{{carrierId}}`, `{{pickupId}}`, `{{orderId}}`."
+            }
+          ],
+          "description": "Admin geo, carriers, coverage, Bosta, order shipping."
+        },
+        {
+          "name": "Returns",
+          "item": [
+            {
+              "name": "Get All Return Requests",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns?page=1&limit=10&sort=-createdAt",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "-createdAt"
+                    },
+                    {
+                      "key": "refundStatus",
+                      "value": "pending",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Review queue with user + order populated."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Return Request By ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Full detail including `proofImages`."
+              },
+              "response": []
+            },
+            {
+              "name": "Approve Return (Bosta)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refundStatus\": \"approved\",\n  \"logisticsHandler\": \"bosta\",\n  \"carrierId\": \"REPLACE_BOSTA_CARRIER_ID\",\n  \"dropOffPickupId\": \"REPLACE_PICKUP_LOCATION_ID\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Approve with Bosta + drop-off warehouse (`CarrierPickup`). For warehouse-only handling use **Approve Return (Internal)**."
+              },
+              "response": []
+            },
+            {
+              "name": "Approve Return (Internal)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refundStatus\": \"approved\",\n  \"logisticsHandler\": \"internal\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Approve without Bosta — customer ships to warehouse or internal pickup. Then advance: picked_up → received → refunded (COD: issues store credit to customer account)."
+              },
+              "response": []
+            },
+            {
+              "name": "Schedule Bosta Return",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id/bosta/schedule",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id",
+                    "bosta",
+                    "schedule"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** After approve with `logisticsHandler: bosta`. Creates Bosta Return (`RT-{{returnId}}`)."
+              },
+              "response": []
+            },
+            {
+              "name": "Mark Picked Up",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refundStatus\": \"picked_up\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** `approved` → `picked_up`."
+              },
+              "response": []
+            },
+            {
+              "name": "Mark Received (warehouse)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refundStatus\": \"received\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** `picked_up` → `received` after warehouse inspection."
+              },
+              "response": []
+            },
+            {
+              "name": "Process Refund",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refundStatus\": \"refunded\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** `received` → `refunded`. Card: Stripe/Paymob partial refund + restock. COD: issues store credit (`refundAmount`) to customer; auto-applied on next cart/checkout."
+              },
+              "response": []
+            },
+            {
+              "name": "Reject Return",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refundStatus\": \"rejected\",\n  \"adminNote\": \"Outside return window / unclear proof photos\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/returns/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "returns",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{returnId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** `pending` or `approved` → `rejected`."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Payments",
+          "item": [
+            {
+              "name": "Summary",
+              "item": [
+                {
+                  "name": "Get Payment Summary",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/payments/summary?period=30",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "payments",
+                        "summary"
+                      ],
+                      "query": [
+                        {
+                          "key": "period",
+                          "value": "30",
+                          "description": "Days (1–365)"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. `collected` (paid orders), `refunded` (completed return refunds), `net`, `collectionRate`."
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Gateways",
+              "item": [
+                {
+                  "name": "Get Payment Gateways",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/payments/gateways",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "payments",
+                        "gateways"
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Lists stripe / paymob / cod with `isEnabled`."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Toggle Payment Gateway",
+                  "request": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/payments/gateways/:code",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "payments",
+                        "gateways",
+                        ":code"
+                      ],
+                      "variable": [
+                        {
+                          "key": "code",
+                          "value": "stripe"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. `:code` = stripe | paymob | cod. Body `{ \"isEnabled\": false }`.",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"isEnabled\": false\n}"
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Coupons",
+              "item": [
+                {
+                  "name": "Get All Coupons",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/coupons?page=1&limit=10&sort=-createdAt",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "coupons"
+                      ],
+                      "query": [
+                        {
+                          "key": "page",
+                          "value": "1"
+                        },
+                        {
+                          "key": "limit",
+                          "value": "10"
+                        },
+                        {
+                          "key": "sort",
+                          "value": "-createdAt"
+                        },
+                        {
+                          "key": "isActive",
+                          "value": "true",
+                          "disabled": true
+                        },
+                        {
+                          "key": "keyword",
+                          "value": "SAVE",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Paginated list via `ApiFeatures` (`filter`, `sort`, `paginate`)."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Create Coupon",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "const res = pm.response.json();",
+                          "if (res?.data?._id) pm.environment.set('couponId', res.data._id);"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"code\": \"SAVE10\",\n  \"discountType\": \"percentage\",\n  \"discountValue\": 10,\n  \"minOrderAmount\": 200,\n  \"maxUsage\": 100,\n  \"expiresAt\": \"2027-12-31T23:59:59.000Z\",\n  \"isActive\": true\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/coupons",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "coupons"
+                      ]
+                    },
+                    "description": "**Admin** Bearer. `code` uppercased in controller. `discountType`: `percentage` | `fixed`. Optional `maxUsage`, `expiresAt`, `minOrderAmount`, `isActive`."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Coupon By ID",
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/coupons/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "coupons",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{couponId}}",
+                          "description": "Coupon Mongo ObjectId"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Coupon",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"discountValue\": 15,\n  \"isActive\": true\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/coupons/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "coupons",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{couponId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Partial update — send only fields to change."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Coupon",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/coupons/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "coupons",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{couponId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer."
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Offers",
+              "item": [
+                {
+                  "name": "Get Active Offers",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/offers",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "offers"
+                      ],
+                      "query": [
+                        {
+                          "key": "todayOffers",
+                          "value": "true",
+                          "description": "Only offers ending today (before midnight)",
+                          "disabled": true
+                        }
+                      ]
+                    },
+                    "description": "Active offers where now is between `startDate` and `endDate`. Optional `?todayOffers=true`."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Offer By ID",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/offers/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "offers",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{offerId}}",
+                          "description": "Mongo ObjectId"
+                        }
+                      ]
+                    },
+                    "description": "Single offer with populated product card fields."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Create Offer",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"product\": \"{{productId}}\",\n  \"discountPercent\": 15,\n  \"discountAmount\": null,\n  \"productCount\": null,\n  \"startDate\": \"2026-05-01T00:00:00.000Z\",\n  \"endDate\": \"2026-05-31T23:59:59.999Z\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/offers",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "offers"
+                      ]
+                    },
+                    "description": "**Admin** Bearer. ISO8601 dates; `endDate` after `startDate`. Only one active non-expired offer per product. Syncs product `priceAfterDiscount` / `offerEndsAt`."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Offer",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"discountPercent\": 20,\n  \"isActive\": true\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/offers/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "offers",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{offerId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Re-syncs affected products when product or discount window changes."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Offer",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/offers/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "offers",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{offerId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Clears synced pricing on the linked product."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete All Offers",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/offers",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "offers"
+                      ]
+                    },
+                    "description": "**Admin** Bearer. `DELETE /` with no body — removes every offer and clears `priceAfterDiscount` / `offerEndsAt` on all affected products."
+                  },
+                  "response": []
+                }
+              ]
+            }
+          ],
+          "description": "Payment summary, gateway toggles, coupons & offers."
+        }
+      ],
+      "description": "Admin panel API surface. Storefront folders (Auth, Cart, etc.) remain elsewhere in this collection."
+    },
     {
       "name": "Admin User Management",
       "item": [
@@ -618,7 +4557,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/v1/auth/google/callback?code=&state=",
+                  "raw": "{{baseUrl}}/api/v1/auth/google/callback?code=",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -2032,12 +5971,331 @@
                 }
               ]
             },
-            "description": "**User** Bearer. Like or unlike; response includes `likesCount` and `liked` boolean."
+            "description": "**User** Bearer. Like or unlike; response includes `likesCount` and `liked` boolean. Hidden (`isVisible=false`) reviews return 404."
           },
           "response": []
+        },
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "Get Reviews Overview",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/admin/overview?page=1&limit=10&queueLimit=5&tab=all",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    "admin",
+                    "overview"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "queueLimit",
+                      "value": "5",
+                      "description": "Flagged queue size"
+                    },
+                    {
+                      "key": "tab",
+                      "value": "all",
+                      "description": "all | visible | hidden | flagged | resolved"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Full Reviews Management page: averageRating, ratingDistribution, flaggedQueue, recentReviews."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Reviews Summary",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/admin/summary",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    "admin",
+                    "summary"
+                  ]
+                },
+                "description": "**Admin** Bearer. Store-wide average rating + star breakdown (visible reviews only)."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Rating Distribution",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/admin/rating-distribution",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    "admin",
+                    "rating-distribution"
+                  ]
+                },
+                "description": "**Admin** Bearer. Brand Reputation Index: Positive (4–5), Neutral (3), Negative (1–2) percentages from visible ratings."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Flagged Queue",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/admin/flagged?limit=5",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    "admin",
+                    "flagged"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "5"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Active flagged reviews (`moderationStatus=flagged`) for the moderation queue card."
+              },
+              "response": []
+            },
+            {
+              "name": "List Reviews",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/admin?page=1&limit=10&tab=all&sort=-createdAt",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    "admin"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10"
+                    },
+                    {
+                      "key": "tab",
+                      "value": "all",
+                      "description": "all | visible | hidden | flagged | resolved"
+                    },
+                    {
+                      "key": "sort",
+                      "value": "-createdAt"
+                    },
+                    {
+                      "key": "keyword",
+                      "value": "serum",
+                      "description": "Search comment/title",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Paginated table with user (name, avatar, totalOrders), product, rating, feedback snippet, isVisible, moderationBadge."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Review Detail (Eye)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "if (res?.data?.id) pm.environment.set('reviewId', res.data.id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/admin/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    "admin",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{reviewId}}",
+                      "description": "Review Mongo ObjectId"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Full review + user (`name`, `email`, `phone`, `avatar`, `totalOrders`) + product. For the eye/view modal."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Review Visibility",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"isVisible\": false\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/:id/visibility",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    ":id",
+                    "visibility"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{reviewId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Visibility switch — independent of flag. Recalculates product ratings (only visible reviews count)."
+              },
+              "response": []
+            },
+            {
+              "name": "Flag Review",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"medical_claim\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/:id/flag",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    ":id",
+                    "flag"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{reviewId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Sets `moderationStatus=flagged`. Reasons: `medical_claim` | `profanity` | `spam` | `misinformation` | `other`. Does **not** change `isVisible`."
+              },
+              "response": []
+            },
+            {
+              "name": "Resolve Review Flag",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"resolvedNote\": \"Verified claim; kept visible after clarification.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/reviews/:id/flag/resolve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "reviews",
+                    ":id",
+                    "flag",
+                    "resolve"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{reviewId}}"
+                    }
+                  ]
+                },
+                "description": "**Admin** Bearer. Sets `moderationStatus=resolved` (Resolved badge). Keeps `flagReason`. Optional `resolvedNote`."
+              },
+              "response": []
+            }
+          ],
+          "description": "Admin Reviews Management. Env: `{{reviewId}}`, `{{token}}` (admin)."
         }
       ],
-      "description": "Nested: `GET|POST /api/v1/products/:productId/reviews` (+ `.../stats`). Flat: `GET|PUT|DELETE /api/v1/reviews/:id`, `POST .../like`. Set env `{{reviewId}}` from create/list responses; `{{productId}}` from products."
+      "description": "Nested: `GET|POST /api/v1/products/:productId/reviews` (+ `.../stats`). Flat: `GET|PUT|DELETE /api/v1/reviews/:id`, `POST .../like`. Admin: `/api/v1/reviews/admin/*` + visibility/flag/resolve. Public lists only `isVisible=true`. Env: `{{reviewId}}`, `{{productId}}`."
     },
     {
       "name": "FAQs",
@@ -3614,6 +7872,10 @@
                     "value": "application/json"
                   }
                 ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Changed my mind\"\n}"
+                },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/:id/cancel",
                   "host": [
@@ -3633,11 +7895,7 @@
                     }
                   ]
                 },
-                "description": "**User** Bearer (or admin). User: only `pending` or `processing`. Admin: not `delivered`/`cancelled`. Optional body `{ \"reason\": \"...\" }` (max 300 chars).",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"reason\": \"Changed my mind\"\n}"
-                }
+                "description": "**User** Bearer (or admin). User: only `pending` or `processing`. Admin: not `delivered`/`cancelled`. Optional body `{ \"reason\": \"...\" }` (max 300 chars)."
               },
               "response": []
             }
@@ -3816,7 +8074,6 @@
     },
     {
       "name": "Tracking",
-      "description": "`/api/v1/track` — order owner track + public tracking number. Env: `{{orderId}}`, `{{trackingNumber}}`.",
       "item": [
         {
           "name": "Track My Order",
@@ -3850,6 +8107,9 @@
         {
           "name": "Track By Tracking Number",
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -3871,14 +8131,12 @@
                 }
               ]
             },
-            "description": "**Public** (no Bearer). After admin assign when trackingNumber exists.",
-            "auth": {
-              "type": "noauth"
-            }
+            "description": "**Public** (no Bearer). After admin assign when trackingNumber exists."
           },
           "response": []
         }
-      ]
+      ],
+      "description": "`/api/v1/track` — order owner track + public tracking number. Env: `{{orderId}}`, `{{trackingNumber}}`."
     },
     {
       "name": "Returns",
@@ -3888,6 +8146,22 @@
           "item": [
             {
               "name": "Get Eligible Return Orders",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const res = pm.response.json();",
+                      "const order = res?.data?.[0];",
+                      "if (!order) return;",
+                      "pm.environment.set('orderId', order._id);",
+                      "const line = (order.items || []).find((i) => (i.returnableQuantity || 0) > 0) || order.items?.[0];",
+                      "if (line?.orderItemId) pm.environment.set('orderItemId', line.orderItemId);"
+                    ]
+                  }
+                }
+              ],
               "request": {
                 "method": "GET",
                 "header": [],
@@ -3905,23 +8179,7 @@
                 },
                 "description": "**User** Bearer. Delivered / partially_returned orders within `RETURN_WINDOW_DAYS` (default 14) from `deliveredAt`, with per-line `returnableQuantity`. Saves `{{orderId}}` and `{{orderItemId}}`."
               },
-              "response": [],
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const res = pm.response.json();",
-                      "const order = res?.data?.[0];",
-                      "if (!order) return;",
-                      "pm.environment.set('orderId', order._id);",
-                      "const line = (order.items || []).find((i) => (i.returnableQuantity || 0) > 0) || order.items?.[0];",
-                      "if (line?.orderItemId) pm.environment.set('orderItemId', line.orderItemId);"
-                    ]
-                  }
-                }
-              ]
+              "response": []
             },
             {
               "name": "Create Return Request",
@@ -4008,8 +8266,8 @@
                     {
                       "key": "proofImages",
                       "type": "file",
-                      "src": [],
-                      "description": "Required for damaged_item, wrong_product, allergic_reaction (max 5)"
+                      "description": "Required for damaged_item, wrong_product, allergic_reaction (max 5)",
+                      "value": null
                     }
                   ]
                 },
@@ -4608,6 +8866,82 @@
       "description": "`/api/v1/coupons` — admin CRUD only. User-facing coupon apply/remove lives under **Cart** (`POST /cart/coupon`, `DELETE /cart/coupon`). Env: `{{couponId}}`."
     },
     {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard?period=30&limit=5&lowStockThreshold=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30",
+                  "description": "Days for KPI comparison (1–365)"
+                },
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "description": "List size for top products, low stock, recent orders (1–50)"
+                },
+                {
+                  "key": "lowStockThreshold",
+                  "value": "10",
+                  "description": "Stock level at or below which products appear in low-stock alerts"
+                }
+              ]
+            },
+            "description": "**Admin** Bearer. Full dashboard page in one request: greeting, KPIs, customer segments, top products, low-stock, recent orders. Revenue chart is separate: `GET /dashboard/revenue`."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Dashboard Revenue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard/revenue?period=30&interval=daily",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "revenue"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30",
+                  "description": "Days of paid-order revenue (1–365)"
+                },
+                {
+                  "key": "interval",
+                  "value": "daily",
+                  "description": "daily | weekly"
+                }
+              ]
+            },
+            "description": "**Admin** Bearer. Revenue chart only (`daily` | `weekly`). Call this separately when the chart toggle changes — not included in overview."
+          },
+          "response": []
+        }
+      ],
+      "description": "`/api/v1/dashboard` — **Get Dashboard Overview** (page load) + **Get Dashboard Revenue** (chart only). Requires admin Bearer `{{token}}`."
+    },
+    {
       "name": "Shipping (Checkout)",
       "item": [
         {
@@ -5162,6 +9496,203 @@
           "name": "Carriers",
           "item": [
             {
+              "name": "Order shipping",
+              "item": [
+                {
+                  "name": "Assign Order Shipping (Bosta)",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "const res = pm.response.json();",
+                          "const tn = res?.data?.shipment?.trackingNumber;",
+                          "if (tn) pm.environment.set('trackingNumber', tn);"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"pickupId\": \"{{pickupId}}\",\n  \"size\": \"MEDIUM\",\n  \"allowToOpenPackage\": true,\n  \"notes\": \"\",\n  \"markShipped\": true\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/assign",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "shipping",
+                        "orders",
+                        ":id",
+                        "assign"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{orderId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Bosta API carrier (`type: api`, `apiProvider: bosta`): `pickupId` **required**. Optional: `size` (`SMALL|MEDIUM|LARGE|XLARGE`), `allowToOpenPackage` (boolean), `notes`, `markShipped`. Run **Get Order Shipping Detail** first to populate `{{carrierId}}` / `{{pickupId}}`. Saves `{{trackingNumber}}` when Bosta returns one."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Assign Order Shipping (Manual)",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "const res = pm.response.json();",
+                          "const tn = res?.data?.shipment?.trackingNumber;",
+                          "if (tn) pm.environment.set('trackingNumber', tn);"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"driverName\": \"Ahmed Driver\",\n  \"driverPhone\": \"01012345678\",\n  \"trackingNumber\": \"\",\n  \"notes\": \"Internal / known carrier\",\n  \"markShipped\": true\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/assign",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "shipping",
+                        "orders",
+                        ":id",
+                        "assign"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{orderId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. For `known` or `internal` carriers — set `driverName`, `driverPhone`, optional `trackingNumber` (auto-generated if empty), `notes`, `markShipped`. No `pickupId`. After assign, use **Update Manual Order Shipping Status** to progress fulfillment. Saves `{{trackingNumber}}`."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Manual Order Shipping Status",
+                  "request": {
+                    "method": "PATCH",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"orderStatus\": \"shipped\",\n  \"notes\": \"Handed to Cairo Courier\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/status",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "shipping",
+                        "orders",
+                        ":id",
+                        "status"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{orderId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Manual carriers only (`known` / `internal`) after assign. Required `orderStatus`: `processing` | `shipped` | `out_for_delivery` | `failed_attempt` | `delivered` | `returned` | `cancelled`. Optional `notes` (max 500) — used as cancellation reason when status is `cancelled`. Updates both order + shipment and appends an admin timeline event. Rejected for Bosta/API carriers (status syncs via webhook)."
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Order Shipping Detail",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "const res = pm.response.json();",
+                          "const carriers = res?.data?.carriers || [];",
+                          "const bosta = carriers.find((c) => c.apiProvider === 'bosta' && c.hasPickups);",
+                          "const manual = carriers.find((c) => c.type === 'known' || c.type === 'internal');",
+                          "const pick = bosta || manual || carriers[0];",
+                          "if (pick?._id) pm.environment.set('carrierId', pick._id);",
+                          "const pickups = res?.data?.pickupsByCarrier?.[pick?._id] || [];",
+                          "const def = pickups.find((p) => p.isDefault) || pickups[0];",
+                          "if (def?._id) pm.environment.set('pickupId', def._id);"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "admin",
+                        "shipping",
+                        "orders",
+                        ":id"
+                      ],
+                      "variable": [
+                        {
+                          "key": "id",
+                          "value": "{{orderId}}"
+                        }
+                      ]
+                    },
+                    "description": "**Admin** Bearer. Order + carriers available for assign drawer."
+                  },
+                  "response": []
+                }
+              ],
+              "description": "`GET|POST /api/v1/admin/shipping/orders/:id` + `PATCH .../status` (manual carriers only)"
+            },
+            {
               "name": "Get All Carriers",
               "request": {
                 "method": "GET",
@@ -5477,6 +10008,10 @@
                     "value": "application/json"
                   }
                 ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"locationName\": \"Main warehouse\",\n  \"isDefault\": true,\n  \"contactPerson\": {\n    \"name\": \"Ahmed\",\n    \"phone\": \"01012345678\",\n    \"email\": \"ahmed@oxxila.com\"\n  },\n  \"address\": {\n    \"city\": \"Cairo\",\n    \"firstLine\": \"15 Industry St\",\n    \"zoneId\": \"BOSTA_ZONE_ID\",\n    \"districtId\": \"BOSTA_DISTRICT_ID\"\n  }\n}"
+                },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/admin/carriers/:id/pickups",
                   "host": [
@@ -5497,11 +10032,7 @@
                     }
                   ]
                 },
-                "description": "**Admin** Create pickup on Bosta + save locally. Requires Bosta zone/district ids in address.",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"locationName\": \"Main warehouse\",\n  \"isDefault\": true,\n  \"contactPerson\": {\n    \"name\": \"Ahmed\",\n    \"phone\": \"01012345678\",\n    \"email\": \"ahmed@oxxila.com\"\n  },\n  \"address\": {\n    \"city\": \"Cairo\",\n    \"firstLine\": \"15 Industry St\",\n    \"zoneId\": \"BOSTA_ZONE_ID\",\n    \"districtId\": \"BOSTA_DISTRICT_ID\"\n  }\n}"
-                }
+                "description": "**Admin** Create pickup on Bosta + save locally. Requires Bosta zone/district ids in address."
               },
               "response": []
             },
@@ -5603,203 +10134,6 @@
                 "description": "**Admin** Map local districts to Bosta IDs for pickup address."
               },
               "response": []
-            },
-            {
-              "name": "Order shipping",
-              "item": [
-                {
-                  "name": "Assign Order Shipping (Bosta)",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "const res = pm.response.json();",
-                          "const tn = res?.data?.shipment?.trackingNumber;",
-                          "if (tn) pm.environment.set('trackingNumber', tn);"
-                        ]
-                      }
-                    }
-                  ],
-                  "request": {
-                    "method": "POST",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      }
-                    ],
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"pickupId\": \"{{pickupId}}\",\n  \"size\": \"MEDIUM\",\n  \"allowToOpenPackage\": true,\n  \"notes\": \"\",\n  \"markShipped\": true\n}"
-                    },
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/assign",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "admin",
-                        "shipping",
-                        "orders",
-                        ":id",
-                        "assign"
-                      ],
-                      "variable": [
-                        {
-                          "key": "id",
-                          "value": "{{orderId}}"
-                        }
-                      ]
-                    },
-                    "description": "**Admin** Bearer. Bosta API carrier (`type: api`, `apiProvider: bosta`): `pickupId` **required**. Optional: `size` (`SMALL|MEDIUM|LARGE|XLARGE`), `allowToOpenPackage` (boolean), `notes`, `markShipped`. Run **Get Order Shipping Detail** first to populate `{{carrierId}}` / `{{pickupId}}`. Saves `{{trackingNumber}}` when Bosta returns one."
-                  },
-                  "response": []
-                },
-                {
-                  "name": "Assign Order Shipping (Manual)",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "const res = pm.response.json();",
-                          "const tn = res?.data?.shipment?.trackingNumber;",
-                          "if (tn) pm.environment.set('trackingNumber', tn);"
-                        ]
-                      }
-                    }
-                  ],
-                  "request": {
-                    "method": "POST",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      }
-                    ],
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"carrierId\": \"{{carrierId}}\",\n  \"driverName\": \"Ahmed Driver\",\n  \"driverPhone\": \"01012345678\",\n  \"trackingNumber\": \"\",\n  \"notes\": \"Internal / known carrier\",\n  \"markShipped\": true\n}"
-                    },
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/assign",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "admin",
-                        "shipping",
-                        "orders",
-                        ":id",
-                        "assign"
-                      ],
-                      "variable": [
-                        {
-                          "key": "id",
-                          "value": "{{orderId}}"
-                        }
-                      ]
-                    },
-                    "description": "**Admin** Bearer. For `known` or `internal` carriers — set `driverName`, `driverPhone`, optional `trackingNumber` (auto-generated if empty), `notes`, `markShipped`. No `pickupId`. After assign, use **Update Manual Order Shipping Status** to progress fulfillment. Saves `{{trackingNumber}}`."
-                  },
-                  "response": []
-                },
-                {
-                  "name": "Update Manual Order Shipping Status",
-                  "request": {
-                    "method": "PATCH",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      }
-                    ],
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"orderStatus\": \"shipped\",\n  \"notes\": \"Handed to Cairo Courier\"\n}"
-                    },
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id/status",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "admin",
-                        "shipping",
-                        "orders",
-                        ":id",
-                        "status"
-                      ],
-                      "variable": [
-                        {
-                          "key": "id",
-                          "value": "{{orderId}}"
-                        }
-                      ]
-                    },
-                    "description": "**Admin** Bearer. Manual carriers only (`known` / `internal`) after assign. Required `orderStatus`: `processing` | `shipped` | `out_for_delivery` | `failed_attempt` | `delivered` | `returned` | `cancelled`. Optional `notes` (max 500) — used as cancellation reason when status is `cancelled`. Updates both order + shipment and appends an admin timeline event. Rejected for Bosta/API carriers (status syncs via webhook)."
-                  },
-                  "response": []
-                },
-                {
-                  "name": "Get Order Shipping Detail",
-                  "event": [
-                    {
-                      "listen": "test",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "const res = pm.response.json();",
-                          "const carriers = res?.data?.carriers || [];",
-                          "const bosta = carriers.find((c) => c.apiProvider === 'bosta' && c.hasPickups);",
-                          "const manual = carriers.find((c) => c.type === 'known' || c.type === 'internal');",
-                          "const pick = bosta || manual || carriers[0];",
-                          "if (pick?._id) pm.environment.set('carrierId', pick._id);",
-                          "const pickups = res?.data?.pickupsByCarrier?.[pick?._id] || [];",
-                          "const def = pickups.find((p) => p.isDefault) || pickups[0];",
-                          "if (def?._id) pm.environment.set('pickupId', def._id);"
-                        ]
-                      }
-                    }
-                  ],
-                  "request": {
-                    "method": "GET",
-                    "header": [],
-                    "url": {
-                      "raw": "{{baseUrl}}/api/v1/admin/shipping/orders/:id",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "api",
-                        "v1",
-                        "admin",
-                        "shipping",
-                        "orders",
-                        ":id"
-                      ],
-                      "variable": [
-                        {
-                          "key": "id",
-                          "value": "{{orderId}}"
-                        }
-                      ]
-                    },
-                    "description": "**Admin** Bearer. Order + carriers available for assign drawer."
-                  },
-                  "response": []
-                }
-              ],
-              "description": "`GET|POST /api/v1/admin/shipping/orders/:id` + `PATCH .../status` (manual carriers only)"
             }
           ],
           "description": "`/api/v1/admin/carriers` + coverage + Bosta sync/pickups + order assign/manual status. Env: `{{carrierId}}`, `{{pickupId}}`, `{{orderId}}`."

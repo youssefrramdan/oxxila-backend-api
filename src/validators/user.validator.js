@@ -27,6 +27,11 @@ export const createUserValidator = [
     .normalizeEmail(),
   passwordRule('password'),
   body('role').optional().isIn(['user', 'admin']).withMessage('Invalid role'),
+  body('adminTitle')
+    .optional({ values: 'null' })
+    .trim()
+    .isLength({ max: 80 })
+    .withMessage('Admin title cannot exceed 80 characters'),
   validate,
 ];
 
@@ -35,6 +40,11 @@ export const updateUserValidator = [
   body('name').optional().trim().isLength({ min: 2, max: 60 }),
   body('email').optional().trim().isEmail().normalizeEmail(),
   body('role').optional().isIn(['user', 'admin']),
+  body('adminTitle')
+    .optional({ values: 'null' })
+    .trim()
+    .isLength({ max: 80 })
+    .withMessage('Admin title cannot exceed 80 characters'),
   body('active').optional().isBoolean(),
   validate,
 ];

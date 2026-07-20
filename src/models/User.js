@@ -29,6 +29,13 @@ const userSchema = new Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
+    // Display title for admins only (free text for dashboard badge)
+    adminTitle: {
+      type: String,
+      trim: true,
+      maxlength: 80,
+      default: null,
+    },
     authProvider: {
       type: String,
       enum: ['local', 'google', 'facebook'],

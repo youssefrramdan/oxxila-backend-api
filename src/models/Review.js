@@ -2,6 +2,16 @@
 import mongoose from 'mongoose';
 import Product from './Product.js';
 
+export const FLAG_REASONS = [
+  'medical_claim',
+  'profanity',
+  'spam',
+  'misinformation',
+  'other',
+];
+
+export const MODERATION_STATUSES = ['none', 'flagged', 'resolved'];
+
 const reviewSchema = new mongoose.Schema(
   {
     title: {
@@ -42,12 +52,44 @@ const reviewSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    isVisible: {
+      type: Boolean,
+      default: true,
+    },
+    moderationStatus: {
+      type: String,
+      enum: MODERATION_STATUSES,
+      default: 'none',
+      index: true,
+    },
+    flagReason: {
+      type: String,
+      default: null,
+      validate: {
+        validator(value) {
+          return value == null || FLAG_REASONS.includes(value);
+        },
+        message: 'Invalid flag reason',
+      },
+    },
+    flaggedAt: { type: Date, default: null },
+    flaggedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    resolvedAt: { type: Date, default: null },
+    resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    resolvedNote: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: [500, 'Resolved note cannot exceed 500 characters'],
+    },
   },
   { timestamps: true }
 );
 
 reviewSchema.index({ user: 1, product: 1 }, { unique: true });
 reviewSchema.index({ product: 1 });
+reviewSchema.index({ isVisible: 1, createdAt: -1 });
+reviewSchema.index({ moderationStatus: 1, flaggedAt: -1 });
 
 reviewSchema.statics.calcAverageRatings = async function (productId) {
   const pid =
@@ -56,7 +98,7 @@ reviewSchema.statics.calcAverageRatings = async function (productId) {
       : new mongoose.Types.ObjectId(String(productId));
 
   const stats = await this.aggregate([
-    { $match: { product: pid } },
+    { $match: { product: pid, isVisible: true } },
     {
       $group: {
         _id: '$product',

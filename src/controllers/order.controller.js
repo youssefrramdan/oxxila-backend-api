@@ -12,6 +12,7 @@ import Shipment from '../models/Shipment.js';
 import User from '../models/User.js';
 import ReturnRequest from '../models/ReturnRequest.js';
 import StoreCreditTransaction from '../models/StoreCreditTransaction.js';
+import PaymentGateway from '../models/PaymentGateway.js';
 import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
@@ -997,6 +998,11 @@ export const createOrder = asyncHandler(async (req, res, next) => {
         400
       )
     );
+  }
+
+  const codEnabled = await PaymentGateway.isGatewayEnabled('cod');
+  if (!codEnabled) {
+    return next(new ApiError('Cash on Delivery is currently disabled', 400));
   }
 
   const userId = req.user._id;

@@ -1,0 +1,22 @@
+// src/routes/paymentAdmin.routes.js
+import { Router } from 'express';
+import {
+  getPaymentSummary,
+  getPaymentGateways,
+  updatePaymentGateway,
+} from '../controllers/paymentAdmin.controller.js';
+import {
+  paymentSummaryValidator,
+  updatePaymentGatewayValidator,
+} from '../validators/paymentAdmin.validator.js';
+import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
+
+const router = Router();
+
+router.use(protectedRoutes, allowTo('admin'));
+
+router.get('/summary', paymentSummaryValidator, getPaymentSummary);
+router.get('/gateways', getPaymentGateways);
+router.patch('/gateways/:code', updatePaymentGatewayValidator, updatePaymentGateway);
+
+export default router;
