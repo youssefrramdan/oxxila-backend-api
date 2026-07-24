@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import {
   getAllUsers,
+  getCustomerStats,
   getSpecificUser,
   createUser,
   updateUser,
@@ -82,6 +83,8 @@ router.get('/recommendations', getRecommendations);
 
 // ─── Admin-only ───────────────────────────────────────────────────────────────
 router.use(allowTo('admin'));
+
+router.get('/stats', getCustomerStats);
 
 router.route('/')
   .get(getAllUsers)

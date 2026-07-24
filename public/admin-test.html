@@ -493,11 +493,35 @@ async function saveCoverage() {
 }
 
 async function loadSettings() {
-  show('settings-res', { message: 'ShippingSettings removed — toggle carrier isActive instead' })
+  try {
+    const data = await api('GET', '/admin/shipping/methods')
+    const methods = data?.data || []
+    for (const type of ['api', 'known', 'internal']) {
+      const el = document.getElementById('tog-' + type)
+      if (!el) continue
+      const row = methods.find((m) => m.type === type)
+      el.classList.toggle('on', row?.isEnabled !== false)
+    }
+    show('settings-res', data)
+  } catch (e) {
+    show('settings-res', { message: e.message }, true)
+  }
 }
 
 async function saveSettings() {
-  show('settings-res', { message: 'Use PUT /admin/carriers/:id to enable/disable carriers' })
+  try {
+    const types = ['api', 'known', 'internal']
+    const results = []
+    for (const type of types) {
+      const el = document.getElementById('tog-' + type)
+      const isEnabled = el?.classList.contains('on') ?? true
+      const data = await api('PATCH', '/admin/shipping/methods/' + type, { isEnabled })
+      results.push(data?.data || data)
+    }
+    show('settings-res', { message: 'Shipping methods updated', data: results })
+  } catch (e) {
+    show('settings-res', { message: e.message }, true)
+  }
 }
 
 async function clientGetCarriers() {

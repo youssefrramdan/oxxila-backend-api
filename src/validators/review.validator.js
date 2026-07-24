@@ -1,7 +1,6 @@
 // src/validators/review.validator.js
 import { body, param, query } from 'express-validator';
 import validate from '../middlewares/validate.middleware.js';
-import { FLAG_REASONS } from '../models/Review.js';
 
 const productIdParam = () =>
   param('productId').isMongoId().withMessage('Invalid product ID');
@@ -59,8 +58,8 @@ export const updateReviewValidator = [
 export const adminReviewsListValidator = [
   query('tab')
     .optional()
-    .isIn(['all', 'visible', 'hidden', 'flagged', 'resolved'])
-    .withMessage('Tab must be all, visible, hidden, flagged, or resolved'),
+    .isIn(['all', 'visible', 'hidden', 'flagged'])
+    .withMessage('Tab must be all, visible, hidden, or flagged'),
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be at least 1').toInt(),
   query('limit')
     .optional()
@@ -78,6 +77,11 @@ export const adminReviewsOverviewValidator = [
     .isInt({ min: 1, max: 100 })
     .withMessage('Limit must be between 1 and 100')
     .toInt(),
+  query('queuePage')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Queue page must be at least 1')
+    .toInt(),
   query('queueLimit')
     .optional()
     .isInt({ min: 1, max: 50 })
@@ -85,16 +89,17 @@ export const adminReviewsOverviewValidator = [
     .toInt(),
   query('tab')
     .optional()
-    .isIn(['all', 'visible', 'hidden', 'flagged', 'resolved'])
-    .withMessage('Tab must be all, visible, hidden, flagged, or resolved'),
+    .isIn(['all', 'visible', 'hidden', 'flagged'])
+    .withMessage('Tab must be all, visible, hidden, or flagged'),
   validate,
 ];
 
 export const adminFlaggedQueueValidator = [
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be at least 1').toInt(),
   query('limit')
     .optional()
-    .isInt({ min: 1, max: 50 })
-    .withMessage('Limit must be between 1 and 50')
+    .isInt({ min: 1, max: 100 })
+    .withMessage('Limit must be between 1 and 100')
     .toInt(),
   validate,
 ];
@@ -110,22 +115,13 @@ export const updateReviewVisibilityValidator = [
   validate,
 ];
 
-export const flagReviewValidator = [
+export const updateReviewFlagValidator = [
   reviewIdParam(),
-  body('reason')
+  body('isFlagged')
     .notEmpty()
-    .withMessage('Flag reason is required')
-    .isIn(FLAG_REASONS)
-    .withMessage(`Flag reason must be one of: ${FLAG_REASONS.join(', ')}`),
-  validate,
-];
-
-export const resolveReviewFlagValidator = [
-  reviewIdParam(),
-  body('resolvedNote')
-    .optional({ values: 'null' })
-    .trim()
-    .isLength({ max: 500 })
-    .withMessage('Resolved note cannot exceed 500 characters'),
+    .withMessage('isFlagged is required')
+    .isBoolean()
+    .withMessage('isFlagged must be a boolean')
+    .toBoolean(),
   validate,
 ];

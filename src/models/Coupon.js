@@ -1,6 +1,8 @@
 // src/models/Coupon.js
 import mongoose from 'mongoose';
 
+export const COUPON_DISCOUNT_TYPES = ['percentage', 'fixed', 'freeShipping'];
+
 const couponSchema = new mongoose.Schema(
   {
     code: {
@@ -14,13 +16,14 @@ const couponSchema = new mongoose.Schema(
     },
     discountType: {
       type: String,
-      enum: ['percentage', 'fixed'],
+      enum: COUPON_DISCOUNT_TYPES,
       required: [true, 'Discount type is required'],
     },
     discountValue: {
       type: Number,
       required: [true, 'Discount value is required'],
       min: [0, 'Discount value must be positive'],
+      default: 0,
     },
     maxUsage: {
       type: Number,
@@ -53,6 +56,10 @@ const couponSchema = new mongoose.Schema(
 );
 
 couponSchema.pre('validate', function () {
+  if (this.discountType === 'freeShipping') {
+    this.discountValue = 0;
+    return;
+  }
   if (this.discountType === 'percentage' && this.discountValue > 100) {
     this.invalidate('discountValue', 'Percentage discount cannot exceed 100%');
   }

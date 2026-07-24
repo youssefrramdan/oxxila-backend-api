@@ -1,6 +1,8 @@
 // src/controllers/paymentAdmin.controller.js
 import asyncHandler from 'express-async-handler';
+import Cart from '../models/Cart.js';
 import Order from '../models/Order.js';
+import PaymentSession from '../models/PaymentSession.js';
 import ReturnRequest from '../models/ReturnRequest.js';
 import PaymentGateway, { GATEWAY_CODES } from '../models/PaymentGateway.js';
 import ApiError from '../utils/apiError.js';
@@ -8,6 +10,7 @@ import sendResponse from '../utils/apiResponse.js';
 
 const DEFAULT_PERIOD_DAYS = 30;
 const PAID_MATCH = { paymentStatus: 'paid', orderStatus: { $nin: ['cancelled'] } };
+const OPEN_SESSION_STATUSES = ['pending', 'processing', 'failed', 'expired'];
 
 const parsePositiveInt = (value, fallback) => {
   const parsed = Number.parseInt(value, 10);
@@ -23,6 +26,58 @@ const periodStart = (days) => {
   start.setUTCDate(start.getUTCDate() - (days - 1));
   start.setUTCHours(0, 0, 0, 0);
   return { start, end };
+};
+
+const sumAbandonedCartValue = async () => {
+  const [row] = await Cart.aggregate([
+    { $match: { 'items.0': { $exists: true } } },
+    {
+      $project: {
+        cartValue: {
+          $sum: {
+            $map: {
+              input: '$items',
+              as: 'item',
+              in: { $multiply: ['$$item.price', '$$item.quantity'] },
+            },
+          },
+        },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalAbandoned: { $sum: '$cartValue' },
+        abandonedCarts: { $sum: 1 },
+      },
+    },
+  ]);
+  return {
+    totalAbandoned: roundMoney(row?.totalAbandoned ?? 0),
+    abandonedCarts: row?.abandonedCarts ?? 0,
+  };
+};
+
+const sumOpenSessionValue = async (start, end) => {
+  const [row] = await PaymentSession.aggregate([
+    {
+      $match: {
+        status: { $in: OPEN_SESSION_STATUSES },
+        createdAt: { $gte: start, $lte: end },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: '$totalPrice' },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+  return {
+    openSessionsValue: roundMoney(row?.total ?? 0),
+    openSessions: row?.count ?? 0,
+  };
 };
 
 /**
@@ -72,6 +127,46 @@ export const getPaymentSummary = asyncHandler(async (req, res) => {
       collectionRate,
       orderCount: paidAgg?.orderCount ?? 0,
       refundCount: refundAgg?.refundCount ?? 0,
+      periodDays,
+    },
+  });
+});
+
+/**
+ * @desc    Cart recovery widget: recovered %, abandoned value, recovered revenue
+ * @route   GET /api/v1/payments/cart-recovery
+ * @access  Admin
+ */
+export const getCartRecovery = asyncHandler(async (req, res) => {
+  const periodDays = parsePositiveInt(req.query.period, DEFAULT_PERIOD_DAYS);
+  const { start, end } = periodStart(periodDays);
+  const dateRange = { $gte: start, $lte: end };
+
+  const [carts, sessions, [paidAgg]] = await Promise.all([
+    sumAbandonedCartValue(),
+    sumOpenSessionValue(start, end),
+    Order.aggregate([
+      { $match: { ...PAID_MATCH, createdAt: dateRange } },
+      { $group: { _id: null, recoveredRevenue: { $sum: '$totalPrice' }, orderCount: { $sum: 1 } } },
+    ]),
+  ]);
+
+  const recoveredRevenue = roundMoney(paidAgg?.recoveredRevenue ?? 0);
+  const totalAbandoned = roundMoney(carts.totalAbandoned + sessions.openSessionsValue);
+  // Ring % = recovered share of (abandoned + recovered), matching Total Abandoned + Recovered Rev cards
+  const opportunity = recoveredRevenue + totalAbandoned;
+  const recoveredPercent =
+    opportunity > 0 ? roundPercent((recoveredRevenue / opportunity) * 100) : 0;
+
+  sendResponse(res, {
+    message: 'Cart recovery stats retrieved successfully',
+    data: {
+      recoveredPercent,
+      totalAbandoned,
+      recoveredRevenue,
+      abandonedCarts: carts.abandonedCarts,
+      openSessions: sessions.openSessions,
+      recoveredOrders: paidAgg?.orderCount ?? 0,
       periodDays,
     },
   });

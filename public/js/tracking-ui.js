@@ -175,8 +175,9 @@
     );
   }
 
-  function needsConfirmOrder(order) {
-    return order?.orderStatus === 'pending';
+  /** Confirm is no longer a required admin step — assign skips it. */
+  function needsConfirmOrder() {
+    return false;
   }
 
   function returnStatusLabel(status) {

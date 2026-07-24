@@ -2,6 +2,7 @@
 import { Router } from "express";
 import {
   createOrder,
+  createOrderB2B,
   getMyOrders,
   getMyOrder,
   getOrders,
@@ -16,6 +17,7 @@ import {
 } from "../controllers/payment.controller.js";
 import {
   createOrderValidator,
+  createOrderB2BValidator,
   createPaymentSessionValidator,
   paymentSessionIdParamValidator,
   orderIdParamValidator,
@@ -47,6 +49,7 @@ router.patch("/:id/cancel", cancelOrderValidator, cancelOrder);
 router.use(allowTo("admin"));
 
 router.get("/", getOrders);
+router.post("/b2b", createOrderB2BValidator, createOrderB2B);
 router.post("/:id/refund", refundOrderValidator, refundOrder);
 router.patch("/:id/status", updateOrderStatusValidator, updateOrderStatus);
 router.get("/:id", orderIdParamValidator, getOrder);

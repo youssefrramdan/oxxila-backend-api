@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import {
   getPaymentSummary,
+  getCartRecovery,
   getPaymentGateways,
   updatePaymentGateway,
 } from '../controllers/paymentAdmin.controller.js';
@@ -16,6 +17,7 @@ const router = Router();
 router.use(protectedRoutes, allowTo('admin'));
 
 router.get('/summary', paymentSummaryValidator, getPaymentSummary);
+router.get('/cart-recovery', paymentSummaryValidator, getCartRecovery);
 router.get('/gateways', getPaymentGateways);
 router.patch('/gateways/:code', updatePaymentGatewayValidator, updatePaymentGateway);
 

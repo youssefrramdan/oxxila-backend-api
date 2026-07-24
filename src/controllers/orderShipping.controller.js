@@ -8,6 +8,7 @@ import CarrierPickup from '../models/CarrierPickup.js';
 import District from '../models/District.js';
 import Shipment from '../models/Shipment.js';
 import User from '../models/User.js';
+import ShippingMethodSetting from '../models/ShippingMethodSetting.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import logger from '../config/logger.js';
@@ -1058,7 +1059,11 @@ const generateManualTrackingNumber = async (order, carrier) => {
   return `OX-${code}-${Date.now().toString(36).toUpperCase()}`;
 };
 
-/** Order + carrier assignment workflow — includes rollback-on-failure, so try/catch here is intentional. */
+/**
+ * Order + carrier assignment workflow — includes rollback-on-failure, so try/catch here is intentional.
+ * Assign is allowed from pending/confirmed/processing and advances straight to processing/shipped
+ * (no separate confirm step required).
+ */
 const assignOrderToCarrier = async (order, carrier, adminUserId, options = {}) => {
   if (BLOCKED_ASSIGN_ORDER_STATUSES.has(order.orderStatus)) {
     throw new ApiError(`Cannot assign carrier to order with status: ${order.orderStatus}`, 400);
@@ -1221,7 +1226,11 @@ export const getOrderShippingDetail = asyncHandler(async (req, res, next) => {
   }).select('carrier');
 
   const coveredIds = coverages.map((c) => c.carrier);
-  const carriers = await Carrier.find({ isActive: true })
+  const enabledTypes = await ShippingMethodSetting.getEnabledTypes();
+  const carriers = await Carrier.find({
+    isActive: true,
+    type: { $in: [...enabledTypes] },
+  })
     .select('name code type apiProvider isActive')
     .sort({ type: 1, name: 1 })
     .lean();
@@ -1365,6 +1374,16 @@ export const assignOrderShipping = asyncHandler(async (req, res, next) => {
   const carrier = await Carrier.findById(req.body.carrierId);
   if (!carrier) return next(new ApiError(`No carrier found with id: ${req.body.carrierId}`, 404));
   if (!carrier.isActive) return next(new ApiError('Carrier is not active', 400));
+
+  const typeEnabled = await ShippingMethodSetting.isTypeEnabled(carrier.type);
+  if (!typeEnabled) {
+    return next(
+      new ApiError(
+        `Shipping method type "${carrier.type}" is disabled. Enable it in Shipping Methods first.`,
+        400
+      )
+    );
+  }
 
   const updated = await assignOrderToCarrier(order, carrier, req.user._id, {
     driverName: req.body.driverName,

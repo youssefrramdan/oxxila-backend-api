@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import createUploader from '../middlewares/cloudnairyMiddleware.js';
 import * as banners from '../controllers/banner.controller.js';
-import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
+import { protectedRoutes, allowTo, optionalAuth } from '../middlewares/auth.middleware.js';
 import {
   createBannerValidator,
   updateBannerValidator,
@@ -16,7 +16,8 @@ const bannerUpload = createUploader('oxxila/banners', {
   maxFileSizeMB: 10,
 });
 
-router.get('/', banners.getBanners);
+// Public storefront: active only. Admin can pass ?includeInactive=true with Bearer.
+router.get('/', optionalAuth, banners.getBanners);
 
 router.use(protectedRoutes, allowTo('admin'));
 router.post('/', bannerUpload.single('image'), createBannerValidator, banners.createBanner);

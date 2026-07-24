@@ -691,19 +691,26 @@ export const prepareCheckoutFromCart = async (userId, addressInput) => {
   const subtotal = getCartSubtotal(cart);
 
   let { discountAmount = 0, couponCode, couponId } = cart;
+  let freeShipping = false;
   if (couponId) {
     const coupon = await Coupon.findById(couponId);
     // Lazy import avoids a hard circular-import edge at module-eval time; cart.controller.js owns coupon validation.
-    const { assertCouponApplicable } = await import('./cart.controller.js');
+    const { assertCouponApplicable, calculateCouponDiscount, isFreeShippingCoupon } = await import(
+      './cart.controller.js'
+    );
     if (assertCouponApplicable(coupon, userId, subtotal)) {
       throw new ApiError('Cart coupon is no longer valid. Remove it and try again.', 400);
     }
+    freeShipping = isFreeShippingCoupon(coupon);
+    discountAmount = calculateCouponDiscount(coupon, subtotal);
   } else {
     discountAmount = 0;
     couponCode = null;
   }
 
-  const { shippingPrice, shippingAddress } = await buildShippingSnapshot(addressInput);
+  const shippingSnapshot = await buildShippingSnapshot(addressInput);
+  // freeShipping coupons waive zone/governorate shipping fees entirely
+  const shippingPrice = freeShipping ? 0 : shippingSnapshot.shippingPrice;
   const shipping = {
     methodName: DEFAULT_SHIPPING_METHOD_NAME,
     price: shippingPrice,
@@ -721,17 +728,19 @@ export const prepareCheckoutFromCart = async (userId, addressInput) => {
     subtotal,
     shippingPrice,
     shipping,
-    shippingAddress,
+    shippingAddress: shippingSnapshot.shippingAddress,
     discountAmount,
     storeCreditApplied,
     totalPrice: payableAfterCredit,
     couponCode,
     couponId,
+    freeShipping,
   };
 };
 
 /** Persist order + stock debit + optional credit redeem + clear cart in a transaction. */
-export const fulfillCheckout = async (snapshot, payment) => {
+export const fulfillCheckout = async (snapshot, payment, options = {}) => {
+  const { clearCart = true } = options;
   const userId = snapshot.user ?? snapshot.userId;
   const items = snapshot.orderItems ?? snapshot.items;
   const {
@@ -771,7 +780,10 @@ export const fulfillCheckout = async (snapshot, payment) => {
             paymentStatus: payment.status,
             paymentProvider: payment.provider ?? null,
             paymentReference: payment.reference ?? null,
-            orderStatus: 'pending',
+            orderStatus: payment.orderStatus ?? 'pending',
+            ...(payment.status === 'paid' && payment.method === 'cod'
+              ? { codCollectedAt: new Date() }
+              : {}),
           },
         ],
         { session }
@@ -781,7 +793,9 @@ export const fulfillCheckout = async (snapshot, payment) => {
         await redeemStoreCredit({ userId, amount: storeCreditApplied, orderId: order._id, session });
       }
 
-      await Cart.deleteOne({ user: userId }, { session });
+      if (clearCart) {
+        await Cart.deleteOne({ user: userId }, { session });
+      }
     });
 
     if (couponId) await commitCouponUsage(couponId, userId);
@@ -1016,6 +1030,180 @@ export const createOrder = asyncHandler(async (req, res, next) => {
 
   const order = await fulfillCheckout({ ...checkout, userId }, { method: 'cod', status: 'pending' });
   await respondWithOrder(res, order, { statusCode: 201, message: 'Order created successfully' });
+});
+
+/** Resolve product line price: optional B2B override, else offer/list price. */
+const resolveLineUnitPrice = (product, unitPrice) => {
+  if (unitPrice != null && Number.isFinite(Number(unitPrice))) {
+    return roundMoney(Number(unitPrice));
+  }
+  return roundMoney(product.priceAfterDiscount ?? product.price);
+};
+
+/** Map admin B2B item payload → order item snapshots (validates stock/active). */
+const mapB2BItemsToOrderItems = async (items) => {
+  const merged = new Map();
+  for (const item of items) {
+    const key = String(item.productId);
+    const prev = merged.get(key);
+    if (prev) {
+      prev.quantity += item.quantity;
+      if (item.unitPrice != null) prev.unitPrice = item.unitPrice;
+    } else {
+      merged.set(key, {
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      });
+    }
+  }
+  const normalized = [...merged.values()];
+
+  const productIds = normalized.map((item) => item.productId);
+  const products = await Product.find({ _id: { $in: productIds } }).select(
+    'name images price priceAfterDiscount stock isActive'
+  );
+  const byId = new Map(products.map((p) => [String(p._id), p]));
+
+  return normalized.map((item) => {
+    const product = byId.get(String(item.productId));
+    if (!product) throw new ApiError(`No product found with id: ${item.productId}`, 404);
+    if (!product.isActive) {
+      throw new ApiError(`Product is no longer available: ${product.name}`, 400);
+    }
+    if (product.stock < item.quantity) {
+      throw new ApiError(`Not enough stock for "${product.name}"`, 400);
+    }
+
+    return {
+      product: product._id,
+      name: product.name,
+      image: product.images?.[0] ?? null,
+      price: resolveLineUnitPrice(product, item.unitPrice),
+      quantity: item.quantity,
+    };
+  });
+};
+
+/** Build checkout snapshot for admin-created B2B orders (no cart). */
+const prepareB2BCheckout = async ({
+  userId,
+  items,
+  addressInput,
+  couponCode,
+  forceFreeShipping = false,
+}) => {
+  const orderItems = await mapB2BItemsToOrderItems(items);
+  const subtotal = roundMoney(orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0));
+
+  let discountAmount = 0;
+  let couponId = null;
+  let normalizedCouponCode = null;
+  let freeShipping = Boolean(forceFreeShipping);
+
+  if (couponCode) {
+    const coupon = await Coupon.findOne({
+      code: String(couponCode).toUpperCase(),
+      isActive: true,
+    });
+    const { assertCouponApplicable, calculateCouponDiscount, isFreeShippingCoupon } = await import(
+      './cart.controller.js'
+    );
+    if (!coupon || assertCouponApplicable(coupon, userId, subtotal)) {
+      throw new ApiError('Invalid or inapplicable coupon', 400);
+    }
+    freeShipping = freeShipping || isFreeShippingCoupon(coupon);
+    discountAmount = calculateCouponDiscount(coupon, subtotal);
+    couponId = coupon._id;
+    normalizedCouponCode = coupon.code;
+  }
+
+  const shippingSnapshot = await buildShippingSnapshot(addressInput);
+  const shippingPrice = freeShipping ? 0 : shippingSnapshot.shippingPrice;
+  const shipping = {
+    methodName: DEFAULT_SHIPPING_METHOD_NAME,
+    price: shippingPrice,
+    quotedAt: new Date(),
+  };
+  const totalPrice = Math.max(0, roundMoney(subtotal - discountAmount + shippingPrice));
+
+  return {
+    userId,
+    orderItems,
+    subtotal,
+    shippingPrice,
+    shipping,
+    shippingAddress: shippingSnapshot.shippingAddress,
+    discountAmount,
+    storeCreditApplied: 0,
+    totalPrice,
+    couponCode: normalizedCouponCode,
+    couponId,
+    freeShipping,
+  };
+};
+
+/**
+ * @desc    Create B2B order from admin dashboard (no cart)
+ * @route   POST /api/v1/orders/b2b
+ * @access  Admin
+ */
+export const createOrderB2B = asyncHandler(async (req, res, next) => {
+  const {
+    userId,
+    items,
+    governorateId,
+    districtId,
+    addressLine,
+    addressId,
+    couponCode,
+    freeShipping,
+    paymentMethod = 'cod',
+    markPaid = false,
+  } = req.body;
+
+  if (paymentMethod !== 'cod') {
+    return next(new ApiError('B2B orders currently support paymentMethod: cod only', 400));
+  }
+
+  const customer = await User.findById(userId).select('_id role active name email');
+  if (!customer) return next(new ApiError(`No user found with id: ${userId}`, 404));
+  if (customer.role !== 'user') {
+    return next(new ApiError('B2B orders must be assigned to a customer (role: user)', 400));
+  }
+  if (customer.active === false) {
+    return next(new ApiError('Customer account is inactive', 400));
+  }
+
+  const addressInput = await resolveCheckoutAddressInput(userId, {
+    addressId,
+    governorateId,
+    districtId,
+    addressLine,
+  });
+
+  const checkout = await prepareB2BCheckout({
+    userId,
+    items,
+    addressInput,
+    couponCode,
+    forceFreeShipping: Boolean(freeShipping),
+  });
+
+  const order = await fulfillCheckout(
+    checkout,
+    {
+      method: 'cod',
+      status: markPaid ? 'paid' : 'pending',
+      orderStatus: 'pending',
+    },
+    { clearCart: false }
+  );
+
+  await respondWithOrder(res, order, {
+    statusCode: 201,
+    message: 'B2B order created successfully',
+  });
 });
 
 /**

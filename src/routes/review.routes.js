@@ -17,8 +17,7 @@ import {
   getReviewsAdminList,
   getReviewsAdminDetail,
   updateReviewVisibility,
-  flagReview,
-  resolveReviewFlag,
+  updateReviewFlag,
 } from '../controllers/reviewAdmin.controller.js';
 import {
   createProductReviewValidator,
@@ -30,8 +29,7 @@ import {
   adminReviewsOverviewValidator,
   adminFlaggedQueueValidator,
   updateReviewVisibilityValidator,
-  flagReviewValidator,
-  resolveReviewFlagValidator,
+  updateReviewFlagValidator,
 } from '../validators/review.validator.js';
 import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
 
@@ -56,13 +54,12 @@ router.patch(
   updateReviewVisibilityValidator,
   updateReviewVisibility
 );
-router.post('/:id/flag', protectedRoutes, allowTo('admin'), flagReviewValidator, flagReview);
 router.patch(
-  '/:id/flag/resolve',
+  '/:id/flag',
   protectedRoutes,
   allowTo('admin'),
-  resolveReviewFlagValidator,
-  resolveReviewFlag
+  updateReviewFlagValidator,
+  updateReviewFlag
 );
 
 router.get('/:id', reviewIdValidator, getReview);

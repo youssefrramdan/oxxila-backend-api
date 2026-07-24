@@ -133,3 +133,63 @@ export const cancelOrderValidator = [
 
   validate,
 ];
+
+export const createOrderB2BValidator = [
+  body('userId')
+    .notEmpty()
+    .withMessage('userId is required')
+    .isMongoId()
+    .withMessage('Invalid user ID'),
+
+  body('items')
+    .isArray({ min: 1 })
+    .withMessage('items must be a non-empty array'),
+
+  body('items.*.productId')
+    .notEmpty()
+    .withMessage('productId is required')
+    .isMongoId()
+    .withMessage('Invalid product ID'),
+
+  body('items.*.quantity')
+    .notEmpty()
+    .withMessage('quantity is required')
+    .toInt()
+    .isInt({ min: 1 })
+    .withMessage('quantity must be at least 1'),
+
+  body('items.*.unitPrice')
+    .optional()
+    .toFloat()
+    .isFloat({ min: 0 })
+    .withMessage('unitPrice must be >= 0'),
+
+  ...inlineAddressFields,
+  body('addressId').optional().isMongoId().withMessage('Invalid address ID'),
+
+  body('couponCode')
+    .optional({ values: 'null' })
+    .trim()
+    .isLength({ min: 3, max: 20 })
+    .withMessage('couponCode must be 3-20 characters'),
+
+  body('freeShipping')
+    .optional()
+    .isBoolean()
+    .withMessage('freeShipping must be a boolean')
+    .toBoolean(),
+
+  body('paymentMethod')
+    .optional()
+    .equals('cod')
+    .withMessage('B2B orders currently support paymentMethod: cod only'),
+
+  body('markPaid')
+    .optional()
+    .isBoolean()
+    .withMessage('markPaid must be a boolean')
+    .toBoolean(),
+
+  validate,
+  ensureCheckoutAddress,
+];

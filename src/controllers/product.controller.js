@@ -1,6 +1,7 @@
 // src/controllers/product.controller.js
 import asyncHandler from 'express-async-handler';
 import mongoose from 'mongoose';
+import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import User from '../models/User.js';
 import ApiError from '../utils/apiError.js';
@@ -10,6 +11,88 @@ import { productPopulate, productSelect } from '../utils/populate/productPopulat
 
 /** Mongo filter for active (listed) products */
 const activeFilter = { isActive: true };
+
+const DEFAULT_PERFORMANCE_PERIOD_DAYS = 30;
+const PAID_ORDER_MATCH = { paymentStatus: 'paid', orderStatus: { $nin: ['cancelled'] } };
+
+const roundPercent = (value) => Math.round(value * 10) / 10;
+
+const parsePositiveInt = (value, fallback) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const startOfUtcDay = (date) =>
+  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+
+const shiftDays = (date, days) => {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+};
+
+/** Current + previous equal-length windows for period-over-period comparison */
+const periodBounds = (days) => {
+  const end = new Date();
+  const currentStart = shiftDays(startOfUtcDay(end), -(days - 1));
+  const previousEnd = shiftDays(currentStart, -1);
+  const previousStart = shiftDays(startOfUtcDay(previousEnd), -(days - 1));
+  return { currentStart, end, previousStart, previousEnd };
+};
+
+const calcTrend = (current, previous) => {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return roundPercent(((current - previous) / previous) * 100);
+};
+
+/** Units sold per product in current vs previous period (for PERFORMANCE column) */
+const buildPerformanceByProductId = async (productIds, days) => {
+  const map = new Map(productIds.map((id) => [String(id), 0]));
+  if (!productIds.length) return map;
+
+  const { currentStart, end, previousStart, previousEnd } = periodBounds(days);
+
+  const rows = await Order.aggregate([
+    {
+      $match: {
+        ...PAID_ORDER_MATCH,
+        createdAt: { $gte: previousStart, $lte: end },
+        'items.product': { $in: productIds },
+      },
+    },
+    { $unwind: '$items' },
+    { $match: { 'items.product': { $in: productIds } } },
+    {
+      $group: {
+        _id: '$items.product',
+        current: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', currentStart] }, '$items.quantity', 0],
+          },
+        },
+        previous: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $gte: ['$createdAt', previousStart] },
+                  { $lte: ['$createdAt', previousEnd] },
+                ],
+              },
+              '$items.quantity',
+              0,
+            ],
+          },
+        },
+      },
+    },
+  ]);
+
+  for (const row of rows) {
+    map.set(String(row._id), calcTrend(row.current, row.previous));
+  }
+  return map;
+};
 
 /** Upsert a product view into the user's browsing history (max 20) */
 const addToBrowsingHistory = async (userId, productId, categoryId) => {
@@ -103,11 +186,12 @@ const buildFilter = (query) => {
  */
 export const getAllProducts = asyncHandler(async (req, res) => {
   const filter = buildFilter(req.query);
+  const periodDays = parsePositiveInt(req.query.period, DEFAULT_PERFORMANCE_PERIOD_DAYS);
 
   const safeQuery = { ...req.query };
   ['category', 'subCategory', 'brand', 'concerns', 'isSensitiveSkin',
     'isCertified', 'isBestSeller', 'isBundle', 'priceMin', 'priceMax', 'isActive',
-    'allOffers', 'todayOffers', 'noOffers']
+    'allOffers', 'todayOffers', 'noOffers', 'period']
      .forEach((k) => delete safeQuery[k]);
 
   const features = new ApiFeatures(
@@ -120,11 +204,20 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   await features.paginate();
 
   const products = await features.mongooseQuery.lean();
+  const performanceById = await buildPerformanceByProductId(
+    products.map((p) => p._id),
+    periodDays
+  );
+
+  const data = products.map((product) => ({
+    ...product,
+    performance: performanceById.get(String(product._id)) ?? 0,
+  }));
 
   sendResponse(res, {
     message: 'Products retrieved successfully',
-    pagination: { ...features.getPaginationResult(), results: products.length },
-    data: products,
+    pagination: { ...features.getPaginationResult(), results: data.length },
+    data,
   });
 });
 

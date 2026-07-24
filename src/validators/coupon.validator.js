@@ -1,6 +1,36 @@
 // src/validators/coupon.validator.js
 import { body, param } from 'express-validator';
 import validate from '../middlewares/validate.middleware.js';
+import { COUPON_DISCOUNT_TYPES } from '../models/Coupon.js';
+
+const discountTypeMessage = `Discount type must be one of: ${COUPON_DISCOUNT_TYPES.join(', ')}`;
+
+const normalizeDiscountValue = (optional) =>
+  body('discountValue')
+    .customSanitizer((value, { req }) => {
+      if (req.body.discountType === 'freeShipping') return 0;
+      return value;
+    })
+    .custom((value, { req }) => {
+      if (req.body.discountType === 'freeShipping') return true;
+      if (optional && (value === undefined || value === null || value === '')) return true;
+      if (value === undefined || value === null || value === '') {
+        throw new Error('Discount value is required');
+      }
+      const num = Number(value);
+      if (!Number.isFinite(num) || num < 0) {
+        throw new Error('Discount value must be positive');
+      }
+      if (req.body.discountType === 'percentage' && num > 100) {
+        throw new Error('Percentage discount cannot exceed 100%');
+      }
+      return true;
+    })
+    .customSanitizer((value, { req }) => {
+      if (req.body.discountType === 'freeShipping') return 0;
+      if (value === undefined || value === null || value === '') return value;
+      return Number(value);
+    });
 
 export const createCouponValidator = [
   body('code')
@@ -14,21 +44,10 @@ export const createCouponValidator = [
   body('discountType')
     .notEmpty()
     .withMessage('Discount type is required')
-    .isIn(['percentage', 'fixed'])
-    .withMessage('Discount type must be percentage or fixed'),
+    .isIn(COUPON_DISCOUNT_TYPES)
+    .withMessage(discountTypeMessage),
 
-  body('discountValue')
-    .notEmpty()
-    .withMessage('Discount value is required')
-    .toFloat()
-    .isFloat({ min: 0 })
-    .withMessage('Discount value must be positive')
-    .custom((value, { req }) => {
-      if (req.body.discountType === 'percentage' && value > 100) {
-        throw new Error('Percentage discount cannot exceed 100%');
-      }
-      return true;
-    }),
+  normalizeDiscountValue(false),
 
   body('maxUsage')
     .optional({ values: 'null' })
@@ -68,14 +87,10 @@ export const updateCouponValidator = [
 
   body('discountType')
     .optional()
-    .isIn(['percentage', 'fixed'])
-    .withMessage('Discount type must be percentage or fixed'),
+    .isIn(COUPON_DISCOUNT_TYPES)
+    .withMessage(discountTypeMessage),
 
-  body('discountValue')
-    .optional()
-    .toFloat()
-    .isFloat({ min: 0 })
-    .withMessage('Discount value must be positive'),
+  normalizeDiscountValue(true),
 
   body('maxUsage')
     .optional({ values: 'null' })

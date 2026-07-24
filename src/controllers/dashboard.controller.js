@@ -281,20 +281,29 @@ const buildTopProducts = async (limit) => {
   }));
 };
 
-const buildLowStockAlerts = async (limit, threshold) => {
-  const products = await Product.find({ isActive: true, stock: { $lte: threshold } })
-    .sort({ stock: 1 })
-    .limit(limit)
-    .select('name stock')
+/** All active products for stock tracking; items below threshold get isAlert. */
+const buildStockTracking = async (threshold) => {
+  const products = await Product.find({ isActive: true })
+    .sort({ stock: 1, name: 1 })
+    .select('name stock images')
     .lean();
 
-  return products.map((product) => ({
-    id: product._id,
-    name: product.name,
-    stock: product.stock,
-    stockLevel: roundPercent(Math.min((product.stock / threshold) * 100, 100)),
-    isCritical: product.stock <= CRITICAL_STOCK_THRESHOLD,
-  }));
+  const maxStock = products.reduce((max, p) => Math.max(max, p.stock ?? 0), 0);
+  const barScale = Math.max(maxStock, threshold, 1);
+
+  return products.map((product) => {
+    const stock = product.stock ?? 0;
+    return {
+      id: product._id,
+      name: product.name,
+      image: product.images?.[0] ?? null,
+      stock,
+      stockLeftLabel: `${stock} left`,
+      stockLevel: roundPercent(Math.min((stock / barScale) * 100, 100)),
+      isAlert: stock < threshold,
+      isCritical: stock <= CRITICAL_STOCK_THRESHOLD,
+    };
+  });
 };
 
 const buildRecentOrders = async (limit) => {
@@ -331,7 +340,7 @@ export const getDashboard = asyncHandler(async (req, res) => {
     buildKpis(periodDays),
     buildCustomerSegments(),
     buildTopProducts(listLimit),
-    buildLowStockAlerts(listLimit, lowStockThreshold),
+    buildStockTracking(lowStockThreshold),
     buildRecentOrders(listLimit),
   ]);
 
@@ -344,7 +353,11 @@ export const getDashboard = asyncHandler(async (req, res) => {
       kpis,
       customerSegments,
       topProducts,
-      lowStock,
+      lowStock: {
+        threshold: lowStockThreshold,
+        alertCount: lowStock.filter((p) => p.isAlert).length,
+        items: lowStock,
+      },
       recentOrders,
     },
   });

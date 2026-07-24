@@ -66,7 +66,7 @@ export const createReview = asyncHandler(async (req, res, next) => {
     user: req.user._id,
     product: productId,
     isVisible: true,
-    moderationStatus: 'none',
+    isFlagged: false,
   });
 
   await review.populate('user', 'name avatar');

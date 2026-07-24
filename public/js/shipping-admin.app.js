@@ -64,15 +64,47 @@ async function doLogin() {
 }
 
 async function loadAll() {
-  await Promise.all([loadCarriers(), loadZones(), loadOrders()]);
+  await Promise.all([loadSettings(), loadCarriers(), loadZones(), loadOrders()]);
 }
 
 async function loadSettings() {
-  /* ShippingSettings removed — carriers use isActive only */
+  const { data } = await api("GET", "/admin/shipping/methods");
+  const methods = data || [];
+  for (const type of ["api", "known", "internal"]) {
+    const card = document.getElementById(`method-${type}`);
+    if (!card) continue;
+    const row = methods.find((m) => m.type === type);
+    const enabled = row?.isEnabled !== false;
+    card.classList.toggle("on", enabled);
+    const toggle = card.querySelector(".toggle");
+    if (toggle) toggle.classList.toggle("on", enabled);
+  }
 }
 
-async function toggleMethodSetting() {
-  toast("Use carrier Active/Inactive toggles in the Carriers tab", true);
+async function toggleMethodSetting(cardEl) {
+  const card = cardEl?.closest?.(".method-card") || cardEl;
+  if (!card) return;
+  const type = card.dataset.setting;
+  if (!type) return;
+
+  const currentlyOn = card.classList.contains("on");
+  const nextEnabled = !currentlyOn;
+
+  try {
+    await api("PATCH", `/admin/shipping/methods/${type}`, {
+      isEnabled: nextEnabled,
+    });
+    card.classList.toggle("on", nextEnabled);
+    const toggle = card.querySelector(".toggle");
+    if (toggle) toggle.classList.toggle("on", nextEnabled);
+    toast(
+      nextEnabled
+        ? `${type} shipping enabled`
+        : `${type} shipping disabled`,
+    );
+  } catch (e) {
+    toast(e.message, true);
+  }
 }
 
 // â”€â”€ Carriers â”€â”€
@@ -823,18 +855,6 @@ function paymentStatusLabel(order) {
   );
 }
 
-async function confirmOrder(orderId) {
-  try {
-    await api("PATCH", "/orders/" + orderId + "/status", {
-      orderStatus: "confirmed",
-    });
-    await loadOrders();
-    toast("Order confirmed");
-  } catch (e) {
-    toast(e.message, true);
-  }
-}
-
 function shortId(id) {
   return String(id || "")
     .slice(-6)
@@ -879,18 +899,13 @@ function renderOrders() {
             o.shipment?.carrier &&
             (o.shipment?.externalDeliveryId || o.shipment?.trackingNumber)
           );
-      const needsConfirm = window.OxxilaTracking
-        ? OxxilaTracking.needsConfirmOrder(o)
-        : o.orderStatus === "pending";
       const showReturns =
         o.orderStatus === "partially_returned" || o.orderStatus === "returned";
+      // Assign from pending skips confirm — one admin step instead of confirm then assign
+      const carrierCell = canAssign
+        ? `<button type="button" class="btn btn-primary order-action-btn" onclick="event.stopPropagation();openAssign('${o._id}')">Assign</button>`
+        : `<span style="font-size:12px">${esc(carrier)}</span>`;
       const actions = [
-        needsConfirm
-          ? `<button type="button" class="btn btn-secondary order-action-btn" onclick="event.stopPropagation();confirmOrder('${o._id}')">Confirm</button>`
-          : "",
-        canAssign
-          ? `<button type="button" class="btn btn-primary order-action-btn" onclick="event.stopPropagation();openAssign('${o._id}')">Assign</button>`
-          : "",
         showReturns
           ? `<a class="btn btn-secondary order-action-btn" style="text-decoration:none" href="/returns-admin.html?orderId=${o._id}" onclick="event.stopPropagation()">Returns</a>`
           : "",
@@ -902,7 +917,7 @@ function renderOrders() {
       <td style="font-family:var(--mono);font-size:12px">#${shortId(o._id)}</td>
       <td><div style="font-size:13px">${esc(user.name || "—")}</div><div style="font-size:10px;color:var(--muted)">${esc(user.email || "")}</div></td>
       <td style="font-size:12px">${esc(zone)}</td>
-      <td style="font-size:12px">${esc(carrier)}</td>
+      <td>${carrierCell}</td>
       <td><span class="order-status ${orderStatusClass(o.orderStatus)}">${esc(orderStatusLabel(o.orderStatus))}</span></td>
       <td>${trackingCell}</td>
       <td><div class="order-actions">${actions}</div></td>

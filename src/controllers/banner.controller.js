@@ -55,13 +55,22 @@ const mergeBannerBody = (doc, body) => {
 };
 
 /**
- * @desc    List active banners
+ * @desc    List banners (public: active only; admin + includeInactive=true: all)
  * @route   GET /api/v1/banners
- * @access  Public
+ * @access  Public (optional admin Bearer)
  */
 export const getBanners = asyncHandler(async (req, res) => {
-  const docs = await Banner.find({ isActive: true }).sort({ createdAt: -1 }).lean();
-  sendResponse(res, { message: 'Banners retrieved successfully', data: docs.map(toListItem) || [] });
+  const includeInactive =
+    req.user?.role === 'admin' && String(req.query.includeInactive) === 'true';
+
+  const filter = includeInactive ? {} : { isActive: true };
+  const docs = await Banner.find(filter).sort({ createdAt: -1 }).lean();
+
+  const data = includeInactive
+    ? docs.map((d) => toAdminBanner(d))
+    : docs.map((d) => toListItem(d));
+
+  sendResponse(res, { message: 'Banners retrieved successfully', data: data || [] });
 });
 
 /**

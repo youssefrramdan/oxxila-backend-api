@@ -9,8 +9,10 @@ import { getCartSubtotal, getStoreCreditBalance, computeStoreCreditApplied } fro
 
 // --- coupon validation (single source of truth — order.controller.js reuses assertCouponApplicable) ---
 
-/** Compute coupon discount amount capped at the cart subtotal */
+/** Compute coupon discount amount capped at the cart subtotal (0 for freeShipping) */
 export const calculateCouponDiscount = (coupon, subtotal) => {
+  if (!coupon || coupon.discountType === 'freeShipping') return 0;
+
   const raw =
     coupon.discountType === 'percentage'
       ? (subtotal * coupon.discountValue) / 100
@@ -18,6 +20,9 @@ export const calculateCouponDiscount = (coupon, subtotal) => {
 
   return Math.round(Math.min(raw, subtotal) * 100) / 100;
 };
+
+/** True when coupon waives regional shipping fees */
+export const isFreeShippingCoupon = (coupon) => coupon?.discountType === 'freeShipping';
 
 /** Return an ApiError if the coupon cannot be applied; otherwise null */
 export const assertCouponApplicable = (coupon, userId, subtotal) => {
@@ -56,6 +61,8 @@ const formatCartResponse = (result) => ({
   _id: result.cart._id,
   items: result.cart.items,
   couponCode: result.cart.couponCode,
+  discountType: result.discountType ?? null,
+  freeShipping: Boolean(result.freeShipping),
   discountAmount: result.cart.discountAmount,
   storeCreditBalance: result.storeCreditBalance ?? 0,
   storeCreditApplied: result.storeCreditApplied ?? 0,
@@ -82,6 +89,8 @@ const getUpdatedCart = async (userId) => {
   }
 
   const subtotal = getCartSubtotal(cart);
+  let discountType = null;
+  let freeShipping = false;
 
   if (cart.couponId) {
     const coupon = await Coupon.findById(cart.couponId);
@@ -92,6 +101,8 @@ const getUpdatedCart = async (userId) => {
       cart.discountAmount = 0;
       changed = true;
     } else {
+      discountType = coupon.discountType;
+      freeShipping = isFreeShippingCoupon(coupon);
       const discount = calculateCouponDiscount(coupon, subtotal);
       if (cart.discountAmount !== discount) {
         cart.discountAmount = discount;
@@ -117,6 +128,8 @@ const getUpdatedCart = async (userId) => {
     storeCreditBalance,
     storeCreditApplied,
     totalPrice: payableAfterCredit,
+    discountType,
+    freeShipping,
   };
 };
 
@@ -142,6 +155,8 @@ export const getCart = asyncHandler(async (req, res) => {
         storeCreditApplied: 0,
         totalPrice: 0,
         couponCode: null,
+        discountType: null,
+        freeShipping: false,
       },
     });
   }

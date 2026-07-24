@@ -22,12 +22,6 @@ const roundPercent = (value) => Math.round(value * 10) / 10;
 
 const reviewNotFound = (id) => new ApiError(`No review found with id: ${id}`, 404);
 
-const moderationBadge = (status) => {
-  if (status === 'flagged') return 'Flagged';
-  if (status === 'resolved') return 'Resolved';
-  return null;
-};
-
 const formatReviewRef = (id) => `#${String(id).slice(-4).toUpperCase()}`;
 
 const snippet = (text, max = FEEDBACK_SNIPPET_LEN) => {
@@ -126,25 +120,40 @@ const buildRatingDistribution = async () => {
   };
 };
 
-const buildFlaggedQueue = async (limit) => {
+const buildFlaggedQueue = async ({ page = 1, limit = DEFAULT_QUEUE_LIMIT } = {}) => {
+  const safePage = Math.max(page, 1);
+  const safeLimit = Math.min(Math.max(limit, 1), 100);
+  const skip = (safePage - 1) * safeLimit;
+  const filter = { isFlagged: true };
+
   const [count, items] = await Promise.all([
-    Review.countDocuments({ moderationStatus: 'flagged' }),
-    Review.find({ moderationStatus: 'flagged' })
-      .sort({ flaggedAt: -1 })
-      .limit(limit)
-      .select('comment flagReason flaggedAt')
+    Review.countDocuments(filter),
+    Review.find(filter)
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(safeLimit)
+      .select('comment isFlagged updatedAt')
       .lean(),
   ]);
 
   return {
     count,
+    urgent: count,
     items: items.map((item) => ({
       id: item._id,
       reviewRef: formatReviewRef(item._id),
       snippet: snippet(item.comment),
-      flagReason: item.flagReason,
-      flaggedAt: item.flaggedAt,
+      isFlagged: item.isFlagged,
+      updatedAt: item.updatedAt,
     })),
+    pagination: {
+      currentPage: safePage,
+      limit: safeLimit,
+      numberOfPages: count > 0 ? Math.ceil(count / safeLimit) : 0,
+      totalDocuments: count,
+      nextPage: skip + safeLimit < count ? safePage + 1 : null,
+      prevPage: safePage > 1 ? safePage - 1 : null,
+    },
   };
 };
 
@@ -155,9 +164,7 @@ const tabFilter = (tab) => {
     case 'hidden':
       return { isVisible: false };
     case 'flagged':
-      return { moderationStatus: 'flagged' };
-    case 'resolved':
-      return { moderationStatus: 'resolved' };
+      return { isFlagged: true };
     default:
       return {};
   }
@@ -181,10 +188,7 @@ const mapListItem = (review, totalOrdersMap) => {
     rating: review.rating,
     feedback: snippet(review.comment),
     isVisible: review.isVisible,
-    moderationStatus: review.moderationStatus,
-    moderationBadge: moderationBadge(review.moderationStatus),
-    flagReason: review.flagReason,
-    resolvedNote: review.resolvedNote,
+    isFlagged: Boolean(review.isFlagged),
     createdAt: review.createdAt,
   };
 };
@@ -212,8 +216,6 @@ const listAdminReviews = async (req) => {
 const mapAdminDetail = async (review) => {
   const user = review.user;
   const product = review.product;
-  const flaggedBy = review.flaggedBy;
-  const resolvedBy = review.resolvedBy;
   const totalOrders = await resolveUserTotalOrders(user?._id);
 
   return {
@@ -223,18 +225,7 @@ const mapAdminDetail = async (review) => {
     rating: review.rating,
     likesCount: review.likesCount,
     isVisible: review.isVisible,
-    moderationStatus: review.moderationStatus,
-    moderationBadge: moderationBadge(review.moderationStatus),
-    flagReason: review.flagReason,
-    flaggedAt: review.flaggedAt,
-    flaggedBy: flaggedBy
-      ? { id: flaggedBy._id, name: flaggedBy.name }
-      : null,
-    resolvedAt: review.resolvedAt,
-    resolvedBy: resolvedBy
-      ? { id: resolvedBy._id, name: resolvedBy.name }
-      : null,
-    resolvedNote: review.resolvedNote,
+    isFlagged: Boolean(review.isFlagged),
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
     user: {
@@ -267,11 +258,12 @@ const mapAdminDetail = async (review) => {
 export const getReviewsAdminOverview = asyncHandler(async (req, res) => {
   const listQuery = { ...req.query, limit: req.query.limit || String(DEFAULT_LIST_LIMIT) };
   const queueLimit = parsePositiveInt(req.query.queueLimit, DEFAULT_QUEUE_LIMIT);
+  const queuePage = parsePositiveInt(req.query.queuePage, 1);
 
   const [averageRating, ratingDistribution, flaggedQueue, recentReviews] = await Promise.all([
     aggregateVisibleRatingStats(),
     buildRatingDistribution(),
-    buildFlaggedQueue(queueLimit),
+    buildFlaggedQueue({ page: queuePage, limit: queueLimit }),
     listAdminReviews({ query: listQuery }),
   ]);
 
@@ -313,16 +305,18 @@ export const getReviewsAdminRatingDistribution = asyncHandler(async (req, res) =
 });
 
 /**
- * @desc    Active flagged reviews queue
+ * @desc    Flagged reviews moderation queue (count + paginated list)
  * @route   GET /api/v1/reviews/admin/flagged
  * @access  Admin
  */
 export const getReviewsAdminFlagged = asyncHandler(async (req, res) => {
+  const page = parsePositiveInt(req.query.page, 1);
   const limit = parsePositiveInt(req.query.limit, DEFAULT_QUEUE_LIMIT);
-  const flaggedQueue = await buildFlaggedQueue(limit);
+  const flaggedQueue = await buildFlaggedQueue({ page, limit });
   sendResponse(res, {
     message: 'Flagged reviews retrieved successfully',
     data: flaggedQueue,
+    pagination: flaggedQueue.pagination,
   });
 });
 
@@ -348,9 +342,7 @@ export const getReviewsAdminList = asyncHandler(async (req, res) => {
 export const getReviewsAdminDetail = asyncHandler(async (req, res, next) => {
   const review = await Review.findById(req.params.id)
     .populate('user', 'name email phone avatar role active createdAt')
-    .populate('product', 'name slug images price priceAfterDiscount')
-    .populate('flaggedBy', 'name')
-    .populate('resolvedBy', 'name');
+    .populate('product', 'name slug images price priceAfterDiscount');
 
   if (!review) return next(reviewNotFound(req.params.id));
 
@@ -377,77 +369,28 @@ export const updateReviewVisibility = asyncHandler(async (req, res, next) => {
     data: {
       id: review._id,
       isVisible: review.isVisible,
-      moderationStatus: review.moderationStatus,
-      moderationBadge: moderationBadge(review.moderationStatus),
+      isFlagged: review.isFlagged,
     },
   });
 });
 
 /**
- * @desc    Flag a review for moderation (admin only)
- * @route   POST /api/v1/reviews/:id/flag
+ * @desc    Set review flagged flag (admin only)
+ * @route   PATCH /api/v1/reviews/:id/flag
  * @access  Admin
  */
-export const flagReview = asyncHandler(async (req, res, next) => {
+export const updateReviewFlag = asyncHandler(async (req, res, next) => {
   const review = await Review.findById(req.params.id);
   if (!review) return next(reviewNotFound(req.params.id));
 
-  if (review.moderationStatus === 'flagged') {
-    return next(new ApiError('Review is already flagged', 400));
-  }
-
-  review.moderationStatus = 'flagged';
-  review.flagReason = req.body.reason;
-  review.flaggedAt = new Date();
-  review.flaggedBy = req.user._id;
-  review.resolvedAt = null;
-  review.resolvedBy = null;
-  review.resolvedNote = null;
-
+  review.isFlagged = Boolean(req.body.isFlagged);
   await review.save();
 
   sendResponse(res, {
-    message: 'Review flagged successfully',
+    message: review.isFlagged ? 'Review flagged successfully' : 'Review unflagged successfully',
     data: {
       id: review._id,
-      moderationStatus: review.moderationStatus,
-      moderationBadge: moderationBadge(review.moderationStatus),
-      flagReason: review.flagReason,
-      flaggedAt: review.flaggedAt,
-      isVisible: review.isVisible,
-    },
-  });
-});
-
-/**
- * @desc    Resolve a flagged review (keeps Resolved badge history)
- * @route   PATCH /api/v1/reviews/:id/flag/resolve
- * @access  Admin
- */
-export const resolveReviewFlag = asyncHandler(async (req, res, next) => {
-  const review = await Review.findById(req.params.id);
-  if (!review) return next(reviewNotFound(req.params.id));
-
-  if (review.moderationStatus !== 'flagged') {
-    return next(new ApiError('Only flagged reviews can be resolved', 400));
-  }
-
-  review.moderationStatus = 'resolved';
-  review.resolvedAt = new Date();
-  review.resolvedBy = req.user._id;
-  review.resolvedNote = req.body.resolvedNote?.trim() || null;
-
-  await review.save();
-
-  sendResponse(res, {
-    message: 'Review flag resolved successfully',
-    data: {
-      id: review._id,
-      moderationStatus: review.moderationStatus,
-      moderationBadge: moderationBadge(review.moderationStatus),
-      flagReason: review.flagReason,
-      resolvedAt: review.resolvedAt,
-      resolvedNote: review.resolvedNote,
+      isFlagged: review.isFlagged,
       isVisible: review.isVisible,
     },
   });

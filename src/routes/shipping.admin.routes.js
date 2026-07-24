@@ -74,10 +74,22 @@ import {
   orderShippingDetailValidator,
   updateManualOrderShippingStatusValidator,
 } from "../validators/orderShipping.validator.js";
+import {
+  getShippingMethods,
+  updateShippingMethod,
+} from "../controllers/shippingMethod.controller.js";
+import { updateShippingMethodValidator } from "../validators/shippingMethod.validator.js";
 
 const router = Router();
 
 router.use(protectedRoutes, allowTo("admin"));
+
+router.get("/shipping/methods", getShippingMethods);
+router.patch(
+  "/shipping/methods/:type",
+  updateShippingMethodValidator,
+  updateShippingMethod,
+);
 
 router.get("/countries", getCountries);
 router.post("/countries", createCountryValidator, createCountry);
