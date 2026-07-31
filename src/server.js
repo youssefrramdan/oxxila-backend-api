@@ -5,6 +5,7 @@ import databaseConnection from './config/db.js';
 import PaymentGateway from './models/PaymentGateway.js';
 import ShippingMethodSetting from './models/ShippingMethodSetting.js';
 import morgan from "morgan";
+import dotenv from "dotenv";
 
 await databaseConnection();
 await PaymentGateway.ensureDefaults();
