@@ -32,7 +32,8 @@ export const assertCouponApplicable = (coupon, userId, subtotal) => {
   if (coupon.maxUsage != null && coupon.usageCount >= coupon.maxUsage)
     return new ApiError('Coupon usage limit has been reached', 400);
 
-  const alreadyUsed = coupon.usedBy?.some((id) => id.toString() === userId.toString());
+  const alreadyUsed =
+    userId && coupon.usedBy?.some((id) => id.toString() === userId.toString());
   if (alreadyUsed) return new ApiError('You have already used this coupon', 400);
 
   if (subtotal <= 0) return new ApiError('Cart is empty', 400);

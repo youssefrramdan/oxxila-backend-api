@@ -44,7 +44,9 @@ const fulfillmentSchema = new mongoose.Schema(
 
 const orderSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    // Free-text customer label for admin/B2B orders that are not tied to a registered User
+    customerName: { type: String, trim: true, default: null, maxlength: 100 },
     items: {
       type: [orderItemSchema],
       validate: {

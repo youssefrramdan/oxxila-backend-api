@@ -26,7 +26,7 @@ const USER_CANCELLABLE_STATUSES = new Set(['pending', 'processing']);
 const ADMIN_BLOCKED_CANCEL_STATUSES = new Set(['delivered', 'cancelled']);
 // Default projection for paginated order lists (avoids shipping heavy item payloads)
 const ORDER_LIST_SELECT =
-  'user shippingAddress shipping subtotal shippingPrice discountAmount totalPrice couponCode paymentMethod paymentProvider paymentStatus orderStatus deliveredAt cancelledAt cancellationReason cancelledBy createdAt updatedAt';
+  'user customerName shippingAddress shipping subtotal shippingPrice discountAmount totalPrice couponCode paymentMethod paymentProvider paymentStatus orderStatus deliveredAt cancelledAt cancellationReason cancelledBy createdAt updatedAt';
 
 /** Convert major currency units to minor (cents) for payment gateways. */
 export const toMinorUnits = (amount) => Math.round(amount * 100);
@@ -741,7 +741,8 @@ export const prepareCheckoutFromCart = async (userId, addressInput) => {
 /** Persist order + stock debit + optional credit redeem + clear cart in a transaction. */
 export const fulfillCheckout = async (snapshot, payment, options = {}) => {
   const { clearCart = true } = options;
-  const userId = snapshot.user ?? snapshot.userId;
+  const userId = snapshot.user ?? snapshot.userId ?? null;
+  const customerName = snapshot.customerName ? String(snapshot.customerName).trim() : null;
   const items = snapshot.orderItems ?? snapshot.items;
   const {
     shippingAddress,
@@ -766,6 +767,7 @@ export const fulfillCheckout = async (snapshot, payment, options = {}) => {
         [
           {
             user: userId,
+            customerName,
             items,
             shippingAddress,
             shipping: shipping ?? { methodName: DEFAULT_SHIPPING_METHOD_NAME, price: shippingPrice, quotedAt: new Date() },
@@ -789,16 +791,16 @@ export const fulfillCheckout = async (snapshot, payment, options = {}) => {
         { session }
       );
 
-      if (storeCreditApplied > 0) {
+      if (storeCreditApplied > 0 && userId) {
         await redeemStoreCredit({ userId, amount: storeCreditApplied, orderId: order._id, session });
       }
 
-      if (clearCart) {
+      if (clearCart && userId) {
         await Cart.deleteOne({ user: userId }, { session });
       }
     });
 
-    if (couponId) await commitCouponUsage(couponId, userId);
+    if (couponId && userId) await commitCouponUsage(couponId, userId);
     return order;
   } finally {
     session.endSession();
@@ -1085,9 +1087,9 @@ const mapB2BItemsToOrderItems = async (items) => {
   });
 };
 
-/** Build checkout snapshot for admin-created B2B orders (no cart). */
+/** Build checkout snapshot for admin-created B2B orders (no cart / no registered user). */
 const prepareB2BCheckout = async ({
-  userId,
+  customerName,
   items,
   addressInput,
   couponCode,
@@ -1109,7 +1111,8 @@ const prepareB2BCheckout = async ({
     const { assertCouponApplicable, calculateCouponDiscount, isFreeShippingCoupon } = await import(
       './cart.controller.js'
     );
-    if (!coupon || assertCouponApplicable(coupon, userId, subtotal)) {
+    // No registered user — skip per-user coupon reuse tracking
+    if (!coupon || assertCouponApplicable(coupon, null, subtotal)) {
       throw new ApiError('Invalid or inapplicable coupon', 400);
     }
     freeShipping = freeShipping || isFreeShippingCoupon(coupon);
@@ -1128,7 +1131,8 @@ const prepareB2BCheckout = async ({
   const totalPrice = Math.max(0, roundMoney(subtotal - discountAmount + shippingPrice));
 
   return {
-    userId,
+    userId: null,
+    customerName,
     orderItems,
     subtotal,
     shippingPrice,
@@ -1144,18 +1148,17 @@ const prepareB2BCheckout = async ({
 };
 
 /**
- * @desc    Create B2B order from admin dashboard (no cart)
+ * @desc    Create B2B order from admin dashboard (no cart; free-text customer name)
  * @route   POST /api/v1/orders/b2b
  * @access  Admin
  */
 export const createOrderB2B = asyncHandler(async (req, res, next) => {
   const {
-    userId,
+    customerName,
     items,
     governorateId,
     districtId,
     addressLine,
-    addressId,
     couponCode,
     freeShipping,
     paymentMethod = 'cod',
@@ -1166,24 +1169,14 @@ export const createOrderB2B = asyncHandler(async (req, res, next) => {
     return next(new ApiError('B2B orders currently support paymentMethod: cod only', 400));
   }
 
-  const customer = await User.findById(userId).select('_id role active name email');
-  if (!customer) return next(new ApiError(`No user found with id: ${userId}`, 404));
-  if (customer.role !== 'user') {
-    return next(new ApiError('B2B orders must be assigned to a customer (role: user)', 400));
-  }
-  if (customer.active === false) {
-    return next(new ApiError('Customer account is inactive', 400));
-  }
-
-  const addressInput = await resolveCheckoutAddressInput(userId, {
-    addressId,
+  const addressInput = await resolveCheckoutAddressInput(null, {
     governorateId,
     districtId,
     addressLine,
   });
 
   const checkout = await prepareB2BCheckout({
-    userId,
+    customerName: String(customerName).trim(),
     items,
     addressInput,
     couponCode,

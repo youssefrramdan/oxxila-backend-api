@@ -560,10 +560,14 @@ export const createBostaDeliveryForOrder = async (order, carrier, options, crede
   const pickup = await getPickupForAssign(carrier._id, options.pickupId);
 
   const [user, dropOffAddress] = await Promise.all([
-    User.findById(order.user).select('name phone email'),
+    order.user ? User.findById(order.user).select('name phone email') : Promise.resolve(null),
     resolveDropOffForOrder(order, carrier._id),
   ]);
 
+  const receiverName = user?.name || order.customerName;
+  if (!receiverName) {
+    throw new ApiError('Customer name is required for Bosta delivery', 400);
+  }
   if (!user?.phone) {
     throw new ApiError('Customer phone is required for Bosta delivery', 400);
   }
@@ -588,7 +592,7 @@ export const createBostaDeliveryForOrder = async (order, carrier, options, crede
       description: itemsDesc,
       size: options.size || 'MEDIUM',
     },
-    receiverName: user.name,
+    receiverName,
     receiverPhone: normalizeEgyptPhone(user.phone),
     receiverEmail: user.email,
     dropOffAddress,

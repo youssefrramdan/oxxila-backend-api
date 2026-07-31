@@ -311,12 +311,12 @@ const buildRecentOrders = async (limit) => {
     .sort({ createdAt: -1 })
     .limit(limit)
     .populate('user', 'name')
-    .select('user totalPrice paymentStatus orderStatus createdAt')
+    .select('user customerName totalPrice paymentStatus orderStatus createdAt')
     .lean();
 
   return orders.map((order) => ({
     id: order._id,
-    customerName: order.user?.name ?? 'Unknown customer',
+    customerName: order.user?.name ?? order.customerName ?? 'Unknown customer',
     totalAmount: roundMoney(order.totalPrice),
     status: mapOrderBadge(order),
     createdAt: order.createdAt,

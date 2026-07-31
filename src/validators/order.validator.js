@@ -135,11 +135,12 @@ export const cancelOrderValidator = [
 ];
 
 export const createOrderB2BValidator = [
-  body('userId')
+  body('customerName')
+    .trim()
     .notEmpty()
-    .withMessage('userId is required')
-    .isMongoId()
-    .withMessage('Invalid user ID'),
+    .withMessage('customerName is required')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('customerName must be between 2 and 100 characters'),
 
   body('items')
     .isArray({ min: 1 })
@@ -164,8 +165,26 @@ export const createOrderB2BValidator = [
     .isFloat({ min: 0 })
     .withMessage('unitPrice must be >= 0'),
 
-  ...inlineAddressFields,
-  body('addressId').optional().isMongoId().withMessage('Invalid address ID'),
+  body('governorateId')
+    .notEmpty()
+    .withMessage('governorateId is required')
+    .isMongoId()
+    .withMessage('Invalid governorate ID'),
+
+  body('districtId')
+    .optional({ values: 'null' })
+    .custom((value) => {
+      if (value === 'other') return true;
+      if (typeof value === 'string' && /^[a-f\d]{24}$/i.test(value)) return true;
+      throw new Error('Invalid district ID');
+    }),
+
+  body('addressLine')
+    .trim()
+    .notEmpty()
+    .withMessage('addressLine is required')
+    .isLength({ min: 6, max: 500 })
+    .withMessage('addressLine must be between 6 and 500 characters'),
 
   body('couponCode')
     .optional({ values: 'null' })
@@ -191,5 +210,4 @@ export const createOrderB2BValidator = [
     .toBoolean(),
 
   validate,
-  ensureCheckoutAddress,
 ];
