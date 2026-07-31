@@ -1119,7 +1119,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"Clinic warehouse gate 3, Nasr City\",\n  \"paymentMethod\": \"cod\",\n  \"markPaid\": false,\n  \"freeShipping\": false,\n  \"couponCode\": \"\"\n}"
+                  "raw": "{\n  \"customerName\": \"Clinic Warehouse\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"governorateId\": \"{{governorateId}}\",\n  \"districtId\": \"{{districtId}}\",\n  \"addressLine\": \"Clinic warehouse gate 3, Nasr City\",\n  \"paymentMethod\": \"cod\",\n  \"markPaid\": false,\n  \"freeShipping\": false,\n  \"couponCode\": \"\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/v1/orders/b2b",
@@ -1133,7 +1133,7 @@
                     "b2b"
                   ]
                 },
-                "description": "**Admin** Bearer. Create order from dashboard (no cart). Required: `userId` (customer), `items[{productId,quantity,unitPrice?}]`, and address (`addressId` **or** `governorateId` + `addressLine`). Optional: `districtId`, `couponCode`, `freeShipping`, `markPaid`. Does **not** clear the customer's cart. Decrements stock."
+                "description": "**Admin** Bearer. Create order from dashboard (no cart). Required: `customerName` (free-text), `items[{productId,quantity,unitPrice?}]`, and address (`governorateId` + `addressLine`). Optional: `districtId`, `couponCode`, `freeShipping`, `markPaid`. Does **not** link to a registered User. Decrements stock."
               },
               "response": []
             },
