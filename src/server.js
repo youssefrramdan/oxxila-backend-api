@@ -8,6 +8,7 @@ import ShippingMethodSetting from './models/ShippingMethodSetting.js';
 await databaseConnection();
 await PaymentGateway.ensureDefaults();
 await ShippingMethodSetting.ensureDefaults();
+dotenv.config();
 
 const PORT = process.env.PORT || 3000;
 
