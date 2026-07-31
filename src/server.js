@@ -4,6 +4,7 @@ import logger from './config/logger.js';
 import databaseConnection from './config/db.js';
 import PaymentGateway from './models/PaymentGateway.js';
 import ShippingMethodSetting from './models/ShippingMethodSetting.js';
+import morgan from "morgan";
 
 await databaseConnection();
 await PaymentGateway.ensureDefaults();
