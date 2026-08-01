@@ -1,8 +1,12 @@
 // src/config/db.js
+import dns from 'dns';
 import mongoose from 'mongoose';
 import logger from './logger.js';
 import dotenv from 'dotenv';
 dotenv.config();
+
+// FortiGuard/corporate DNS often refuses Node (c-ares) SRV lookups → querySrv ECONNREFUSED
+dns.setServers(['8.8.8.8', '1.1.1.1']);
 
 const databaseConnection = async () => {
   try {

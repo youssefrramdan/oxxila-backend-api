@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "test:email": "node scripts/send-test-email.js",
     "test": "echo \"No tests configured\" && exit 1"
   },
   "engines": {

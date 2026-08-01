@@ -49,7 +49,7 @@ Each returns `{ user: toPublicUser(user), accessToken }` and sets the refresh co
 
 ## Email Utility
 - `utils/email.js` default export: `sendEmail({ email, subject, html, text? })`.
-- Transport: Gmail via `EMAIL_USER` + `EMAIL_PASS` (App Password).
+- Transport: SMTP via `SMTP_HOST` + `SMTP_PORT` + `EMAIL_USER` + `EMAIL_PASS` (FastPanel or any provider). Optional: `SMTP_ALLOW_SELF_SIGNED=true`, `EMAIL_FROM_NAME`.
 - HTML templates live in `src/utils/emailTemplates/`. Each file default-exports a function returning an HTML string. Use **inline CSS + tables** for Outlook/Gmail compatibility.
 
 ## Controller Conventions
