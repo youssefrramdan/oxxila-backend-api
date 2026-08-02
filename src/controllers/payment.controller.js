@@ -19,10 +19,15 @@ import PaymentGateway from '../models/PaymentGateway.js';
 
 // How long a PaymentSession stays valid before checkout fulfillment is rejected
 const PAYMENT_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
-// Session statuses that may still be locked for fulfillment
-const ACTIVE_STATUSES = ['pending', 'processing'];
+// Statuses that may start (or re-enter) fulfillment — includes `failed` so a later success can recover
+const LOCKABLE_STATUSES = ['pending', 'failed'];
+// Brief wait when another callback is mid-fulfillment (Paymob POST + GET race)
+const PROCESSING_WAIT_MS = 200;
+const PROCESSING_WAIT_ATTEMPTS = 8;
 // Paymob Accept API root
 const PAYMOB_BASE = 'https://accept.paymob.com/api';
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Standard 404 for a missing payment session. */
 const sessionNotFound = (id) => new ApiError(`No payment session found with id: ${id}`, 404);
@@ -64,6 +69,19 @@ const assertPaymentSessionForFulfillment = async (paymentSessionId, { provider, 
 const getCompletedOrder = (session) =>
   session.status === 'completed' && session.order ? Order.findById(session.order) : null;
 
+/** If another callback holds `processing`, wait briefly for `completed` + order. */
+const waitForConcurrentFulfillment = async (paymentSessionId) => {
+  for (let i = 0; i < PROCESSING_WAIT_ATTEMPTS; i++) {
+    await sleep(PROCESSING_WAIT_MS);
+    const session = await PaymentSession.findById(paymentSessionId);
+    if (!session) return null;
+    const completed = await getCompletedOrder(session);
+    if (completed) return completed;
+    if (session.status !== 'processing') return null;
+  }
+  return null;
+};
+
 /** Lock session, create paid order via fulfillCheckout, mark session completed. */
 const fulfillPaymentSession = async (paymentSessionId, paymentReference) => {
   const existing = await PaymentSession.findById(paymentSessionId);
@@ -78,7 +96,7 @@ const fulfillPaymentSession = async (paymentSessionId, paymentReference) => {
   }
 
   const locked = await PaymentSession.findOneAndUpdate(
-    { _id: paymentSessionId, status: { $in: ACTIVE_STATUSES } },
+    { _id: paymentSessionId, status: { $in: LOCKABLE_STATUSES } },
     { status: 'processing' },
     { new: true }
   );
@@ -87,6 +105,13 @@ const fulfillPaymentSession = async (paymentSessionId, paymentReference) => {
     const again = await PaymentSession.findById(paymentSessionId);
     const retry = again ? await getCompletedOrder(again) : null;
     if (retry) return retry;
+
+    // Paymob often fires POST webhook and GET redirect together — wait for the winner
+    if (again?.status === 'processing') {
+      const concurrent = await waitForConcurrentFulfillment(paymentSessionId);
+      if (concurrent) return concurrent;
+    }
+
     throw new ApiError('Payment session is not available for fulfillment', 409);
   }
 
@@ -394,9 +419,10 @@ const processPaymobTransaction = async (obj, hmac) => {
 
   const paymentSessionId = obj.order?.merchant_order_id;
   if (!obj.success) {
+    // Only pending → failed; never interrupt processing/completed, and keep failed recoverable
     if (paymentSessionId) {
       await PaymentSession.updateOne(
-        { _id: paymentSessionId, status: { $in: ACTIVE_STATUSES } },
+        { _id: paymentSessionId, status: 'pending' },
         { status: 'failed' }
       );
     }
@@ -535,15 +561,22 @@ export const paymobWebhook = asyncHandler(async (req, res) => {
  * @route   GET /api/v1/webhooks/paymob
  * @access  Public
  */
-export const paymobRedirect = asyncHandler(async (req, res, next) => {
+export const paymobRedirect = asyncHandler(async (req, res) => {
   const { obj, hmac } = parsePaymobRedirectQuery(req.query);
-  if (!obj?.id) return next(new ApiError('Invalid Paymob callback', 400));
+  const merchantOrderId = obj?.order?.merchant_order_id ?? req.query.merchant_order_id;
+  // Prefer Paymob's success flag so the shopper lands on the frontend even if fulfillment errors
+  let success = Boolean(obj?.success);
 
-  await processPaymobTransaction(obj, hmac);
-  res.redirect(
-    302,
-    buildPaymobReturnUrl({ success: obj.success, merchantOrderId: obj.order?.merchant_order_id })
-  );
+  try {
+    if (!obj?.id) throw new ApiError('Invalid Paymob callback', 400);
+    await processPaymobTransaction(obj, hmac);
+    success = Boolean(obj.success);
+  } catch (err) {
+    console.error('[paymobRedirect]', err?.message || err);
+    // Keep redirecting — POST webhook may still complete the order; frontend polls session status
+  }
+
+  res.redirect(302, buildPaymobReturnUrl({ success, merchantOrderId }));
 });
 
 /**
