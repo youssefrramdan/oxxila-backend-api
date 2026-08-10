@@ -1,0 +1,2344 @@
+{
+  "info": {
+    "_postman_id": "2b7b4767-1801-4586-ad5f-c67880e0366b",
+    "name": "FreeGency",
+    "description": "FreeGency API — organized for frontend screens.\n\n**Setup:** set `baseUrl`, then run **01 → Sign In & Sign Up → Sign In**.\n\n**Sections:** Auth · Platform Lookups · Profiles · Client Projects.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "56788760",
+    "_collection_link": "https://go.postman.co/collection/56788760-2b7b4767-1801-4586-ad5f-c67880e0366b?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "01 · Authentication & Account",
+      "item": [
+        {
+          "name": "Sign In & Sign Up",
+          "item": [
+            {
+              "name": "Sign In",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const data = pm.response.json();",
+                      "    pm.collectionVariables.set('accessToken', data.token);",
+                      "    pm.collectionVariables.set('refreshToken', data.refreshToken);",
+                      "    if (pm.environment.name) {",
+                      "        pm.environment.set('accessToken', data.token);",
+                      "        pm.environment.set('refreshToken', data.refreshToken);",
+                      "    }",
+                      "}"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"abdulrahmansalah025@gmail.com\",\n  \"password\": \"Abdo@1234\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/Auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "Auth",
+                    "login"
+                  ]
+                },
+                "description": "Authenticate and receive JWT + refresh token."
+              },
+              "response": []
+            },
+            {
+              "name": "Register",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\",\n  \"country\": \"Egypt\",\n  \"phoneNumber\": \"+201234567890\",\n  \"mode\": \"Client\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/Auth/register",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "Auth",
+                    "register"
+                  ]
+                },
+                "description": "`mode`: Client | Developer"
+              },
+              "response": []
+            }
+          ],
+          "description": "Login / Register screens — no auth required."
+        },
+        {
+          "name": "Session & Logout",
+          "item": [
+            {
+              "name": "Refresh Token",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const data = pm.response.json();",
+                      "    pm.collectionVariables.set('accessToken', data.token);",
+                      "    pm.collectionVariables.set('refreshToken', data.refreshToken);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"{{accessToken}}\",\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/Auth/refresh",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "Auth",
+                    "refresh"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Logout (Revoke Token)",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"{{accessToken}}\",\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/Auth",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "Auth"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ],
+          "description": "Keep user logged in / sign out."
+        },
+        {
+          "name": "Forgot Password",
+          "item": [
+            {
+              "name": "Send Reset Password Code",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/Auth/SendResetPassword?Email=user@example.com",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "Auth",
+                    "SendResetPassword"
+                  ],
+                  "query": [
+                    {
+                      "key": "Email",
+                      "value": "user@example.com"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Confirm Reset Password Code",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/Auth/ComfirmResetPassword?code=&email=user@example.com",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "Auth",
+                    "ComfirmResetPassword"
+                  ],
+                  "query": [
+                    {
+                      "key": "code",
+                      "value": ""
+                    },
+                    {
+                      "key": "email",
+                      "value": "user@example.com"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Reset Password",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"NewPassword123!\",\n  \"confirmPassword\": \"NewPassword123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/Auth/ResetPassword",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "Auth",
+                    "ResetPassword"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ],
+          "description": "Password reset flow screens."
+        },
+        {
+          "name": "Email Verification",
+          "item": [
+            {
+              "name": "Confirm Email",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/Auth/ConfirmEmail?userId=&code=",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "Auth",
+                    "ConfirmEmail"
+                  ],
+                  "query": [
+                    {
+                      "key": "userId",
+                      "value": ""
+                    },
+                    {
+                      "key": "code",
+                      "value": ""
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ],
+          "description": "Confirm email after registration."
+        },
+        {
+          "name": "Continue with Google",
+          "item": [
+            {
+              "name": "Google Login",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/External/google-login?intent=login&mode=Client",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "External",
+                    "google-login"
+                  ],
+                  "query": [
+                    {
+                      "key": "intent",
+                      "value": "login",
+                      "description": "login | register"
+                    },
+                    {
+                      "key": "mode",
+                      "value": "Client",
+                      "description": "Client | Developer"
+                    }
+                  ]
+                },
+                "description": "Open in browser to start Google OAuth."
+              },
+              "response": []
+            },
+            {
+              "name": "Google OAuth Callback",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/External/google-response",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "External",
+                    "google-response"
+                  ]
+                },
+                "description": "OAuth callback — not for manual use."
+              },
+              "response": []
+            }
+          ],
+          "description": "Social login buttons."
+        },
+        {
+          "name": "Transactional Email",
+          "item": [
+            {
+              "name": "Send Email",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"recipient@example.com\",\n  \"message\": \"Hello from FreeGency\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/Emails/Send-Email",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "Emails",
+                    "Send-Email"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ],
+          "description": "Backend email service (not a UI screen)."
+        }
+      ],
+      "description": "Sign In, registration, password recovery, social login & profile.\n\n**Start here:** run **Sign In & Sign Up → Sign In** to fill `accessToken`."
+    },
+    {
+      "name": "02 · Platform Lookups",
+      "item": [
+        {
+          "name": "Categories — Industry (Web, Mobile…)",
+          "item": [
+            {
+              "name": "Public · UI Lists & Filters",
+              "item": [
+                {
+                  "name": "Get All Categories",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code === 200) {",
+                          "    const res = pm.response.json();",
+                          "    const first = res.data?.items?.[0];",
+                          "    if (first?.id) pm.collectionVariables.set('categoryId', first.id);",
+                          "}"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories?pageNumber=1&pageSize=10&search=&sortBy=Name&sortDirection=asc",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories"
+                      ],
+                      "query": [
+                        {
+                          "key": "pageNumber",
+                          "value": "1"
+                        },
+                        {
+                          "key": "pageSize",
+                          "value": "10"
+                        },
+                        {
+                          "key": "search",
+                          "value": ""
+                        },
+                        {
+                          "key": "sortBy",
+                          "value": "Name",
+                          "description": "Name | NameEn | CreatedAt"
+                        },
+                        {
+                          "key": "sortDirection",
+                          "value": "asc",
+                          "description": "asc | desc"
+                        }
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Category By ID",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories",
+                        "{{categoryId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Specialties By Category",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}/specialties",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories",
+                        "{{categoryId}}",
+                        "specialties"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Skills By Category",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}/skills",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories",
+                        "{{categoryId}}",
+                        "skills"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ],
+              "description": "No auth — use in landing, filters, pickers & onboarding."
+            },
+            {
+              "name": "Admin · Manage Catalog",
+              "item": [
+                {
+                  "name": "Create Category",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code === 200) {",
+                          "    const res = pm.response.json();",
+                          "    if (res.data) pm.collectionVariables.set('categoryId', res.data);",
+                          "}"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"تصنيف جديد\",\n  \"nameEn\": \"New Category\",\n  \"imageCover\": null\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Category",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"id\": \"{{categoryId}}\",\n  \"name\": \"تصنيف محدث\",\n  \"nameEn\": \"Updated Category\",\n  \"imageCover\": null\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories",
+                        "{{categoryId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Category",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/categories/{{categoryId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "categories",
+                        "{{categoryId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ],
+              "description": "Auth required — admin dashboard only."
+            }
+          ],
+          "description": "Category tabs, landing cards & filters"
+        },
+        {
+          "name": "Specialties — Job Type (Frontend, Backend…)",
+          "item": [
+            {
+              "name": "Public · UI Lists & Filters",
+              "item": [
+                {
+                  "name": "Get All Specialties",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code === 200) {",
+                          "    const res = pm.response.json();",
+                          "    const first = res.data?.items?.[0];",
+                          "    if (first?.id) pm.collectionVariables.set('specialtyId', first.id);",
+                          "}"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/specialties?pageNumber=1&pageSize=10&search=&categoryId={{categoryId}}&sortBy=NameEn&sortDirection=asc",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "specialties"
+                      ],
+                      "query": [
+                        {
+                          "key": "pageNumber",
+                          "value": "1"
+                        },
+                        {
+                          "key": "pageSize",
+                          "value": "10"
+                        },
+                        {
+                          "key": "search",
+                          "value": ""
+                        },
+                        {
+                          "key": "categoryId",
+                          "value": "{{categoryId}}",
+                          "description": "Optional filter"
+                        },
+                        {
+                          "key": "sortBy",
+                          "value": "NameEn",
+                          "description": "NameEn | NameAr | CreatedAt"
+                        },
+                        {
+                          "key": "sortDirection",
+                          "value": "asc"
+                        }
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Specialty By ID",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/specialties/{{specialtyId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "specialties",
+                        "{{specialtyId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Specialties By Category",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/specialties/category/{{categoryId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "specialties",
+                        "category",
+                        "{{categoryId}}"
+                      ]
+                    },
+                    "description": "Prefer GET /categories/{id}/specialties"
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Skills By Specialty",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/specialties/{{specialtyId}}/skills",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "specialties",
+                        "{{specialtyId}}",
+                        "skills"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ],
+              "description": "No auth — use in landing, filters, pickers & onboarding."
+            },
+            {
+              "name": "Admin · Manage Catalog",
+              "item": [
+                {
+                  "name": "Create Specialty",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code === 200) {",
+                          "    const res = pm.response.json();",
+                          "    if (res.data) pm.collectionVariables.set('specialtyId', res.data);",
+                          "}"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"nameEn\": \"Frontend Development\",\n  \"nameAr\": \"تطوير الواجهات\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/specialties",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "specialties"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Specialty",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"id\": \"{{specialtyId}}\",\n  \"nameEn\": \"Updated Specialty\",\n  \"nameAr\": \"تخصص محدث\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/specialties/{{specialtyId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "specialties",
+                        "{{specialtyId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Specialty",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/specialties/{{specialtyId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "specialties",
+                        "{{specialtyId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ],
+              "description": "Auth required — admin dashboard only."
+            }
+          ],
+          "description": "Specialty picker when posting a job"
+        },
+        {
+          "name": "Skills — Tags & Autocomplete",
+          "item": [
+            {
+              "name": "Public · UI Lists & Filters",
+              "item": [
+                {
+                  "name": "Get All Skills",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code === 200) {",
+                          "    const res = pm.response.json();",
+                          "    const first = res.data?.items?.[0];",
+                          "    if (first?.id) pm.collectionVariables.set('skillId', first.id);",
+                          "}"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/skills?pageNumber=1&pageSize=10&search=&categoryId={{categoryId}}&specialtyId={{specialtyId}}&sortBy=Name&sortDirection=asc",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "skills"
+                      ],
+                      "query": [
+                        {
+                          "key": "pageNumber",
+                          "value": "1"
+                        },
+                        {
+                          "key": "pageSize",
+                          "value": "10"
+                        },
+                        {
+                          "key": "search",
+                          "value": ""
+                        },
+                        {
+                          "key": "categoryId",
+                          "value": "{{categoryId}}",
+                          "description": "Optional"
+                        },
+                        {
+                          "key": "specialtyId",
+                          "value": "{{specialtyId}}",
+                          "description": "Optional"
+                        },
+                        {
+                          "key": "sortBy",
+                          "value": "Name",
+                          "description": "Name | CreatedAt"
+                        },
+                        {
+                          "key": "sortDirection",
+                          "value": "asc"
+                        }
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Search Skills",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/skills/search?q=react&limit=20",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "skills",
+                        "search"
+                      ],
+                      "query": [
+                        {
+                          "key": "q",
+                          "value": "react"
+                        },
+                        {
+                          "key": "limit",
+                          "value": "20"
+                        }
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Get Skill By ID",
+                  "request": {
+                    "auth": {
+                      "type": "noauth"
+                    },
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/skills/{{skillId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "skills",
+                        "{{skillId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ],
+              "description": "No auth — use in landing, filters, pickers & onboarding."
+            },
+            {
+              "name": "Admin · Manage Catalog",
+              "item": [
+                {
+                  "name": "Create Skill",
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code === 200) {",
+                          "    const res = pm.response.json();",
+                          "    if (res.data) pm.collectionVariables.set('skillId', res.data);",
+                          "}"
+                        ]
+                      }
+                    }
+                  ],
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"name\": \"React\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/skills",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "skills"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Update Skill",
+                  "request": {
+                    "method": "PUT",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"id\": \"{{skillId}}\",\n  \"name\": \"React.js\"\n}"
+                    },
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/skills/{{skillId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "skills",
+                        "{{skillId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Delete Skill",
+                  "request": {
+                    "method": "DELETE",
+                    "header": [],
+                    "url": {
+                      "raw": "{{baseUrl}}/api/v1/skills/{{skillId}}",
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "path": [
+                        "api",
+                        "v1",
+                        "skills",
+                        "{{skillId}}"
+                      ]
+                    }
+                  },
+                  "response": []
+                }
+              ],
+              "description": "Auth required — admin dashboard only."
+            }
+          ],
+          "description": "Skill chips, search-as-you-type & project tags"
+        }
+      ],
+      "description": "Categories, specialties & skills for dropdowns, filters, landing cards & onboarding.\n\n**Public reads** — no auth.\n**Admin writes** — Bearer token (admin panel only)."
+    },
+    {
+      "name": "03 · Profiles",
+      "item": [
+        {
+          "name": "Client Profile",
+          "item": [
+            {
+              "name": "Get Client Profile",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/client/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "client",
+                    "me"
+                  ]
+                },
+                "description": "Returns client profile with nested `interests` → `specialties` → `skills`."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Client Profile",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "FirstName",
+                      "value": "John",
+                      "type": "text"
+                    },
+                    {
+                      "key": "LastName",
+                      "value": "Doe",
+                      "type": "text"
+                    },
+                    {
+                      "key": "Country",
+                      "value": "Egypt",
+                      "type": "text"
+                    },
+                    {
+                      "key": "Bio",
+                      "value": "Updated bio",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/client/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "client",
+                    "me"
+                  ]
+                },
+                "description": "Update name, country, bio. Add `ProfileImage` as file field if needed."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Client Profile",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/client",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "client"
+                  ]
+                },
+                "description": "Creates a client profile for the logged-in user. Returns 409 if one already exists."
+              },
+              "response": []
+            }
+          ],
+          "description": "Read and update the logged-in client profile."
+        },
+        {
+          "name": "Client Interests",
+          "item": [
+            {
+              "name": "Add Client Interests",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"categoryIds\": [\n    \"{{categoryId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/client/me/interests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "client",
+                    "me",
+                    "interests"
+                  ]
+                },
+                "description": "Appends category IDs without removing existing interests. Requires at least one category."
+              },
+              "response": []
+            },
+            {
+              "name": "Replace Client Interests",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"categoryIds\": [\n    \"{{categoryId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/client/me/interests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "client",
+                    "me",
+                    "interests"
+                  ]
+                },
+                "description": "Replaces all client interests. Pass `\"categoryIds\": []` to clear all."
+              },
+              "response": []
+            },
+            {
+              "name": "Clear Client Interests",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"categoryIds\": []\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/client/me/interests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "client",
+                    "me",
+                    "interests"
+                  ]
+                },
+                "description": "Removes all client interests (empty replace)."
+              },
+              "response": []
+            },
+            {
+              "name": "Get intersed",
+              "request": {
+                "method": "GET",
+                "header": []
+              },
+              "response": []
+            }
+          ],
+          "description": "Categories the client is interested in (profile-scoped)."
+        },
+        {
+          "name": "Client Specialties",
+          "item": [
+            {
+              "name": "Add Client Specialties",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"specialtyIds\": [\n    \"{{specialtyId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/client/me/specialties",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "client",
+                    "me",
+                    "specialties"
+                  ]
+                },
+                "description": "Appends specialty IDs. Requires at least one specialty."
+              },
+              "response": []
+            },
+            {
+              "name": "Replace Client Specialties",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"specialtyIds\": [\n    \"{{specialtyId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/client/me/specialties",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "client",
+                    "me",
+                    "specialties"
+                  ]
+                },
+                "description": "Replaces all client specialties. Pass `\"specialtyIds\": []` to clear all."
+              },
+              "response": []
+            }
+          ],
+          "description": "Specialties linked to the client profile."
+        },
+        {
+          "name": "Client Skills",
+          "item": [
+            {
+              "name": "Replace Client Skills",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"skillIds\": [\n    \"{{skillId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/client/me/skills",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "client",
+                    "me",
+                    "skills"
+                  ]
+                },
+                "description": "Replaces all client skills. Pass `\"skillIds\": []` to clear all. No POST/add endpoint."
+              },
+              "response": []
+            }
+          ],
+          "description": "Skills linked to the client profile (replace only)."
+        },
+        {
+          "name": "Developer Profile",
+          "item": [
+            {
+              "name": "Get Developer Profile",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/developer/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "developer",
+                    "me"
+                  ]
+                },
+                "description": "Returns developer profile with nested `interests` → `specialties` → `skills`."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Developer Profile",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/developer",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "developer"
+                  ]
+                },
+                "description": "Creates a developer profile for the logged-in user. Returns 409 if one already exists."
+              },
+              "response": []
+            }
+          ],
+          "description": "Read and create the logged-in developer profile."
+        },
+        {
+          "name": "Developer Interests",
+          "item": [
+            {
+              "name": "Add Developer Interests",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"categoryIds\": [\n    \"{{categoryId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/developer/me/interests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "developer",
+                    "me",
+                    "interests"
+                  ]
+                },
+                "description": "Appends category IDs without removing existing interests. Requires at least one category."
+              },
+              "response": []
+            },
+            {
+              "name": "Replace Developer Interests",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"categoryIds\": [\n    \"{{categoryId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/developer/me/interests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "developer",
+                    "me",
+                    "interests"
+                  ]
+                },
+                "description": "Replaces all developer interests. Pass `\"categoryIds\": []` to clear all."
+              },
+              "response": []
+            }
+          ],
+          "description": "Categories the developer works in (profile-scoped)."
+        },
+        {
+          "name": "Developer Specialties",
+          "item": [
+            {
+              "name": "Add Developer Specialties",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"specialtyIds\": [\n    \"{{specialtyId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/developer/me/specialties",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "developer",
+                    "me",
+                    "specialties"
+                  ]
+                },
+                "description": "Appends specialty IDs. Requires at least one specialty."
+              },
+              "response": []
+            },
+            {
+              "name": "Replace Developer Specialties",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"specialtyIds\": [\n    \"{{specialtyId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/developer/me/specialties",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "developer",
+                    "me",
+                    "specialties"
+                  ]
+                },
+                "description": "Replaces all developer specialties. Pass `\"specialtyIds\": []` to clear all."
+              },
+              "response": []
+            }
+          ],
+          "description": "Specialties linked to the developer profile."
+        },
+        {
+          "name": "Developer Skills",
+          "item": [
+            {
+              "name": "Replace Developer Skills",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"skillIds\": [\n    \"{{skillId}}\"\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/developer/me/skills",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "developer",
+                    "me",
+                    "skills"
+                  ]
+                },
+                "description": "Replaces all developer skills. Pass `\"skillIds\": []` to clear all. No POST/add endpoint."
+              },
+              "response": []
+            }
+          ],
+          "description": "Skills linked to the developer profile (replace only)."
+        },
+        {
+          "name": "Switch Profile Mode",
+          "item": [
+            {
+              "name": "Switch Profile",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/profiles/switch-profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "profiles",
+                    "switch-profile"
+                  ]
+                },
+                "description": "Toggles active profile mode between Client and Developer. Creates the target profile if missing. Returns `\"Client\"` or `\"Developer\"`."
+              },
+              "response": []
+            }
+          ],
+          "description": "Toggle between client and developer mode."
+        },
+        {
+          "name": "Change password",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"currentPassword\": \"OldPassword123!\",\r\n  \"newPassword\": \"NewPassword123!\",\r\n  \"confirmPassword\": \"NewPassword123!\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/profiles/ChangePassword",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profiles",
+                "ChangePassword"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "description": "Client & developer profiles, interests, specialties & skills.\n\nAll endpoints require Bearer token (`{{accessToken}}`).\n\nBase path: `api/v1/profiles`"
+    },
+    {
+      "name": "04. 💼 Projects",
+      "item": [
+        {
+          "name": "🌍 Browse",
+          "item": [
+            {
+              "name": "Filter Projects",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projects?pageNumber&pageSize",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projects"
+                  ],
+                  "query": [
+                    {
+                      "key": "isFixedPrice",
+                      "value": "",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "budgetMin",
+                      "value": "",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "budgetMax",
+                      "value": "",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "categoryId",
+                      "value": "",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "specialtyId",
+                      "value": "",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "currency",
+                      "value": "",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sortBy",
+                      "value": "",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sortDirection",
+                      "value": "",
+                      "type": "text",
+                      "disabled": true
+                    },
+                    {
+                      "key": "pageNumber",
+                      "value": null
+                    },
+                    {
+                      "key": "pageSize",
+                      "value": null
+                    }
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Details",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJlMDkxMzMxMS1mOGE1LTQyZjMtNGVkZC0wOGRlZTgwODRjZjQiLCJlbWFpbCI6ImFiZHVscmFobWFuc2FsYWgwMjVAZ21haWwuY29tIiwiZ2l2ZW5fbmFtZSI6IkFiZHVscmFobWFuIiwiZmFtaWx5X25hbWUiOiJTYWxhaCIsImp0aSI6IjJmMDhhYmU5LTE0YjYtNDQyNC05YTZhLWMwNDQwYmI0MDZjNyIsImV4cCI6MTc4NDczOTkxNiwiaXNzIjoiRnJlZUdlbmN5QXBwIiwiYXVkIjoiRnJlZUdlbmN5QXBwIHVzZXIifQ.5Wjq_lFCDhXYRBeGrX0n4IOAELMWw9QusfIZBQ6yxm4",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projects",
+                    "{{projectId}}"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "👤 My Projects",
+          "item": [
+            {
+              "name": "Get My Projects",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projects/mine?role=as-assignee",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projects",
+                    "mine"
+                  ],
+                  "query": [
+                    {
+                      "key": "role",
+                      "value": "as-assignee"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "⭐ Saved Projects",
+          "item": [
+            {
+              "name": "Unsave Project",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/save",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projects",
+                    "{{projectId}}",
+                    "save"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Save Project",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/save",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projects",
+                    "{{projectId}}",
+                    "save"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Saved Projects",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJlMDkxMzMxMS1mOGE1LTQyZjMtNGVkZC0wOGRlZTgwODRjZjQiLCJlbWFpbCI6ImFiZHVscmFobWFuc2FsYWgwMjVAZ21haWwuY29tIiwiZ2l2ZW5fbmFtZSI6IkFiZHVscmFobWFuIiwiZmFtaWx5X25hbWUiOiJTYWxhaCIsImp0aSI6IjJmMDhhYmU5LTE0YjYtNDQyNC05YTZhLWMwNDQwYmI0MDZjNyIsImV4cCI6MTc4NDczOTkxNiwiaXNzIjoiRnJlZUdlbmN5QXBwIiwiYXVkIjoiRnJlZUdlbmN5QXBwIHVzZXIifQ.5Wjq_lFCDhXYRBeGrX0n4IOAELMWw9QusfIZBQ6yxm4",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projects/saved",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projects",
+                    "saved"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "🛠️ Skills",
+          "item": [
+            {
+              "name": "Replace Project Skills",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJlMDkxMzMxMS1mOGE1LTQyZjMtNGVkZC0wOGRlZTgwODRjZjQiLCJlbWFpbCI6ImFiZHVscmFobWFuc2FsYWgwMjVAZ21haWwuY29tIiwiZ2l2ZW5fbmFtZSI6IkFiZHVscmFobWFuIiwiZmFtaWx5X25hbWUiOiJTYWxhaCIsImp0aSI6IjdjN2Q0MDIxLTliZjYtNGQ5Yy1iMjI4LTI1ZGE3YWEyMjJkMiIsImV4cCI6MTc4NDc0MzkwMSwiaXNzIjoiRnJlZUdlbmN5QXBwIiwiYXVkIjoiRnJlZUdlbmN5QXBwIHVzZXIifQ.xpEsPPYM3WuNszhM9uif1QzGcg25_3xLTvAtFGIxXvI",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "[\r\n    \"33333333-3333-3333-3333-000000000047\",\r\n    \"33333333-3333-3333-3333-000000000041\",\r\n    \"33333333-3333-3333-3333-000000000043\"\r\n]\r\n",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/skills?skillsIds",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projects",
+                    "{{projectId}}",
+                    "skills"
+                  ],
+                  "query": [
+                    {
+                      "key": "skillsIds",
+                      "value": null,
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "✍️ Project Management",
+          "item": [
+            {
+              "name": "Delete Project",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projects",
+                    "{{projectId}}"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Create Project",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const res = pm.response.json();",
+                      "    if (res.data) pm.collectionVariables.set('projectId', res.data);",
+                      "}"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Build a landing page\",\n  \"description\": \"Responsive landing page with Angular.\",\n  \"categoryId\": \"{{categoryId}}\",\n  \"isFixedPrice\": true,\n  \"budgetMin\": 500,\n  \"budgetMax\": 1500,\n  \"currency\": \"USD\",\n  \"estimatedDurationDays\": 14,\n  \"skillIds\": [\"{{skillId}}\", \"33333333-3333-3333-3333-000000000025\"],\n  \"specialtyIds\": [\"{{specialtyId}}\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projects",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projects"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Publish Project",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJlMDkxMzMxMS1mOGE1LTQyZjMtNGVkZC0wOGRlZTgwODRjZjQiLCJlbWFpbCI6ImFiZHVscmFobWFuc2FsYWgwMjVAZ21haWwuY29tIiwiZ2l2ZW5fbmFtZSI6IkFiZHVscmFobWFuIiwiZmFtaWx5X25hbWUiOiJTYWxhaCIsImp0aSI6IjJmMDhhYmU5LTE0YjYtNDQyNC05YTZhLWMwNDQwYmI0MDZjNyIsImV4cCI6MTc4NDczOTkxNiwiaXNzIjoiRnJlZUdlbmN5QXBwIiwiYXVkIjoiRnJlZUdlbmN5QXBwIHVzZXIifQ.5Wjq_lFCDhXYRBeGrX0n4IOAELMWw9QusfIZBQ6yxm4",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}/publish",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projects",
+                    "{{projectId}}",
+                    "publish"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Project",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJlMDkxMzMxMS1mOGE1LTQyZjMtNGVkZC0wOGRlZTgwODRjZjQiLCJlbWFpbCI6ImFiZHVscmFobWFuc2FsYWgwMjVAZ21haWwuY29tIiwiZ2l2ZW5fbmFtZSI6IkFiZHVscmFobWFuIiwiZmFtaWx5X25hbWUiOiJTYWxhaCIsImp0aSI6IjJmMDhhYmU5LTE0YjYtNDQyNC05YTZhLWMwNDQwYmI0MDZjNyIsImV4cCI6MTc4NDczOTkxNiwiaXNzIjoiRnJlZUdlbmN5QXBwIiwiYXVkIjoiRnJlZUdlbmN5QXBwIHVzZXIifQ.5Wjq_lFCDhXYRBeGrX0n4IOAELMWw9QusfIZBQ6yxm4",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id\": \"{{projectId}}\",\n  \"title\": \"Building a Website\",\n  \"description\": \"Updated description here.\",\n  \"CategoryId\": \"11111111-1111-1111-1111-000000000004\",\n  \"IsFixedPrice\": false,\n  \"BudgetMin\": 1000.0,\n  \"BudgetMax\": 2000.0,\n  \"Currency\": \"EGP\",\n  \"EstimatedDurationDays\": 30,\n  \"SpecialtyIds\": [\"22222222-2222-2222-2222-000000000002\", \"22222222-2222-2222-2222-000000000019\"],\n  \"SkillIds\": [\"33333333-3333-3333-3333-000000000035\", \"33333333-3333-3333-3333-000000000033\", \"33333333-3333-3333-3333-000000000024\"]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/projects/{{projectId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "projects",
+                    "{{projectId}}"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ],
+      "description": "Client creates and manages job posts.\n\nAll endpoints require Bearer token.\nBrowse/list projects not implemented yet."
+    },
+    {
+      "name": "05.Social Link",
+      "item": [
+        {
+          "name": "User",
+          "item": [
+            {
+              "name": "Get All Links",
+              "request": {
+                "method": "GET",
+                "header": []
+              },
+              "response": []
+            },
+            {
+              "name": "Add User Link",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \"Platform\":\"linkedId\",\r\n    \"Url\":\"https://www.linkedin.com/developers/login\"\r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/SocialLink/Add-User-Social-Link",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "SocialLink",
+                    "Add-User-Social-Link"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update User Link",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\r\n    \r\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/SocialLink/Update-User-Social-Link",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "SocialLink",
+                    "Update-User-Social-Link"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete User link",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/SocialLink/Update-User-Social-Link",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "SocialLink",
+                    "Update-User-Social-Link"
+                  ]
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Team",
+          "item": []
+        }
+      ]
+    },
+    {
+      "name": "TeamJobs",
+      "item": [
+        {
+          "name": "GET Jobs",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://localhost:7186"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "categoryId",
+      "value": ""
+    },
+    {
+      "key": "specialtyId",
+      "value": ""
+    },
+    {
+      "key": "skillId",
+      "value": ""
+    },
+    {
+      "key": "projectId",
+      "value": ""
+    }
+  ]
+}

@@ -16,6 +16,9 @@ import PaymentGateway from '../models/PaymentGateway.js';
 import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
+import sendEmail from '../utils/email.js';
+import orderConfirmationTemplate from '../utils/emailTemplates/orderConfirmationTemplate.js';
+import logger from '../config/logger.js';
 import { mapBostaStateToPhase, normalizeBostaState, loadShipmentsForOrders } from './orderShipping.controller.js';
 
 // Stripe / Paymob card gateways eligible for refund flows
@@ -738,6 +741,47 @@ export const prepareCheckoutFromCart = async (userId, addressInput) => {
   };
 };
 
+/** Storefront URL for order details / tracking (override path via ORDER_DETAILS_PATH). */
+const buildOrderDetailsUrl = (orderId) => {
+  const base = (process.env.CLIENT_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const path = process.env.ORDER_DETAILS_PATH || '/order-details/{orderId}';
+  if (path.includes('{orderId}')) {
+    return `${base}${path.replace('{orderId}', String(orderId))}`;
+  }
+  const sep = path.includes('?') ? '&' : '?';
+  return `${base}${path}${sep}orderId=${orderId}`;
+};
+
+/** Fire-and-forget order confirmation email; never blocks/fails checkout. */
+const notifyOrderConfirmation = async (order) => {
+  if (!order?.user) return;
+
+  try {
+    const user = await User.findById(order.user).select('name email');
+    if (!user?.email) return;
+
+    const { subject, html } = orderConfirmationTemplate({
+      name: user.name,
+      orderId: order._id,
+      orderDetailsUrl: buildOrderDetailsUrl(order._id),
+      items: order.items,
+      subtotal: order.subtotal,
+      shippingPrice: order.shippingPrice,
+      discountAmount: order.discountAmount,
+      storeCreditApplied: order.storeCreditApplied,
+      totalPrice: order.totalPrice,
+      paymentMethod: order.paymentMethod,
+      paymentStatus: order.paymentStatus,
+      shippingAddress: order.shippingAddress,
+      createdAt: order.createdAt,
+    });
+
+    await sendEmail({ email: user.email, subject, html });
+  } catch (err) {
+    logger.error(`Order confirmation email failed for order ${order._id}: ${err.message}`);
+  }
+};
+
 /** Persist order + stock debit + optional credit redeem + clear cart in a transaction. */
 export const fulfillCheckout = async (snapshot, payment, options = {}) => {
   const { clearCart = true } = options;
@@ -801,6 +845,8 @@ export const fulfillCheckout = async (snapshot, payment, options = {}) => {
     });
 
     if (couponId && userId) await commitCouponUsage(couponId, userId);
+    // After commit so a mail failure never rolls back the order
+    await notifyOrderConfirmation(order);
     return order;
   } finally {
     session.endSession();
