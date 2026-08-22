@@ -76,7 +76,10 @@ const applyUserAddressUpdates = async (user, sub, updates) => {
  * @access  Private
  */
 export const getMe = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.user._id);
+  const user = await User.findById(req.user._id).populate({
+    path: 'adminRole',
+    select: 'name slug description isSystem permissions',
+  });
   if (!user) return next(new ApiError('Your account no longer exists', 404));
 
   let dirty = false;

@@ -951,8 +951,12 @@ export const updateReturnStatus = asyncHandler(async (req, res, next) => {
     const populated = await ReturnRequest.findById(returnRequest._id).populate(returnPopulate).lean();
 
     const isCod = order.paymentMethod === "cod";
+    const giftCardBalance = isCod
+      ? roundMoney((await User.findById(returnRequest.user).select("storeCreditBalance").lean())?.storeCreditBalance ?? 0)
+      : undefined;
+
     const message = isCod
-      ? "Return refunded successfully; store credit issued to customer"
+      ? "Return refunded successfully; gift card (store credit) issued to customer"
       : "Return refunded successfully";
 
     return sendResponse(res, {
@@ -961,6 +965,8 @@ export const updateReturnStatus = asyncHandler(async (req, res, next) => {
         returnRequest: populated,
         gatewayRefundId,
         storeCreditIssued: isCod ? storeCreditIssued : false,
+        giftCardIssued: isCod ? storeCreditIssued : false,
+        giftCardBalance,
         refundAmount: returnRequest.refundAmount,
       },
     });
@@ -974,6 +980,52 @@ export const updateReturnStatus = asyncHandler(async (req, res, next) => {
     .lean();
 
   sendResponse(res, { message: "Return status updated successfully", data: updated });
+});
+
+/**
+ * @desc    Refund a COD return as gift card (store credit) — explicit admin action
+ * @route   POST /api/v1/returns/:id/refund-as-gift
+ * @access  Admin
+ *
+ * Same finalization as PATCH .../status { refundStatus: "refunded" } for COD orders,
+ * but rejects non-COD so the admin UI can expose a dedicated "Refund as Gift" button.
+ */
+export const refundReturnAsGift = asyncHandler(async (req, res, next) => {
+  const doc = await ReturnRequest.findById(req.params.id);
+  if (!doc) return next(new ApiError(`No return request found with id: ${req.params.id}`, 404));
+
+  if (doc.refundStatus !== "received") {
+    return next(new ApiError("Return must be received before issuing gift card refund", 400));
+  }
+
+  const order = await Order.findById(doc.order);
+  if (!order) return next(new ApiError("Linked order not found", 404));
+
+  if (order.paymentMethod !== "cod") {
+    return next(
+      new ApiError(
+        "Gift card refund is only for COD orders. Use the normal refund status flow for card payments.",
+        400
+      )
+    );
+  }
+
+  const { returnRequest, storeCreditIssued } = await finalizeReturnRefund(doc, order);
+  const populated = await ReturnRequest.findById(returnRequest._id).populate(returnPopulate).lean();
+  const giftCardBalance = roundMoney(
+    (await User.findById(returnRequest.user).select("storeCreditBalance").lean())?.storeCreditBalance ?? 0
+  );
+
+  sendResponse(res, {
+    message: "COD return refunded as gift card successfully",
+    data: {
+      returnRequest: populated,
+      giftCardIssued: storeCreditIssued,
+      storeCreditIssued,
+      giftCardBalance,
+      refundAmount: returnRequest.refundAmount,
+    },
+  });
 });
 
 /**

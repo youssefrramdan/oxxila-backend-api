@@ -26,6 +26,7 @@ import {
   cancelOrderValidator,
 } from "../validators/order.validator.js";
 import { protectedRoutes, allowTo } from "../middlewares/auth.middleware.js";
+import { requirePermission } from "../middlewares/permission.middleware.js";
 
 const router = Router();
 
@@ -48,10 +49,25 @@ router.patch("/:id/cancel", cancelOrderValidator, cancelOrder);
 
 router.use(allowTo("admin"));
 
-router.get("/", getOrders);
-router.post("/b2b", createOrderB2BValidator, createOrderB2B);
-router.post("/:id/refund", refundOrderValidator, refundOrder);
-router.patch("/:id/status", updateOrderStatusValidator, updateOrderStatus);
-router.get("/:id", orderIdParamValidator, getOrder);
+router.get("/", requirePermission("orders", "read"), getOrders);
+router.post(
+  "/b2b",
+  requirePermission("orders", "create"),
+  createOrderB2BValidator,
+  createOrderB2B,
+);
+router.post(
+  "/:id/refund",
+  requirePermission("orders", "update"),
+  refundOrderValidator,
+  refundOrder,
+);
+router.patch(
+  "/:id/status",
+  requirePermission("orders", "update"),
+  updateOrderStatusValidator,
+  updateOrderStatus,
+);
+router.get("/:id", requirePermission("orders", "read"), orderIdParamValidator, getOrder);
 
 export default router;

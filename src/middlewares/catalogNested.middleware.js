@@ -16,9 +16,13 @@ export const setSubcategoryCategoryFromParam = (req, res, next) => {
   next();
 };
 
+/** Admin may pass ?includeInactive=true with a valid admin Bearer token */
+const wantsInactive = (req) =>
+  req.user?.role === 'admin' && String(req.query.includeInactive) === 'true';
+
 /**
- * `GET /:categoryId/subcategories` — filter to this parent only; merged with
- * public `isActive: true` in the controller.
+ * `GET /:categoryId/subcategories` — filter to this parent only.
+ * Public: active subs only. Admin + includeInactive=true: all subs.
  */
 export const createNestedSubCategoryFilter = (req, res, next) => {
   if (!req.params?.categoryId) {
@@ -27,18 +31,26 @@ export const createNestedSubCategoryFilter = (req, res, next) => {
   if (!mongoose.Types.ObjectId.isValid(req.params.categoryId)) {
     return next(new ApiError('Invalid category id', 400));
   }
-  req.filterObject = { isActive: true, category: req.params.categoryId };
+  const includeInactive = wantsInactive(req);
+  req.filterObject = {
+    ...(includeInactive ? {} : { isActive: true }),
+    category: req.params.categoryId,
+  };
   next();
 };
 
 /**
- * Public nested reads: parent category must exist and be active.
+ * Nested reads: parent must exist. Public requires active parent;
+ * admin + includeInactive=true allows inactive parent.
  */
 export const requireActiveParentCategory = asyncHandler(async (req, res, next) => {
   const { categoryId } = req.params;
   if (!categoryId) return next();
   const parent = await Category.findById(categoryId);
-  if (!parent || !parent.isActive) {
+  if (!parent) {
+    return next(new ApiError(`No category found with id: ${categoryId}`, 404));
+  }
+  if (!wantsInactive(req) && !parent.isActive) {
     return next(new ApiError(`No category found with id: ${categoryId}`, 404));
   }
   next();

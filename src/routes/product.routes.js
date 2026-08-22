@@ -3,6 +3,7 @@ import { Router } from 'express';
 import createUploader from '../middlewares/cloudnairyMiddleware.js';
 import * as products from '../controllers/product.controller.js';
 import { protectedRoutes, allowTo, optionalAuth } from '../middlewares/auth.middleware.js';
+import { requirePermission } from '../middlewares/permission.middleware.js';
 import {
   createProductValidator,
   updateProductValidator,
@@ -26,9 +27,31 @@ router.get('/', products.getAllProducts);
 router.get('/:id', productIdParamValidator, optionalAuth, products.getProduct);
 
 router.use(protectedRoutes, allowTo('admin'));
-router.post('/', productUploadFields, createProductValidator, products.createProduct);
-router.put('/:id', productUploadFields, updateProductValidator, products.updateProduct);
-router.patch('/:id/best-seller', productIdParamValidator, products.toggleBestSeller);
-router.delete('/:id', productIdParamValidator, products.deleteProduct);
+router.post(
+  '/',
+  requirePermission('products', 'create'),
+  productUploadFields,
+  createProductValidator,
+  products.createProduct
+);
+router.put(
+  '/:id',
+  requirePermission('products', 'update'),
+  productUploadFields,
+  updateProductValidator,
+  products.updateProduct
+);
+router.patch(
+  '/:id/best-seller',
+  requirePermission('products', 'update'),
+  productIdParamValidator,
+  products.toggleBestSeller
+);
+router.delete(
+  '/:id',
+  requirePermission('products', 'delete'),
+  productIdParamValidator,
+  products.deleteProduct
+);
 
 export default router;

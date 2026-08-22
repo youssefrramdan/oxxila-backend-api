@@ -309,7 +309,16 @@ export const deleteProduct = asyncHandler(async (req, res, next) => {
   const product = await Product.findById(req.params.id);
   if (!product) return next(new ApiError(`No product found with id: ${req.params.id}`, 404));
 
+  const productId = product._id;
+
   await product.deleteOne();
+
+  // Remove orphaned history entries so previously-browsed carousels stay clean.
+  await User.updateMany(
+    { 'browsingHistory.product': productId },
+    { $pull: { browsingHistory: { product: productId } } },
+  );
+
   sendResponse(res, { message: 'Product deleted successfully' });
 });
 

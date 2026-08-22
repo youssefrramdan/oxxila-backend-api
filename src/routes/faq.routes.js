@@ -15,11 +15,26 @@ import {
   askSpecialistValidator,
 } from '../validators/faq.validator.js';
 import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
+import { requirePermission } from '../middlewares/permission.middleware.js';
 
 const router = Router();
 
-router.put('/:id', protectedRoutes, allowTo('admin'), updateFaqValidator, updateFaq);
-router.delete('/:id', protectedRoutes, allowTo('admin'), faqIdValidator, deleteFaq);
+router.put(
+  '/:id',
+  protectedRoutes,
+  allowTo('admin'),
+  requirePermission('faqs', 'update'),
+  updateFaqValidator,
+  updateFaq
+);
+router.delete(
+  '/:id',
+  protectedRoutes,
+  allowTo('admin'),
+  requirePermission('faqs', 'delete'),
+  faqIdValidator,
+  deleteFaq
+);
 
 export default router;
 
@@ -35,6 +50,7 @@ productFaqRouter.post(
   '/',
   protectedRoutes,
   allowTo('admin'),
+  requirePermission('faqs', 'create'),
   createProductFaqValidator,
   createFaq
 );

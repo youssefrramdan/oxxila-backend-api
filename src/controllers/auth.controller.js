@@ -47,7 +47,9 @@ export const register = asyncHandler(async (req, res, next) => {
  * @access  Public
  */
 export const login = asyncHandler(async (req, res, next) => {
-  const user = await User.findOne({ email: req.body.email }).select('+password');
+  const user = await User.findOne({ email: req.body.email })
+    .select('+password')
+    .populate({ path: 'adminRole', select: 'name slug description isSystem permissions' });
   if (!user || !(await user.comparePassword(req.body.password))) {
     return next(new ApiError('Incorrect email or password', 401));
   }

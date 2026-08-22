@@ -3,6 +3,7 @@ import { Router } from 'express';
 import createUploader from '../middlewares/cloudnairyMiddleware.js';
 import * as banners from '../controllers/banner.controller.js';
 import { protectedRoutes, allowTo, optionalAuth } from '../middlewares/auth.middleware.js';
+import { requirePermission } from '../middlewares/permission.middleware.js';
 import {
   createBannerValidator,
   updateBannerValidator,
@@ -20,8 +21,25 @@ const bannerUpload = createUploader('oxxila/banners', {
 router.get('/', optionalAuth, banners.getBanners);
 
 router.use(protectedRoutes, allowTo('admin'));
-router.post('/', bannerUpload.single('image'), createBannerValidator, banners.createBanner);
-router.put('/:id', bannerUpload.single('image'), updateBannerValidator, banners.updateBanner);
-router.delete('/:id', bannerIdParamValidator, banners.deleteBanner);
+router.post(
+  '/',
+  requirePermission('settings', 'create'),
+  bannerUpload.single('image'),
+  createBannerValidator,
+  banners.createBanner
+);
+router.put(
+  '/:id',
+  requirePermission('settings', 'update'),
+  bannerUpload.single('image'),
+  updateBannerValidator,
+  banners.updateBanner
+);
+router.delete(
+  '/:id',
+  requirePermission('settings', 'delete'),
+  bannerIdParamValidator,
+  banners.deleteBanner
+);
 
 export default router;

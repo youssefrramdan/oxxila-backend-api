@@ -18,7 +18,10 @@ export const protectedRoutes = asyncHandler(async (req, res, next) => {
 
   const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
 
-  const user = await User.findById(decoded.userId);
+  const user = await User.findById(decoded.userId).populate({
+    path: 'adminRole',
+    select: 'name slug description isSystem permissions',
+  });
   if (!user) return next(new ApiError('The account linked to this token no longer exists', 401));
   if (!user.active) return next(new ApiError('This account has been deactivated', 403));
   if (user.changedPasswordAfter?.(decoded.iat)) {

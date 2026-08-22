@@ -32,18 +32,47 @@ import {
   updateReviewFlagValidator,
 } from '../validators/review.validator.js';
 import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
+import { requirePermission } from '../middlewares/permission.middleware.js';
 
 const router = Router();
 
 const adminRouter = Router();
 adminRouter.use(protectedRoutes, allowTo('admin'));
 
-adminRouter.get('/overview', adminReviewsOverviewValidator, getReviewsAdminOverview);
-adminRouter.get('/summary', getReviewsAdminSummary);
-adminRouter.get('/rating-distribution', getReviewsAdminRatingDistribution);
-adminRouter.get('/flagged', adminFlaggedQueueValidator, getReviewsAdminFlagged);
-adminRouter.get('/', adminReviewsListValidator, getReviewsAdminList);
-adminRouter.get('/:id', reviewIdValidator, getReviewsAdminDetail);
+adminRouter.get(
+  '/overview',
+  requirePermission('reviews', 'read'),
+  adminReviewsOverviewValidator,
+  getReviewsAdminOverview
+);
+adminRouter.get(
+  '/summary',
+  requirePermission('reviews', 'read'),
+  getReviewsAdminSummary
+);
+adminRouter.get(
+  '/rating-distribution',
+  requirePermission('reviews', 'read'),
+  getReviewsAdminRatingDistribution
+);
+adminRouter.get(
+  '/flagged',
+  requirePermission('reviews', 'read'),
+  adminFlaggedQueueValidator,
+  getReviewsAdminFlagged
+);
+adminRouter.get(
+  '/',
+  requirePermission('reviews', 'read'),
+  adminReviewsListValidator,
+  getReviewsAdminList
+);
+adminRouter.get(
+  '/:id',
+  requirePermission('reviews', 'read'),
+  reviewIdValidator,
+  getReviewsAdminDetail
+);
 
 router.use('/admin', adminRouter);
 
@@ -51,6 +80,7 @@ router.patch(
   '/:id/visibility',
   protectedRoutes,
   allowTo('admin'),
+  requirePermission('reviews', 'update'),
   updateReviewVisibilityValidator,
   updateReviewVisibility
 );
@@ -58,6 +88,7 @@ router.patch(
   '/:id/flag',
   protectedRoutes,
   allowTo('admin'),
+  requirePermission('reviews', 'update'),
   updateReviewFlagValidator,
   updateReviewFlag
 );

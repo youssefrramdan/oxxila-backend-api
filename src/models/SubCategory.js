@@ -49,6 +49,16 @@ subCategorySchema.pre('save', function () {
   }
 });
 
+subCategorySchema.pre('findOneAndUpdate', function () {
+  const update = this.getUpdate() || {};
+  const name = update.name ?? update.$set?.name;
+  if (typeof name === 'string' && name.trim()) {
+    const slug = slugify(name, { lower: true, strict: true });
+    if (update.$set) update.$set.slug = slug;
+    else update.slug = slug;
+  }
+});
+
 subCategorySchema.index({ name: 1, category: 1 }, { unique: true });
 
 const SubCategory = mongoose.model('SubCategory', subCategorySchema);

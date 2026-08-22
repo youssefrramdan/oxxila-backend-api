@@ -50,6 +50,16 @@ categorySchema.pre('save', function () {
   }
 });
 
+categorySchema.pre('findOneAndUpdate', function () {
+  const update = this.getUpdate() || {};
+  const name = update.name ?? update.$set?.name;
+  if (typeof name === 'string' && name.trim()) {
+    const slug = slugify(name, { lower: true, strict: true });
+    if (update.$set) update.$set.slug = slug;
+    else update.slug = slug;
+  }
+});
+
 categorySchema.index({ isActive: 1 });
 
 const Category = mongoose.model('Category', categorySchema);

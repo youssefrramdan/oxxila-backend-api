@@ -22,6 +22,11 @@ export const createAdminValidator = [
     .isLength({ max: 80 })
     .withMessage('Admin title cannot exceed 80 characters'),
   body('phone').optional().trim().isLength({ max: 30 }).withMessage('Phone is too long'),
+  body('adminRole')
+    .notEmpty()
+    .withMessage('adminRole is required')
+    .isMongoId()
+    .withMessage('Invalid adminRole id'),
   validate,
 ];
 
@@ -36,6 +41,7 @@ export const updateAdminValidator = [
     .withMessage('Admin title cannot exceed 80 characters'),
   body('phone').optional().trim().isLength({ max: 30 }),
   body('active').optional().isBoolean(),
+  body('adminRole').optional().isMongoId().withMessage('Invalid adminRole id'),
   validate,
 ];
 

@@ -13,7 +13,11 @@ export const createSubCategoryValidator = [
     .notEmpty().withMessage('Name is required')
     .isLength({ min: 2, max: 50 }).withMessage('Name must be 2-50 characters'),
   check('image').optional().isString().isLength({ max: 2000 }),
-  check('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
+  check('isActive')
+    .optional()
+    .isBoolean({ strict: false })
+    .withMessage('isActive must be a boolean')
+    .toBoolean(),
   validate,
 ];
 
@@ -26,7 +30,11 @@ const updateSubBody = [
     .optional()
     .isMongoId().withMessage('Invalid category id'),
   check('image').optional().isString().isLength({ max: 2000 }),
-  check('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
+  check('isActive')
+    .optional()
+    .isBoolean({ strict: false })
+    .withMessage('isActive must be a boolean')
+    .toBoolean(),
 ];
 
 export const updateSubCategoryValidatorNested = [mongoId('categoryId'), mongoId('id'), ...updateSubBody, validate];

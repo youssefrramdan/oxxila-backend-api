@@ -5,7 +5,8 @@ import Product from '../models/Product.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 
-const productSelect = 'name slug images price views isCertified category';
+const productSelect =
+  'name slug images price priceAfterDiscount views isCertified isActive ratingsAverage ratingsQuantity category';
 
 /**
  * @desc    Get browsing history
@@ -18,11 +19,14 @@ export const getBrowsingHistory = asyncHandler(async (req, res, next) => {
     .populate({
       path: 'browsingHistory.product',
       select: productSelect,
+      // Archived/inactive products must not surface in storefront history carousels.
+      match: { isActive: true },
       populate: { path: 'category', select: 'name slug' },
     });
 
   if (!user) return next(new ApiError(`No user found with id: ${req.user._id}`, 404));
 
+  // Drop deleted (null populate) and inactive (match miss) entries.
   const history = user.browsingHistory.filter((h) => h.product).slice(0, 10);
 
   sendResponse(res, { message: 'Browsing history retrieved successfully', data: history });

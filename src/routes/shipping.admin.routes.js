@@ -1,6 +1,7 @@
 // src/routes/shipping.admin.routes.js
 import { Router } from "express";
 import { protectedRoutes, allowTo } from "../middlewares/auth.middleware.js";
+import { requirePermission } from "../middlewares/permission.middleware.js";
 import {
   getCountries,
   createCountry,
@@ -84,110 +85,190 @@ const router = Router();
 
 router.use(protectedRoutes, allowTo("admin"));
 
-router.get("/shipping/methods", getShippingMethods);
+router.get(
+  "/shipping/methods",
+  requirePermission("shipping", "read"),
+  getShippingMethods,
+);
 router.patch(
   "/shipping/methods/:type",
+  requirePermission("shipping", "update"),
   updateShippingMethodValidator,
   updateShippingMethod,
 );
 
-router.get("/countries", getCountries);
-router.post("/countries", createCountryValidator, createCountry);
-router.put("/countries/:id", updateCountryValidator, updateCountry);
-router.delete("/countries/:id", countryIdParamValidator, deleteCountry);
+router.get("/countries", requirePermission("shipping", "read"), getCountries);
+router.post(
+  "/countries",
+  requirePermission("shipping", "create"),
+  createCountryValidator,
+  createCountry,
+);
+router.put(
+  "/countries/:id",
+  requirePermission("shipping", "update"),
+  updateCountryValidator,
+  updateCountry,
+);
+router.delete(
+  "/countries/:id",
+  requirePermission("shipping", "delete"),
+  countryIdParamValidator,
+  deleteCountry,
+);
 router.get(
   "/countries/:id/governorates",
+  requirePermission("shipping", "read"),
   countryIdParamValidator,
   getGovernoratesByCountry,
 );
 
-router.post("/governorates", createGovernorateValidator, createGovernorate);
-router.put("/governorates/:id", updateGovernorateValidator, updateGovernorate);
+router.post(
+  "/governorates",
+  requirePermission("shipping", "create"),
+  createGovernorateValidator,
+  createGovernorate,
+);
+router.put(
+  "/governorates/:id",
+  requirePermission("shipping", "update"),
+  updateGovernorateValidator,
+  updateGovernorate,
+);
 router.delete(
   "/governorates/:id",
+  requirePermission("shipping", "delete"),
   governorateIdParamValidator,
   deleteGovernorate,
 );
 router.get(
   "/governorates/:id/districts",
+  requirePermission("shipping", "read"),
   governorateIdParamValidator,
   getDistrictsByGovernorate,
 );
 
-router.post("/districts", createDistrictValidator, createDistrict);
-router.put("/districts/:id", updateDistrictValidator, updateDistrict);
-router.delete("/districts/:id", districtIdParamValidator, deleteDistrict);
+router.post(
+  "/districts",
+  requirePermission("shipping", "create"),
+  createDistrictValidator,
+  createDistrict,
+);
+router.put(
+  "/districts/:id",
+  requirePermission("shipping", "update"),
+  updateDistrictValidator,
+  updateDistrict,
+);
+router.delete(
+  "/districts/:id",
+  requirePermission("shipping", "delete"),
+  districtIdParamValidator,
+  deleteDistrict,
+);
 
-router.get("/carriers", getCarriers);
-router.get("/carriers/bosta-pickups", getBostaPickupLocations);
-router.post("/carriers", createCarrierValidator, createCarrier);
+router.get("/carriers", requirePermission("shipping", "read"), getCarriers);
+router.get(
+  "/carriers/bosta-pickups",
+  requirePermission("shipping", "read"),
+  getBostaPickupLocations,
+);
+router.post(
+  "/carriers",
+  requirePermission("shipping", "create"),
+  createCarrierValidator,
+  createCarrier,
+);
 
-router.put("/carriers/:id", updateCarrierValidator, updateCarrier);
-router.delete("/carriers/:id", carrierIdParamValidator, deleteCarrier);
+router.put(
+  "/carriers/:id",
+  requirePermission("shipping", "update"),
+  updateCarrierValidator,
+  updateCarrier,
+);
+router.delete(
+  "/carriers/:id",
+  requirePermission("shipping", "delete"),
+  carrierIdParamValidator,
+  deleteCarrier,
+);
 router.get(
   "/carriers/:id/coverage",
+  requirePermission("shipping", "read"),
   carrierIdParamValidator,
   getCarrierCoverage,
 );
 router.put(
   "/carriers/:id/coverage",
+  requirePermission("shipping", "update"),
   updateCoverageValidator,
   updateCarrierCoverage,
 );
 router.post(
   "/carriers/:id/bosta/sync-zones",
+  requirePermission("shipping", "create"),
   carrierIdParamValidator,
   syncBostaZonesForCarrier,
 );
 router.post(
   "/carriers/:id/bosta/sync-coverage",
+  requirePermission("shipping", "create"),
   carrierIdParamValidator,
   syncBostaCoverageForCarrier,
 );
 router.post(
   "/carriers/:id/bosta/sync-pickups",
+  requirePermission("shipping", "create"),
   carrierIdParamValidator,
   syncBostaPickupsForCarrier,
 );
 
 router.get(
   "/carriers/:id/pickups",
+  requirePermission("shipping", "read"),
   carrierPickupParamValidator,
   getCarrierPickups,
 );
 router.post(
   "/carriers/:id/pickups",
+  requirePermission("shipping", "create"),
   createPickupValidator,
   createCarrierPickup,
 );
 router.delete(
   "/carriers/:id/pickups/:pickupId",
+  requirePermission("shipping", "delete"),
   pickupIdParamValidator,
   deleteCarrierPickup,
 );
 router.put(
   "/carriers/:id/pickups/:pickupId/default",
+  requirePermission("shipping", "update"),
   pickupIdParamValidator,
   setDefaultCarrierPickup,
 );
 router.get(
   "/carriers/:id/bosta/districts-lookup",
+  requirePermission("shipping", "read"),
   carrierPickupParamValidator,
   getBostaDistrictsLookup,
 );
 
 router.get(
   "/shipping/orders/:id",
+  requirePermission("shipping", "read"),
   orderShippingDetailValidator,
   getOrderShippingDetail,
 );
 router.patch(
   "/shipping/orders/:id/status",
+  requirePermission("shipping", "update"),
   updateManualOrderShippingStatusValidator,
   updateManualOrderShippingStatus,
 );
 router.post(
   "/shipping/orders/:id/assign",
+  requirePermission("shipping", "create"),
   assignOrderShippingValidator,
   assignOrderShipping,
 );

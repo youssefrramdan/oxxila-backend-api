@@ -3,6 +3,7 @@ import { Router } from "express";
 import createUploader from "../middlewares/cloudnairyMiddleware.js";
 import { parseReturnBody } from "../middlewares/parseReturnBody.middleware.js";
 import { protectedRoutes, allowTo } from "../middlewares/auth.middleware.js";
+import { requirePermission } from "../middlewares/permission.middleware.js";
 import {
   getEligibleReturnOrders,
   createReturnRequest,
@@ -11,6 +12,7 @@ import {
   getReturns,
   getReturn,
   updateReturnStatus,
+  refundReturnAsGift,
   scheduleBostaReturn,
 } from "../controllers/return.controller.js";
 import {
@@ -42,9 +44,35 @@ router.get("/my-returns/:id", returnIdParamValidator, getMyReturn);
 
 router.use(allowTo("admin"));
 
-router.get("/", listReturnsQueryValidator, getReturns);
-router.patch("/:id/status", updateReturnStatusValidator, updateReturnStatus);
-router.post("/:id/bosta/schedule", returnIdParamValidator, scheduleBostaReturn);
-router.get("/:id", returnIdParamValidator, getReturn);
+router.get(
+  "/",
+  requirePermission("returns", "read"),
+  listReturnsQueryValidator,
+  getReturns,
+);
+router.patch(
+  "/:id/status",
+  requirePermission("returns", "update"),
+  updateReturnStatusValidator,
+  updateReturnStatus,
+);
+router.post(
+  "/:id/refund-as-gift",
+  requirePermission("returns", "update"),
+  returnIdParamValidator,
+  refundReturnAsGift,
+);
+router.post(
+  "/:id/bosta/schedule",
+  requirePermission("returns", "update"),
+  returnIdParamValidator,
+  scheduleBostaReturn,
+);
+router.get(
+  "/:id",
+  requirePermission("returns", "read"),
+  returnIdParamValidator,
+  getReturn,
+);
 
 export default router;

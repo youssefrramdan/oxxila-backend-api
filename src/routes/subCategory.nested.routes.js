@@ -2,7 +2,8 @@
 import { Router } from 'express';
 import createUploader from '../middlewares/cloudnairyMiddleware.js';
 import * as sub from '../controllers/subCategory.controller.js';
-import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
+import { protectedRoutes, allowTo, optionalAuth } from '../middlewares/auth.middleware.js';
+import { requirePermission } from '../middlewares/permission.middleware.js';
 import {
   createSubCategoryValidator,
   updateSubCategoryValidatorNested,
@@ -23,16 +24,24 @@ const subUpload = createUploader('oxxila/subcategories', {
 
 R.get(
   '/',
+  optionalAuth,
   createNestedSubCategoryFilter,
   requireActiveParentCategory,
   sub.getAllSubcategories
 );
-R.get('/:id', nestedSubCategoryIdParams, requireActiveParentCategory, sub.getSubCategory);
+R.get(
+  '/:id',
+  optionalAuth,
+  nestedSubCategoryIdParams,
+  requireActiveParentCategory,
+  sub.getSubCategory
+);
 
 R.post(
   '/',
   protectedRoutes,
   allowTo('admin'),
+  requirePermission('subcategories', 'create'),
   requireParentCategoryForAdmin,
   subUpload.single('image'),
   setSubcategoryCategoryFromParam,
@@ -43,6 +52,7 @@ R.put(
   '/:id',
   protectedRoutes,
   allowTo('admin'),
+  requirePermission('subcategories', 'update'),
   requireParentCategoryForAdmin,
   subUpload.single('image'),
   updateSubCategoryValidatorNested,
@@ -52,6 +62,7 @@ R.delete(
   '/:id',
   protectedRoutes,
   allowTo('admin'),
+  requirePermission('subcategories', 'delete'),
   requireParentCategoryForAdmin,
   nestedSubCategoryIdParams,
   sub.deleteSubCategory

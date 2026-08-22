@@ -29,6 +29,13 @@ const userSchema = new Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
+    /** RBAC role for admins — required when role === 'admin'. */
+    adminRole: {
+      type: Schema.Types.ObjectId,
+      ref: 'AdminRole',
+      default: null,
+      index: true,
+    },
     // Display title for admins only (free text for dashboard badge)
     adminTitle: {
       type: String,

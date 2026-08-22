@@ -35,7 +35,8 @@ function getTransporter() {
  * @param  {string} options.email    - recipient address
  * @param  {string} options.subject  - email subject
  * @param  {string} options.html     - HTML body
- * @param  {string} [options.text]   - optional plain-text fallback
+ * @param  {string} [options.text]     - optional plain-text fallback
+ * @param  {string} [options.replyTo]  - optional Reply-To address
  */
 const sendEmail = async (options) => {
   try {
@@ -46,6 +47,7 @@ const sendEmail = async (options) => {
       subject: options.subject,
       html: options.html,
       text: options.text,
+      ...(options.replyTo ? { replyTo: options.replyTo } : {}),
     });
 
     logger.info(`Email sent: ${info.messageId}`);

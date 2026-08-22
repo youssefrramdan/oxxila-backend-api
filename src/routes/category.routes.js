@@ -3,7 +3,8 @@ import { Router } from 'express';
 import createUploader from '../middlewares/cloudnairyMiddleware.js';
 import * as categories from '../controllers/category.controller.js';
 import { subCategoryNestedRouter } from './subCategory.nested.routes.js';
-import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
+import { protectedRoutes, allowTo, optionalAuth } from '../middlewares/auth.middleware.js';
+import { requirePermission } from '../middlewares/permission.middleware.js';
 import {
   createCategoryValidator,
   updateCategoryValidator,
@@ -17,18 +18,30 @@ const categoryUpload = createUploader('oxxila/categories', {
 });
 
 router.use('/:categoryId/subcategories', subCategoryNestedRouter);
-router.get('/', categories.getAllCategories);
-router.get('/:id', categoryIdParamValidator, categories.getCategory);
+// Public: active only. Admin can pass ?includeInactive=true with Bearer.
+router.get('/', optionalAuth, categories.getAllCategories);
+router.get('/:id', optionalAuth, categoryIdParamValidator, categories.getCategory);
 
 router.use(protectedRoutes, allowTo('admin'));
-// multipart must be parsed before express-validator reads req.body
-router.post('/', categoryUpload.single('image'), createCategoryValidator, categories.createCategory);
+router.post(
+  '/',
+  requirePermission('categories', 'create'),
+  categoryUpload.single('image'),
+  createCategoryValidator,
+  categories.createCategory
+);
 router.put(
   '/:id',
+  requirePermission('categories', 'update'),
   categoryUpload.single('image'),
   updateCategoryValidator,
   categories.updateCategory
 );
-router.delete('/:id', categoryIdParamValidator, categories.deleteCategory);
+router.delete(
+  '/:id',
+  requirePermission('categories', 'delete'),
+  categoryIdParamValidator,
+  categories.deleteCategory
+);
 
 export default router;

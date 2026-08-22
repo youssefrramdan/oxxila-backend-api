@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import * as offers from '../controllers/offer.controller.js';
 import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
+import { requirePermission } from '../middlewares/permission.middleware.js';
 import {
   createOfferValidator,
   updateOfferValidator,
@@ -15,9 +16,24 @@ router.get('/', offers.getAllOffers);
 router.get('/:id', offerIdParamValidator, offers.getOffer);
 
 router.use(protectedRoutes, allowTo('admin'));
-router.post('/', createOfferValidator, offers.createOffer);
-router.put('/:id', updateOfferValidator, offers.updateOffer);
-router.delete('/', offers.deleteAllOffers);
-router.delete('/:id', offerIdParamValidator, offers.deleteOffer);
+router.post(
+  '/',
+  requirePermission('settings', 'create'),
+  createOfferValidator,
+  offers.createOffer
+);
+router.put(
+  '/:id',
+  requirePermission('settings', 'update'),
+  updateOfferValidator,
+  offers.updateOffer
+);
+router.delete('/', requirePermission('settings', 'delete'), offers.deleteAllOffers);
+router.delete(
+  '/:id',
+  requirePermission('settings', 'delete'),
+  offerIdParamValidator,
+  offers.deleteOffer
+);
 
 export default router;

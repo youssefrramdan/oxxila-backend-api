@@ -29,6 +29,7 @@ import {
   getRecommendations,
 } from '../controllers/browsingHistory.controller.js';
 import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
+import { requirePermission } from '../middlewares/permission.middleware.js';
 import createUploader from '../middlewares/cloudnairyMiddleware.js';
 import {
   createUserValidator,
@@ -84,18 +85,28 @@ router.get('/recommendations', getRecommendations);
 // ─── Admin-only ───────────────────────────────────────────────────────────────
 router.use(allowTo('admin'));
 
-router.get('/stats', getCustomerStats);
+router.get('/stats', requirePermission('customers', 'read'), getCustomerStats);
 
 router.route('/')
-  .get(getAllUsers)
-  .post(createUserValidator, createUser);
+  .get(requirePermission('customers', 'read'), getAllUsers)
+  .post(requirePermission('customers', 'create'), createUserValidator, createUser);
 
-router.patch('/activate/:id', userIdParamValidator, activateSpecificUser);
-router.patch('/changePassword/:id', changeUserPasswordValidator, changeUserPassword);
+router.patch(
+  '/activate/:id',
+  requirePermission('customers', 'update'),
+  userIdParamValidator,
+  activateSpecificUser
+);
+router.patch(
+  '/changePassword/:id',
+  requirePermission('customers', 'update'),
+  changeUserPasswordValidator,
+  changeUserPassword
+);
 
 router.route('/:id')
-  .get(userIdParamValidator, getSpecificUser)
-  .put(updateUserValidator, updateUser)
-  .delete(userIdParamValidator, deleteUser);
+  .get(requirePermission('customers', 'read'), userIdParamValidator, getSpecificUser)
+  .put(requirePermission('customers', 'update'), updateUserValidator, updateUser)
+  .delete(requirePermission('customers', 'delete'), userIdParamValidator, deleteUser);
 
 export default router;

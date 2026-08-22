@@ -10,7 +10,11 @@ export const createCategoryValidator = [
     .notEmpty().withMessage('Category name is required')
     .isLength({ min: 2, max: 50 }).withMessage('Category name must be 2-50 characters'),
   check('image').optional().isString().isLength({ max: 2000 }),
-  check('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
+  check('isActive')
+    .optional()
+    .isBoolean({ strict: false })
+    .withMessage('isActive must be a boolean')
+    .toBoolean(),
   validate,
 ];
 
@@ -21,7 +25,11 @@ export const updateCategoryValidator = [
     .trim()
     .isLength({ min: 2, max: 50 }).withMessage('Category name must be 2-50 characters'),
   check('image').optional().isString().isLength({ max: 2000 }),
-  check('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
+  check('isActive')
+    .optional()
+    .isBoolean({ strict: false })
+    .withMessage('isActive must be a boolean')
+    .toBoolean(),
   validate,
 ];
 

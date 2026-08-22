@@ -28,10 +28,14 @@ import cartRouter from "./routes/cart.routes.js";
 import wishlistRouter from "./routes/wishlist.routes.js";
 import orderRouter from "./routes/order.routes.js";
 import returnRouter from "./routes/return.routes.js";
+import giftCardRouter from "./routes/giftCard.routes.js";
 import trackingRouter from "./routes/tracking.routes.js";
 import dashboardRouter from "./routes/dashboard.routes.js";
 import adminUserRouter from "./routes/adminUser.routes.js";
+import adminRoleRouter from "./routes/adminRole.routes.js";
 import paymentAdminRouter from "./routes/paymentAdmin.routes.js";
+import settingsRouter from "./routes/settings.routes.js";
+import contentPageRouter from "./routes/contentPage.routes.js";
 import {
   stripeWebhook,
   paymobWebhook,
@@ -119,10 +123,14 @@ app.use("/api/v1/cart", cartRouter);
 app.use("/api/v1/wishlist", wishlistRouter);
 app.use("/api/v1/orders", orderRouter);
 app.use("/api/v1/returns", returnRouter);
+app.use("/api/v1/gift-cards", giftCardRouter);
 app.use("/api/v1/track", trackingRouter);
 app.use("/api/v1/dashboard", dashboardRouter);
 app.use("/api/v1/admins", adminUserRouter);
+app.use("/api/v1/admin-roles", adminRoleRouter);
 app.use("/api/v1/payments", paymentAdminRouter);
+app.use("/api/v1/settings/pages", contentPageRouter);
+app.use("/api/v1/settings", settingsRouter);
 
 app.all(/(.*)/, (req, res, next) => {
   next(new ApiError(`Route ${req.originalUrl} not found`, 404));
