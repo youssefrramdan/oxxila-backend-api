@@ -47,6 +47,27 @@ const syncProductOffer = async (productRef, offer = null) => {
 };
 
 /**
+ * @desc    List all offers for admin (active, scheduled, expired)
+ * @route   GET /api/v1/offers/manage
+ * @access  Private (admin)
+ */
+export const getAdminOffers = asyncHandler(async (req, res) => {
+  const features = new ApiFeatures(
+    Offer.find().populate(popProduct(PRODUCT_ON_CARD)).sort({ createdAt: -1 }),
+    req.query,
+  );
+
+  await features.paginate();
+
+  const data = await features.mongooseQuery.lean();
+  sendResponse(res, {
+    message: 'Offers retrieved successfully',
+    data,
+    pagination: { ...features.getPaginationResult(), results: data.length },
+  });
+});
+
+/**
  * @desc    List current offers (optionally ending today)
  * @route   GET /api/v1/offers
  * @access  Public
