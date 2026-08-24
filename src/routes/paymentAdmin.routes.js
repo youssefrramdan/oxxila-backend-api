@@ -6,6 +6,7 @@ import {
   getPaymentGateways,
   updatePaymentGateway,
 } from '../controllers/paymentAdmin.controller.js';
+import { getEnabledPaymentGateways } from '../controllers/payment.controller.js';
 import {
   paymentSummaryValidator,
   updatePaymentGatewayValidator,
@@ -14,6 +15,9 @@ import { protectedRoutes, allowTo } from '../middlewares/auth.middleware.js';
 import { requirePermission } from '../middlewares/permission.middleware.js';
 
 const router = Router();
+
+/** Checkout: enabled gateways only (any authenticated user). */
+router.get('/gateways/enabled', protectedRoutes, getEnabledPaymentGateways);
 
 router.use(protectedRoutes, allowTo('admin'));
 

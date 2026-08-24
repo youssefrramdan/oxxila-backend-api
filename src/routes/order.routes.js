@@ -13,7 +13,6 @@ import {
 } from "../controllers/order.controller.js";
 import {
   createPaymentSession,
-  getEnabledPaymentGateways,
   getPaymentSessionStatus,
 } from "../controllers/payment.controller.js";
 import {
@@ -33,7 +32,6 @@ const router = Router();
 
 router.use(protectedRoutes);
 
-router.get("/payment-gateways", getEnabledPaymentGateways);
 router.post(
   "/payment-session",
   createPaymentSessionValidator,

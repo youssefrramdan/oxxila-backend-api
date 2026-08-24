@@ -581,7 +581,7 @@ export const paymobRedirect = asyncHandler(async (req, res) => {
 
 /**
  * @desc    List enabled payment gateways for checkout
- * @route   GET /api/v1/orders/payment-gateways
+ * @route   GET /api/v1/payments/gateways/enabled
  * @access  Private (customer)
  */
 export const getEnabledPaymentGateways = asyncHandler(async (req, res) => {
