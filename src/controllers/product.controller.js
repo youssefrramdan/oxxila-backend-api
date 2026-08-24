@@ -121,7 +121,14 @@ const addToBrowsingHistory = async (userId, productId, categoryId) => {
 
 /** Build a Mongo filter from public product list query params */
 const buildFilter = (query) => {
-  const filter = { ...activeFilter };
+  const filter = {};
+
+  // Default active-only for storefront. Admin catalog can pass isActive=false|all.
+  if (query.isActive === 'false') {
+    filter.isActive = false;
+  } else if (query.isActive !== 'all') {
+    filter.isActive = true;
+  }
 
   if (query.category && mongoose.Types.ObjectId.isValid(query.category)) {
     filter.category = query.category;
@@ -227,7 +234,13 @@ export const getAllProducts = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const getProduct = asyncHandler(async (req, res, next) => {
-  const product = await Product.findOne({ _id: req.params.id, ...activeFilter })
+  // Admins can open archived formulas; storefront stays active-only.
+  const filter =
+    req.user?.role === 'admin'
+      ? { _id: req.params.id }
+      : { _id: req.params.id, ...activeFilter };
+
+  const product = await Product.findOne(filter)
     .select(`${productSelect} description advantages composition catalog`)
     .populate(productPopulate);
 
