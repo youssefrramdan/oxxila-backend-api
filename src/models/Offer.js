@@ -8,17 +8,17 @@ const offerSchema = new mongoose.Schema(
       ref: 'Product',
       required: [true, 'Product is required'],
     },
+    // Exactly one of discountPercent / discountAmount must be set (percent vs fixed).
     discountPercent: {
       type: Number,
       min: [0, 'discountPercent must be >= 0'],
       max: [100, 'discountPercent must be <= 100'],
-      required: [true, 'discountPercent is required'],
+      default: null,
     },
     discountAmount: {
       type: Number,
       min: [0, 'discountAmount must be >= 0'],
       default: null,
-      required: [true, 'discountAmount is required'],
     },
     productCount: {
       type: Number,
@@ -39,6 +39,15 @@ const offerSchema = new mongoose.Schema(
 );
 
 offerSchema.pre('validate', function () {
+  const hasPercent = this.discountPercent != null;
+  const hasAmount = this.discountAmount != null;
+
+  if (!hasPercent && !hasAmount) {
+    this.invalidate('discountPercent', 'Either discountPercent or discountAmount is required');
+  }
+  if (hasPercent && hasAmount) {
+    this.invalidate('discountAmount', 'Provide either discountPercent or discountAmount, not both');
+  }
 
   if (this.startDate && this.endDate && this.endDate <= this.startDate) {
     this.invalidate('endDate', 'endDate must be after startDate');
