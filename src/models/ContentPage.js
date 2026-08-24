@@ -9,8 +9,6 @@ export const CONTENT_PAGE_SLUGS = [
   'shipping-policy',
 ];
 
-export const CONTENT_SECTION_LAYOUTS = ['intro', 'cards', 'split', 'cta', 'text'];
-
 const PAGE_SHELL_TITLES = {
   about: 'About',
   terms: 'Terms & Conditions',
@@ -30,19 +28,11 @@ const sectionItemSchema = new mongoose.Schema(
 const sectionSchema = new mongoose.Schema(
   {
     key: { type: String, required: true, trim: true, maxlength: 60 },
-    layout: {
-      type: String,
-      enum: CONTENT_SECTION_LAYOUTS,
-      default: 'text',
-    },
     title: { type: String, default: '', trim: true, maxlength: 200 },
     subtitle: { type: String, default: '', trim: true, maxlength: 500 },
-    /** Plain text body (paragraphs separated by newlines). */
     body: { type: String, default: '', trim: true, maxlength: 20000 },
-    image: { type: String, default: '', trim: true },
     items: { type: [sectionItemSchema], default: [] },
     buttonLabel: { type: String, default: '', trim: true, maxlength: 120 },
-    buttonHref: { type: String, default: '', trim: true, maxlength: 500 },
   },
   { _id: false },
 );
@@ -58,7 +48,6 @@ const contentPageSchema = new mongoose.Schema(
     },
     title: { type: String, required: true, trim: true, maxlength: 200 },
     subtitle: { type: String, default: '', trim: true, maxlength: 500 },
-    content: { type: String, default: '', trim: true, maxlength: 100000 },
     sections: {
       type: [sectionSchema],
       default: [],
@@ -77,7 +66,6 @@ contentPageSchema.statics.ensureDefaults = async function ensureDefaults() {
       slug,
       title: PAGE_SHELL_TITLES[slug] ?? slug,
       subtitle: '',
-      content: '',
       sections: [],
       isPublished: true,
     });

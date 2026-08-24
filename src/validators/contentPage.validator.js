@@ -1,10 +1,7 @@
 // src/validators/contentPage.validator.js
 import { body, param } from 'express-validator';
 import validate from '../middlewares/validate.middleware.js';
-import {
-  CONTENT_PAGE_SLUGS,
-  CONTENT_SECTION_LAYOUTS,
-} from '../models/ContentPage.js';
+import { CONTENT_PAGE_SLUGS } from '../models/ContentPage.js';
 
 const slugParam = () =>
   param('slug')
@@ -25,12 +22,6 @@ export const updateContentPageValidator = [
     .trim()
     .isLength({ max: 500 })
     .withMessage('subtitle cannot exceed 500 characters'),
-  body('content')
-    .optional()
-    .isString()
-    .withMessage('content must be a string')
-    .isLength({ max: 100000 })
-    .withMessage('content cannot exceed 100000 characters'),
   body('isPublished')
     .optional()
     .isBoolean()
@@ -41,10 +32,6 @@ export const updateContentPageValidator = [
     .trim()
     .isLength({ min: 1, max: 60 })
     .withMessage('section key must be 1–60 characters'),
-  body('sections.*.layout')
-    .optional()
-    .isIn(CONTENT_SECTION_LAYOUTS)
-    .withMessage(`section layout must be one of: ${CONTENT_SECTION_LAYOUTS.join(', ')}`),
   body('sections.*.title')
     .optional()
     .trim()
@@ -61,11 +48,6 @@ export const updateContentPageValidator = [
     .withMessage('section body must be a string')
     .isLength({ max: 20000 })
     .withMessage('section body cannot exceed 20000 characters'),
-  body('sections.*.image')
-    .optional({ values: 'falsy' })
-    .trim()
-    .isURL({ require_protocol: true, protocols: ['http', 'https'] })
-    .withMessage('section image must be a valid URL'),
   body('sections.*.items').optional().isArray().withMessage('section items must be an array'),
   body('sections.*.items.*.title')
     .optional()
@@ -82,15 +64,5 @@ export const updateContentPageValidator = [
     .trim()
     .isLength({ max: 120 })
     .withMessage('buttonLabel cannot exceed 120 characters'),
-  body('sections.*.buttonHref')
-    .optional({ values: 'falsy' })
-    .trim()
-    .isLength({ max: 500 })
-    .withMessage('buttonHref cannot exceed 500 characters'),
-  body('sectionKey')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 60 })
-    .withMessage('sectionKey must be 1–60 characters'),
   validate,
 ];
