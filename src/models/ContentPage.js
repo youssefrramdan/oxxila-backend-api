@@ -9,6 +9,8 @@ export const CONTENT_PAGE_SLUGS = [
   'shipping-policy',
 ];
 
+export const CONTENT_SECTION_LAYOUTS = ['intro', 'cards', 'split', 'cta', 'text'];
+
 const PAGE_SHELL_TITLES = {
   about: 'About',
   terms: 'Terms & Conditions',
@@ -17,13 +19,30 @@ const PAGE_SHELL_TITLES = {
   'shipping-policy': 'Shipping Policy',
 };
 
+const sectionItemSchema = new mongoose.Schema(
+  {
+    title: { type: String, default: '', trim: true, maxlength: 200 },
+    description: { type: String, default: '', trim: true, maxlength: 2000 },
+  },
+  { _id: false },
+);
+
 const sectionSchema = new mongoose.Schema(
   {
     key: { type: String, required: true, trim: true, maxlength: 60 },
+    layout: {
+      type: String,
+      enum: CONTENT_SECTION_LAYOUTS,
+      default: 'text',
+    },
     title: { type: String, default: '', trim: true, maxlength: 200 },
-    /** Plain text or JSON payload for structured About blocks — never required as HTML. */
+    subtitle: { type: String, default: '', trim: true, maxlength: 500 },
+    /** Plain text body (paragraphs separated by newlines). */
     body: { type: String, default: '', trim: true, maxlength: 20000 },
     image: { type: String, default: '', trim: true },
+    items: { type: [sectionItemSchema], default: [] },
+    buttonLabel: { type: String, default: '', trim: true, maxlength: 120 },
+    buttonHref: { type: String, default: '', trim: true, maxlength: 500 },
   },
   { _id: false },
 );
@@ -39,7 +58,6 @@ const contentPageSchema = new mongoose.Schema(
     },
     title: { type: String, required: true, trim: true, maxlength: 200 },
     subtitle: { type: String, default: '', trim: true, maxlength: 500 },
-    /** Optional intro text (plain). Prefer `sections` for storefront body. */
     content: { type: String, default: '', trim: true, maxlength: 100000 },
     sections: {
       type: [sectionSchema],
@@ -50,10 +68,7 @@ const contentPageSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-/**
- * Create empty shells for missing slugs only — never overwrites CMS data.
- * Real copy is seeded once (or edited in admin).
- */
+/** Empty shells only — never overwrites seeded / admin CMS data. */
 contentPageSchema.statics.ensureDefaults = async function ensureDefaults() {
   for (const slug of CONTENT_PAGE_SLUGS) {
     const exists = await this.exists({ slug });

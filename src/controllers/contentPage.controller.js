@@ -1,8 +1,41 @@
 // src/controllers/contentPage.controller.js
 import asyncHandler from 'express-async-handler';
-import ContentPage, { CONTENT_PAGE_SLUGS } from '../models/ContentPage.js';
+import ContentPage, {
+  CONTENT_PAGE_SLUGS,
+  CONTENT_SECTION_LAYOUTS,
+} from '../models/ContentPage.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
+
+const MAX_SECTION_UPLOADS = 12;
+
+const normalizeLayout = (value) => {
+  const layout = String(value ?? 'text').trim();
+  return CONTENT_SECTION_LAYOUTS.includes(layout) ? layout : 'text';
+};
+
+const normalizeItems = (items) => {
+  if (!Array.isArray(items)) return [];
+  return items.map((item) => ({
+    title: String(item?.title ?? '').trim(),
+    description: String(item?.description ?? '').trim(),
+  }));
+};
+
+const toPublicSection = (section) => ({
+  key: section.key,
+  layout: normalizeLayout(section.layout),
+  title: section.title ?? '',
+  subtitle: section.subtitle ?? '',
+  body: section.body ?? '',
+  image: section.image ?? '',
+  items: (section.items ?? []).map((item) => ({
+    title: item.title ?? '',
+    description: item.description ?? '',
+  })),
+  buttonLabel: section.buttonLabel ?? '',
+  buttonHref: section.buttonHref ?? '',
+});
 
 const toPublicPage = (doc) => {
   const plain = typeof doc.toObject === 'function' ? doc.toObject() : doc;
@@ -11,12 +44,7 @@ const toPublicPage = (doc) => {
     title: plain.title ?? '',
     subtitle: plain.subtitle ?? '',
     content: plain.content ?? '',
-    sections: (plain.sections ?? []).map((section) => ({
-      key: section.key,
-      title: section.title ?? '',
-      body: section.body ?? '',
-      image: section.image ?? '',
-    })),
+    sections: (plain.sections ?? []).map(toPublicSection),
     isPublished: Boolean(plain.isPublished),
     updatedAt: plain.updatedAt,
   };
@@ -55,6 +83,43 @@ export const parseContentPageBody = (req, _res, next) => {
     else if (req.body.isPublished === 'false') req.body.isPublished = false;
   }
   next();
+};
+
+const applySectionUploads = (page, req, next) => {
+  // Legacy single upload: sectionImage + sectionKey
+  if (req.file?.path && req.body.sectionKey) {
+    const key = String(req.body.sectionKey).trim();
+    const target = page.sections.find((section) => section.key === key);
+    if (!target) {
+      next(new ApiError(`No section found with key: ${key}`, 404));
+      return false;
+    }
+    target.image = req.file.path;
+    page.markModified('sections');
+  }
+
+  // Multi upload: sectionImage0… + sectionKey0…
+  const files = req.files && !Array.isArray(req.files) ? req.files : null;
+  if (!files) return true;
+
+  for (let index = 0; index < MAX_SECTION_UPLOADS; index += 1) {
+    const uploaded = files[`sectionImage${index}`]?.[0];
+    if (!uploaded?.path) continue;
+    const key = String(req.body[`sectionKey${index}`] ?? '').trim();
+    if (!key) {
+      next(new ApiError(`sectionKey${index} is required when uploading sectionImage${index}`, 400));
+      return false;
+    }
+    const target = page.sections.find((section) => section.key === key);
+    if (!target) {
+      next(new ApiError(`No section found with key: ${key}`, 404));
+      return false;
+    }
+    target.image = uploaded.path;
+    page.markModified('sections');
+  }
+
+  return true;
 };
 
 /**
@@ -133,23 +198,19 @@ export const updateContentPage = asyncHandler(async (req, res, next) => {
 
     page.sections = req.body.sections.map((section, index) => ({
       key: String(section?.key ?? `section-${index + 1}`).trim() || `section-${index + 1}`,
+      layout: normalizeLayout(section?.layout),
       title: String(section?.title ?? '').trim(),
+      subtitle: String(section?.subtitle ?? '').trim(),
       body: String(section?.body ?? ''),
       image: String(section?.image ?? '').trim(),
+      items: normalizeItems(section?.items),
+      buttonLabel: String(section?.buttonLabel ?? '').trim(),
+      buttonHref: String(section?.buttonHref ?? '').trim(),
     }));
     page.markModified('sections');
   }
 
-  // Optional single section image upload: field name `sectionImage` + body `sectionKey`
-  if (req.file?.path && req.body.sectionKey) {
-    const key = String(req.body.sectionKey).trim();
-    const target = page.sections.find((section) => section.key === key);
-    if (!target) {
-      return next(new ApiError(`No section found with key: ${key}`, 404));
-    }
-    target.image = req.file.path;
-    page.markModified('sections');
-  }
+  if (!applySectionUploads(page, req, next)) return;
 
   await page.save();
 
@@ -159,4 +220,4 @@ export const updateContentPage = asyncHandler(async (req, res, next) => {
   });
 });
 
-export { CONTENT_PAGE_SLUGS };
+export { CONTENT_PAGE_SLUGS, CONTENT_SECTION_LAYOUTS, MAX_SECTION_UPLOADS };

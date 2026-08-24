@@ -8,6 +8,7 @@ import {
   getContentPage,
   updateContentPage,
   parseContentPageBody,
+  MAX_SECTION_UPLOADS,
 } from '../controllers/contentPage.controller.js';
 import {
   contentPageSlugValidator,
@@ -21,6 +22,14 @@ const sectionImageUpload = createUploader('oxxila/settings/pages', {
   maxFileSizeMB: 10,
 });
 
+const sectionImageFields = [
+  { name: 'sectionImage', maxCount: 1 },
+  ...Array.from({ length: MAX_SECTION_UPLOADS }, (_, index) => ({
+    name: `sectionImage${index}`,
+    maxCount: 1,
+  })),
+];
+
 router.get('/', optionalAuth, getContentPages);
 router.get('/:slug', optionalAuth, contentPageSlugValidator, getContentPage);
 
@@ -29,7 +38,7 @@ router.put(
   protectedRoutes,
   allowTo('admin'),
   requirePermission('websiteContent', 'update'),
-  sectionImageUpload.single('sectionImage'),
+  sectionImageUpload.fields(sectionImageFields),
   parseContentPageBody,
   updateContentPageValidator,
   updateContentPage,
