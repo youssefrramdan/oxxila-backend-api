@@ -580,6 +580,24 @@ export const paymobRedirect = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    List enabled payment gateways for checkout
+ * @route   GET /api/v1/orders/payment-gateways
+ * @access  Private (customer)
+ */
+export const getEnabledPaymentGateways = asyncHandler(async (req, res) => {
+  await PaymentGateway.ensureDefaults();
+  const gateways = await PaymentGateway.find({ isEnabled: true })
+    .select('code name')
+    .sort({ code: 1 })
+    .lean();
+
+  sendResponse(res, {
+    message: 'Enabled payment gateways retrieved successfully',
+    data: gateways,
+  });
+});
+
+/**
  * @desc    Poll payment session status
  * @route   GET /api/v1/orders/payment-session/:id
  * @access  Private
