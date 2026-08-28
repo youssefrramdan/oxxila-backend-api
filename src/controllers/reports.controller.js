@@ -175,21 +175,6 @@ const mapGroupedRow = (row) => ({
   avgUnitPrice: roundMoney(row.avgUnitPrice ?? 0),
 });
 
-const buildSummaryFromRows = (rows, distinctOrderIds = null) => {
-  const totalRevenue = rows.reduce((sum, row) => sum + (row.grossRevenue ?? 0), 0);
-  const totalUnits = rows.reduce((sum, row) => sum + (row.unitsSold ?? 0), 0);
-  const orderCount =
-    distinctOrderIds?.size ??
-    rows.reduce((sum, row) => sum + (row.orderCount ?? 0), 0);
-
-  return {
-    totalRevenue: roundMoney(totalRevenue),
-    totalUnits,
-    orderCount,
-    productCount: rows.length,
-  };
-};
-
 const countDistinctPaidOrders = async (start, end) => {
   const result = await Order.countDocuments({
     ...SALES_ORDER_MATCH,
