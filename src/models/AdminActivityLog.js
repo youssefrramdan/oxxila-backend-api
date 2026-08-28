@@ -14,6 +14,8 @@ const ADMIN_ACTIONS = [
   'sync',
   'activate',
   'deactivate',
+  'flag',
+  'unflag',
 ];
 
 const adminActivityLogSchema = new mongoose.Schema(

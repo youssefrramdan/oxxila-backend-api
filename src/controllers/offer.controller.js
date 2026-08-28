@@ -13,6 +13,7 @@ import {
   recordAdminActivity,
   stampAuditFields,
 } from '../utils/adminActivity.js';
+import { formatOfferActivityLabel } from '../utils/adminActivityLabels.js';
 
 const PRODUCT_ON_CARD = 'name slug price images isBundle';
 const PRODUCT_MINIMAL = 'name slug price images';
@@ -149,7 +150,14 @@ export const createOffer = asyncHandler(async (req, res, next) => {
 
   stampAuditFields(req.body, req, { isCreate: true });
   const data = await Offer.create(req.body);
-  logAdminCreate(req, { tab: 'settings', resourceType: 'offer', doc: data });
+  await data.populate(popProduct('name'));
+  const offerLabel = formatOfferActivityLabel(data, data.product);
+  logAdminCreate(req, {
+    tab: 'settings',
+    resourceType: 'offer',
+    doc: data,
+    resourceLabel: offerLabel,
+  });
   await syncProductOffer(data.product, data);
   await data.populate(popProduct(PRODUCT_ON_CARD));
 
@@ -187,7 +195,15 @@ export const updateOffer = asyncHandler(async (req, res, next) => {
   }
   await syncProductOffer(doc.product, doc);
 
-  logAdminUpdate(req, { tab: 'settings', resourceType: 'offer', doc, previous });
+  await doc.populate(popProduct('name'));
+  const offerLabel = formatOfferActivityLabel(doc, doc.product);
+  logAdminUpdate(req, {
+    tab: 'settings',
+    resourceType: 'offer',
+    doc,
+    previous,
+    resourceLabel: offerLabel,
+  });
 
   sendResponse(res, { message: 'Offer updated successfully', data: attachAuditToDoc(doc) });
 });
@@ -198,10 +214,16 @@ export const updateOffer = asyncHandler(async (req, res, next) => {
  * @access  Private (admin)
  */
 export const deleteOffer = asyncHandler(async (req, res, next) => {
-  const removed = await Offer.findById(req.params.id);
+  const removed = await Offer.findById(req.params.id).populate(popProduct('name'));
   if (!removed) return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
 
-  logAdminDelete(req, { tab: 'settings', resourceType: 'offer', doc: removed });
+  const offerLabel = formatOfferActivityLabel(removed, removed.product);
+  logAdminDelete(req, {
+    tab: 'settings',
+    resourceType: 'offer',
+    doc: removed,
+    resourceLabel: offerLabel,
+  });
   await removed.deleteOne();
 
   await syncProductOffer(removed.product, null);

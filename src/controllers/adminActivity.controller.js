@@ -3,7 +3,11 @@ import asyncHandler from 'express-async-handler';
 import AdminActivityLog from '../models/AdminActivityLog.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
-import { enrichActivityLogs } from '../utils/adminActivityLabels.js';
+import {
+  enrichActivityLogs,
+  REVIEW_MODERATION_ACTIONS,
+  SETTINGS_ACTIVITY_TABS,
+} from '../utils/adminActivityLabels.js';
 
 /**
  * @desc    List admin activity logs (Super Admin only)
@@ -14,7 +18,17 @@ export const listAdminActivityLogs = asyncHandler(async (req, res) => {
   const filter = {};
 
   if (req.query.actor) filter.actor = req.query.actor;
-  if (req.query.tab) filter.tab = req.query.tab;
+  if (req.query.tab) {
+    filter.tab = SETTINGS_ACTIVITY_TABS.includes(req.query.tab)
+      ? { $in: SETTINGS_ACTIVITY_TABS }
+      : req.query.tab;
+  }
+
+  // Reviews: moderation actions only — not customer-created review rows from backfill.
+  filter.$or = [
+    { resourceType: { $ne: 'review' } },
+    { action: { $in: [...REVIEW_MODERATION_ACTIONS] } },
+  ];
   if (req.query.action) filter.action = req.query.action;
   if (req.query.resourceType) filter.resourceType = req.query.resourceType;
   if (req.query.resourceId) filter.resourceId = String(req.query.resourceId);

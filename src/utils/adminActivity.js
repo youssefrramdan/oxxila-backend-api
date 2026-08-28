@@ -104,21 +104,28 @@ const resourceLabelFrom = (doc, labelKey = 'name') =>
   String(doc?.[labelKey] ?? doc?.code ?? doc?.title ?? doc?._id ?? '').trim();
 
 /** Log a create mutation and stamp audit fields on req.body before Category.create etc. */
-export const logAdminCreate = (req, { tab, resourceType, doc, labelKey = 'name' }) => {
-  const label = resourceLabelFrom(doc, labelKey);
+export const logAdminCreate = (
+  req,
+  { tab, resourceType, doc, labelKey = 'name', resourceLabel, summary },
+) => {
+  const label = resourceLabel ?? resourceLabelFrom(doc, labelKey);
   recordAdminActivity(req, {
     tab,
     action: 'create',
     resourceType,
     resourceId: doc._id,
     resourceLabel: label,
-    summary: `Created ${resourceType} "${label}"`,
+    summary: summary ?? `Created ${resourceType} "${label}"`,
   });
 };
 
 /** Log an update mutation; detects hide/show when isActive changes. */
-export const logAdminUpdate = (req, { tab, resourceType, doc, previous, labelKey = 'name' }) => {
-  const label = resourceLabelFrom(doc, labelKey) || resourceLabelFrom(previous, labelKey);
+export const logAdminUpdate = (
+  req,
+  { tab, resourceType, doc, previous, labelKey = 'name', resourceLabel, summary },
+) => {
+  const label =
+    resourceLabel ?? (resourceLabelFrom(doc, labelKey) || resourceLabelFrom(previous, labelKey));
   let action = 'update';
   let changes = null;
 
@@ -136,7 +143,7 @@ export const logAdminUpdate = (req, { tab, resourceType, doc, previous, labelKey
     resourceType,
     resourceId: doc._id,
     resourceLabel: label,
-    summary: `${verb} ${resourceType} "${label}"`,
+    summary: summary ?? `${verb} ${resourceType} "${label}"`,
     changes,
   });
 };

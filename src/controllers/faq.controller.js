@@ -13,6 +13,12 @@ import {
   logAdminUpdate,
   stampAuditFields,
 } from '../utils/adminActivity.js';
+import { formatFaqActivityLabel } from '../utils/adminActivityLabels.js';
+
+const faqActivityLabel = async (faq) => {
+  const product = await Product.findById(faq.product).select('name').lean();
+  return formatFaqActivityLabel(faq, product);
+};
 
 // @desc    Get all active FAQs for a product
 // @route   GET /api/v1/products/:productId/faqs
@@ -37,7 +43,7 @@ export const getProductFaqs = asyncHandler(async (req, res, next) => {
 export const createFaq = asyncHandler(async (req, res, next) => {
   const { productId } = req.params;
 
-  const product = await Product.findById(productId).select('_id');
+  const product = await Product.findById(productId).select('name');
   if (!product) return next(new ApiError(`No product found with id: ${productId}`, 404));
 
   const payload = {
@@ -49,7 +55,14 @@ export const createFaq = asyncHandler(async (req, res, next) => {
   stampAuditFields(payload, req, { isCreate: true });
 
   const faq = await FAQ.create(payload);
-  logAdminCreate(req, { tab: 'products', resourceType: 'faq', doc: faq, labelKey: 'question' });
+  const label = formatFaqActivityLabel(faq, product);
+  logAdminCreate(req, {
+    tab: 'products',
+    resourceType: 'faq',
+    doc: faq,
+    resourceLabel: label,
+    summary: `Created FAQ on "${product.name}": "${faq.question}"`,
+  });
 
   sendResponse(res, {
     statusCode: 201,
@@ -80,12 +93,13 @@ export const updateFaq = asyncHandler(async (req, res, next) => {
     runValidators: true,
   });
 
+  const label = await faqActivityLabel(faq);
   logAdminUpdate(req, {
     tab: 'products',
     resourceType: 'faq',
     doc: faq,
     previous,
-    labelKey: 'question',
+    resourceLabel: label,
   });
 
   sendResponse(res, { message: 'FAQ updated successfully', data: attachAuditToDoc(faq) });
@@ -98,7 +112,13 @@ export const deleteFaq = asyncHandler(async (req, res, next) => {
   const faq = await FAQ.findById(req.params.id);
   if (!faq) return next(new ApiError(`No FAQ found with id: ${req.params.id}`, 404));
 
-  logAdminDelete(req, { tab: 'products', resourceType: 'faq', doc: faq, labelKey: 'question' });
+  const label = await faqActivityLabel(faq);
+  logAdminDelete(req, {
+    tab: 'products',
+    resourceType: 'faq',
+    doc: faq,
+    resourceLabel: label,
+  });
   await faq.deleteOne();
 
   sendResponse(res, { message: 'FAQ deleted successfully' });
