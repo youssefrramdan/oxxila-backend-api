@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 
 const INSTAGRAM_SLOTS = 4;
 const HOW_IT_WORKS_STEPS = 3;
+const UTILITY_BAR_MAX_PROMOS = 8;
 
 const emptyInstagramPosts = () =>
   Array.from({ length: INSTAGRAM_SLOTS }, () => ({
@@ -54,20 +55,16 @@ const utilityPromoSchema = new mongoose.Schema(
   { _id: false },
 );
 
-const defaultUtilityBarPromos = () => ({
-  default: {
+const defaultUtilityBarPromos = () => [
+  {
     title: 'Free shipping over 50 EGP orders',
     subtitle: 'Limited-time offer',
   },
-  shop: {
+  {
     title: 'Return within 20 days',
     subtitle: 'from purchase date',
   },
-  product: {
-    title: 'Return within 30 days',
-    subtitle: 'from purchase date',
-  },
-});
+];
 
 const siteSettingsSchema = new mongoose.Schema(
   {
@@ -117,11 +114,20 @@ const siteSettingsSchema = new mongoose.Schema(
         },
       },
     },
-    /** Top utility bar promo strip (title + subtitle per page group). */
+    /** Top utility bar — rotating promo slides (title + subtitle). */
     utilityBar: {
-      default: { type: utilityPromoSchema, default: () => defaultUtilityBarPromos().default },
-      shop: { type: utilityPromoSchema, default: () => defaultUtilityBarPromos().shop },
-      product: { type: utilityPromoSchema, default: () => defaultUtilityBarPromos().product },
+      promos: {
+        type: [utilityPromoSchema],
+        default: defaultUtilityBarPromos,
+        validate: {
+          validator: (promos) =>
+            Array.isArray(promos) &&
+            promos.length >= 1 &&
+            promos.length <= UTILITY_BAR_MAX_PROMOS,
+          message: `utilityBar.promos must contain 1–${UTILITY_BAR_MAX_PROMOS} items`,
+        },
+      },
+      rotateIntervalSeconds: { type: Number, default: 6, min: 3, max: 60 },
     },
   },
   { timestamps: true },
@@ -129,6 +135,7 @@ const siteSettingsSchema = new mongoose.Schema(
 
 siteSettingsSchema.statics.INSTAGRAM_SLOTS = INSTAGRAM_SLOTS;
 siteSettingsSchema.statics.HOW_IT_WORKS_STEPS = HOW_IT_WORKS_STEPS;
+siteSettingsSchema.statics.UTILITY_BAR_MAX_PROMOS = UTILITY_BAR_MAX_PROMOS;
 
 const normalizeInstagramPosts = (existing) => {
   const posts = emptyInstagramPosts();
@@ -158,19 +165,30 @@ const normalizeHowItWorks = (existing) => {
 
 const normalizeUtilityBar = (existing) => {
   const defaults = defaultUtilityBarPromos();
+
+  if (Array.isArray(existing?.promos) && existing.promos.length > 0) {
+    return {
+      promos: existing.promos.slice(0, UTILITY_BAR_MAX_PROMOS).map((promo) => ({
+        title: promo?.title?.trim() || '',
+        subtitle: promo?.subtitle?.trim() || '',
+      })),
+      rotateIntervalSeconds: existing.rotateIntervalSeconds ?? 6,
+    };
+  }
+
+  const legacyPromos = [];
+  for (const key of ['default', 'shop', 'product']) {
+    const promo = existing?.[key];
+    if (!promo?.title?.trim()) continue;
+    legacyPromos.push({
+      title: promo.title.trim(),
+      subtitle: promo.subtitle?.trim() || '',
+    });
+  }
+
   return {
-    default: {
-      title: existing?.default?.title?.trim() || defaults.default.title,
-      subtitle: existing?.default?.subtitle?.trim() || defaults.default.subtitle,
-    },
-    shop: {
-      title: existing?.shop?.title?.trim() || defaults.shop.title,
-      subtitle: existing?.shop?.subtitle?.trim() || defaults.shop.subtitle,
-    },
-    product: {
-      title: existing?.product?.title?.trim() || defaults.product.title,
-      subtitle: existing?.product?.subtitle?.trim() || defaults.product.subtitle,
-    },
+    promos: legacyPromos.length > 0 ? legacyPromos : defaults,
+    rotateIntervalSeconds: existing?.rotateIntervalSeconds ?? 6,
   };
 };
 
@@ -204,8 +222,12 @@ siteSettingsSchema.statics.getSingleton = async function getSingleton() {
       dirty = true;
     }
 
-    if (!doc.utilityBar) {
-      doc.utilityBar = normalizeUtilityBar(null);
+    if (
+      !doc.utilityBar?.promos ||
+      !Array.isArray(doc.utilityBar.promos) ||
+      doc.utilityBar.promos.length === 0
+    ) {
+      doc.utilityBar = normalizeUtilityBar(doc.utilityBar);
       dirty = true;
     }
 

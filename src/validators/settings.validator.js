@@ -149,9 +149,15 @@ const utilityPromoFields = (prefix) => [
 ];
 
 export const updateUtilityBarSettingsValidator = [
-  ...utilityPromoFields('default'),
-  ...utilityPromoFields('shop'),
-  ...utilityPromoFields('product'),
+  body('promos')
+    .optional()
+    .isArray({ min: 1, max: 8 })
+    .withMessage('promos must be an array of 1–8 items'),
+  ...utilityPromoFields('promos.*'),
+  body('rotateIntervalSeconds')
+    .optional()
+    .isInt({ min: 3, max: 60 })
+    .withMessage('rotateIntervalSeconds must be between 3 and 60'),
   validate,
 ];
 

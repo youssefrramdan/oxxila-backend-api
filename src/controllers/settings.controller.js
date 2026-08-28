@@ -12,7 +12,7 @@ import { parsePhoneDigits, validateWhatsAppPhone } from '../utils/phoneNumber.js
 const SOCIAL_KEYS = ['facebook', 'twitter', 'instagram', 'linkedin', 'youtube'];
 const INSTAGRAM_SLOTS = SiteSettings.INSTAGRAM_SLOTS;
 const HOW_IT_WORKS_STEPS = SiteSettings.HOW_IT_WORKS_STEPS;
-const UTILITY_BAR_KEYS = ['default', 'shop', 'product'];
+const UTILITY_BAR_MAX_PROMOS = SiteSettings.UTILITY_BAR_MAX_PROMOS;
 
 const toContact = (doc) => {
   const whatsapp = doc.contact?.whatsapp ?? '';
@@ -61,18 +61,12 @@ const toHowItWorks = (doc) => {
 const toUtilityBar = (doc) => {
   const section = doc.utilityBar ?? {};
   return {
-    default: {
-      title: section.default?.title ?? '',
-      subtitle: section.default?.subtitle ?? '',
-    },
-    shop: {
-      title: section.shop?.title ?? '',
-      subtitle: section.shop?.subtitle ?? '',
-    },
-    product: {
-      title: section.product?.title ?? '',
-      subtitle: section.product?.subtitle ?? '',
-    },
+    promos: (section.promos ?? []).map((promo, index) => ({
+      index,
+      title: promo.title ?? '',
+      subtitle: promo.subtitle ?? '',
+    })),
+    rotateIntervalSeconds: section.rotateIntervalSeconds ?? 6,
   };
 };
 
@@ -415,22 +409,42 @@ export const getUtilityBarSettings = asyncHandler(async (_req, res) => {
  * @route   PUT /api/v1/settings/utility-bar
  * @access  Admin
  *
- * Body: { default?: { title?, subtitle? }, shop?: { title?, subtitle? }, product?: { title?, subtitle? } }
+ * Body: { promos: [{ title, subtitle }, ...], rotateIntervalSeconds?: number }
  */
-export const updateUtilityBarSettings = asyncHandler(async (req, res) => {
+export const updateUtilityBarSettings = asyncHandler(async (req, res, next) => {
   const settings = await SiteSettings.getSingleton();
-  if (!settings.utilityBar) settings.utilityBar = {};
+  if (!settings.utilityBar) settings.utilityBar = { promos: [], rotateIntervalSeconds: 6 };
 
-  for (const key of UTILITY_BAR_KEYS) {
-    const payload = req.body[key];
-    if (!payload || typeof payload !== 'object') continue;
-    if (!settings.utilityBar[key]) settings.utilityBar[key] = { title: '', subtitle: '' };
-    if (payload.title !== undefined) {
-      settings.utilityBar[key].title = String(payload.title).trim();
+  if (req.body.rotateIntervalSeconds !== undefined) {
+    const seconds = Number(req.body.rotateIntervalSeconds);
+    if (!Number.isFinite(seconds) || seconds < 3 || seconds > 60) {
+      return next(new ApiError('rotateIntervalSeconds must be between 3 and 60', 400));
     }
-    if (payload.subtitle !== undefined) {
-      settings.utilityBar[key].subtitle = String(payload.subtitle).trim();
+    settings.utilityBar.rotateIntervalSeconds = Math.round(seconds);
+  }
+
+  if (req.body.promos !== undefined) {
+    if (!Array.isArray(req.body.promos)) {
+      return next(new ApiError('promos must be an array', 400));
     }
+    if (req.body.promos.length < 1 || req.body.promos.length > UTILITY_BAR_MAX_PROMOS) {
+      return next(
+        new ApiError(`promos must contain 1–${UTILITY_BAR_MAX_PROMOS} items`, 400),
+      );
+    }
+
+    const promos = req.body.promos
+      .map((promo) => ({
+        title: String(promo?.title ?? '').trim(),
+        subtitle: String(promo?.subtitle ?? '').trim(),
+      }))
+      .filter((promo) => promo.title);
+
+    if (promos.length === 0) {
+      return next(new ApiError('At least one promo with a title is required', 400));
+    }
+
+    settings.utilityBar.promos = promos;
   }
 
   settings.markModified('utilityBar');
