@@ -2,16 +2,24 @@
 import asyncHandler from 'express-async-handler';
 import Order from '../models/Order.js';
 import Shipment from '../models/Shipment.js';
+import Carrier from '../models/Carrier.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
+import { isCommittedCarrierAssignment } from '../utils/orderDeliveryEstimate.js';
 import { enrichOrderDocument } from './order.controller.js';
 
 const publicTrackFields =
   '_id orderStatus paymentStatus paymentMethod totalPrice createdAt shippingAddress';
 
 /** Build the public tracking payload from an order and optional shipment */
-const buildTrackResponse = (order, shipment) => {
-  const enriched = enrichOrderDocument(order, shipment);
+const buildTrackResponse = async (order, shipment) => {
+  let carrierDeliveryDays = null;
+  if (shipment?.carrier && isCommittedCarrierAssignment(shipment)) {
+    const carrier = await Carrier.findById(shipment.carrier).select('deliveryDays').lean();
+    carrierDeliveryDays = carrier?.deliveryDays ?? null;
+  }
+
+  const enriched = enrichOrderDocument(order, shipment, null, carrierDeliveryDays);
   return {
     orderId: enriched._id,
     orderStatus: enriched.orderStatus,
@@ -28,6 +36,7 @@ const buildTrackResponse = (order, shipment) => {
     },
     shipment: enriched.shipment,
     tracking: enriched.tracking,
+    delivery: enriched.delivery,
   };
 };
 
@@ -54,7 +63,7 @@ export const trackByTrackingNumber = asyncHandler(async (req, res, next) => {
 
   sendResponse(res, {
     message: 'Tracking retrieved successfully',
-    data: buildTrackResponse(order, shipment),
+    data: await buildTrackResponse(order, shipment),
   });
 });
 
@@ -74,6 +83,6 @@ export const trackMyOrder = asyncHandler(async (req, res, next) => {
   const shipment = await Shipment.findOne({ order: order._id }).lean();
   sendResponse(res, {
     message: 'Order tracking retrieved successfully',
-    data: buildTrackResponse(order, shipment),
+    data: await buildTrackResponse(order, shipment),
   });
 });

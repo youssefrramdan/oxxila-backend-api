@@ -9,6 +9,7 @@ import District from '../models/District.js';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import Shipment from '../models/Shipment.js';
+import Carrier from '../models/Carrier.js';
 import User from '../models/User.js';
 import ReturnRequest from '../models/ReturnRequest.js';
 import StoreCreditTransaction from '../models/StoreCreditTransaction.js';
@@ -20,6 +21,10 @@ import sendEmail from '../utils/email.js';
 import orderConfirmationTemplate from '../utils/emailTemplates/orderConfirmationTemplate.js';
 import logger from '../config/logger.js';
 import { mapBostaStateToPhase, normalizeBostaState, loadShipmentsForOrders } from './orderShipping.controller.js';
+import {
+  buildOrderDeliveryEstimate,
+  isCommittedCarrierAssignment,
+} from '../utils/orderDeliveryEstimate.js';
 
 // Stripe / Paymob card gateways eligible for refund flows
 const CARD_PROVIDERS = new Set(['stripe', 'paymob']);
@@ -475,8 +480,24 @@ const loadOrderItemCounts = async (orderIds) => {
   return new Map(rows.map((r) => [String(r._id), r.itemCount]));
 };
 
-/** Attach presentation, shipment summary, and tracking to a single order doc. */
-export const enrichOrderDocument = (order, shipment = null, itemCount = null) => {
+/** Load carrier deliveryDays for committed shipment assignments. */
+const loadCarrierDeliveryDaysForShipments = async (shipments) => {
+  const carrierIds = [
+    ...new Set(
+      shipments
+        .filter(isCommittedCarrierAssignment)
+        .map((shipment) => String(shipment.carrier))
+        .filter(Boolean)
+    ),
+  ];
+  if (!carrierIds.length) return new Map();
+
+  const carriers = await Carrier.find({ _id: { $in: carrierIds } }).select('deliveryDays').lean();
+  return new Map(carriers.map((carrier) => [String(carrier._id), carrier.deliveryDays ?? null]));
+};
+
+/** Attach presentation, shipment summary, tracking, and delivery estimate to a single order doc. */
+export const enrichOrderDocument = (order, shipment = null, itemCount = null, carrierDeliveryDays = null) => {
   const doc = order?.toObject ? order.toObject() : { ...order };
   if (itemCount != null && doc.itemCount == null) {
     doc.itemCount = itemCount;
@@ -494,6 +515,7 @@ export const enrichOrderDocument = (order, shipment = null, itemCount = null) =>
         status: shipment.status,
         lastError: shipment.lastError,
         providerStateLabel: shipment.providerStateLabel,
+        assignedAt: shipment.assignedAt ?? null,
       }
     : null;
   return {
@@ -501,6 +523,7 @@ export const enrichOrderDocument = (order, shipment = null, itemCount = null) =>
     ...buildOrderPresentation(doc),
     shipment: shipmentSummary,
     tracking: buildOrderTrackingPayload(doc, shipment),
+    delivery: buildOrderDeliveryEstimate(shipment, carrierDeliveryDays),
   };
 };
 
@@ -510,9 +533,19 @@ export const enrichOrdersDocuments = async (orders) => {
   const needsItemCount = orders.some((o) => !Array.isArray(o.items));
   const itemCountMap = needsItemCount ? await loadOrderItemCounts(orders.map((o) => o._id)) : new Map();
   const shipmentMap = await loadShipmentsForOrders(orders);
-  return orders.map((order) =>
-    enrichOrderDocument(order, shipmentMap.get(String(order._id)) ?? null, itemCountMap.get(String(order._id)))
-  );
+  const carrierDeliveryDaysMap = await loadCarrierDeliveryDaysForShipments([...shipmentMap.values()]);
+  return orders.map((order) => {
+    const shipment = shipmentMap.get(String(order._id)) ?? null;
+    const carrierDeliveryDays = shipment?.carrier
+      ? (carrierDeliveryDaysMap.get(String(shipment.carrier)) ?? null)
+      : null;
+    return enrichOrderDocument(
+      order,
+      shipment,
+      itemCountMap.get(String(order._id)),
+      carrierDeliveryDays
+    );
+  });
 };
 
 // ── Checkout inputs: cart subtotal, store credit ──
@@ -1033,7 +1066,16 @@ const orderNotFound = (id) => new ApiError(`No order found with id: ${id}`, 404)
 /** Send a single enriched order response (loads shipment). */
 const respondWithOrder = async (res, order, { message, statusCode = 200 }) => {
   const shipment = await Shipment.findOne({ order: order._id }).lean();
-  sendResponse(res, { statusCode, message, data: enrichOrderDocument(order, shipment) });
+  let carrierDeliveryDays = null;
+  if (shipment?.carrier && isCommittedCarrierAssignment(shipment)) {
+    const carrier = await Carrier.findById(shipment.carrier).select('deliveryDays').lean();
+    carrierDeliveryDays = carrier?.deliveryDays ?? null;
+  }
+  sendResponse(res, {
+    statusCode,
+    message,
+    data: enrichOrderDocument(order, shipment, null, carrierDeliveryDays),
+  });
 };
 
 /** Shared list path for my-orders and admin getOrders. */

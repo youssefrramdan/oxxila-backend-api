@@ -2,6 +2,8 @@
 import { body, param } from 'express-validator';
 import validate from '../middlewares/validate.middleware.js';
 
+const nonApiCarrier = body('type').not().equals('api');
+
 export const createCarrierValidator = [
   body('name')
     .notEmpty().withMessage('Carrier name is required')
@@ -29,9 +31,40 @@ export const createCarrierValidator = [
     .optional()
     .isString(),
 
+  body('deliveryDaysMin')
+    .if(nonApiCarrier)
+    .optional()
+    .isInt({ min: 0 }).withMessage('deliveryDaysMin must be a non-negative integer')
+    .toInt(),
+
+  body('deliveryDaysMax')
+    .if(nonApiCarrier)
+    .optional()
+    .isInt({ min: 0 }).withMessage('deliveryDaysMax must be a non-negative integer')
+    .toInt(),
+
   body('deliveryDays')
-    .if(body('type').not().equals('api'))
-    .notEmpty().withMessage('deliveryDays is required for non-API carriers'),
+    .if(nonApiCarrier)
+    .optional()
+    .isString(),
+
+  body().custom((_, { req }) => {
+    if (req.body.type === 'api') return true;
+
+    const hasRange =
+      req.body.deliveryDaysMin != null &&
+      req.body.deliveryDaysMax != null &&
+      String(req.body.deliveryDaysMin) !== '' &&
+      String(req.body.deliveryDaysMax) !== '';
+    const hasLegacy =
+      typeof req.body.deliveryDays === 'string' && req.body.deliveryDays.trim();
+
+    if (!hasRange && !hasLegacy) {
+      throw new Error('deliveryDaysMin and deliveryDaysMax are required for non-API carriers');
+    }
+
+    return true;
+  }),
 
   validate,
 ];
@@ -39,6 +72,14 @@ export const createCarrierValidator = [
 export const updateCarrierValidator = [
   param('id').isMongoId().withMessage('Invalid carrier ID'),
   body('name').optional().isLength({ max: 100 }).withMessage('Name too long'),
+  body('deliveryDaysMin')
+    .optional()
+    .isInt({ min: 0 }).withMessage('deliveryDaysMin must be a non-negative integer')
+    .toInt(),
+  body('deliveryDaysMax')
+    .optional()
+    .isInt({ min: 0 }).withMessage('deliveryDaysMax must be a non-negative integer')
+    .toInt(),
   body('deliveryDays').optional().isString(),
   body('apiKey').optional().isString(),
   body('apiBaseUrl').optional().isString(),

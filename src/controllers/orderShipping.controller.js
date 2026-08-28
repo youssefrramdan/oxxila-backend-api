@@ -12,6 +12,7 @@ import ShippingMethodSetting from '../models/ShippingMethodSetting.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import logger from '../config/logger.js';
+import { isCommittedCarrierAssignment } from '../utils/orderDeliveryEstimate.js';
 import { getPickupForAssign, pickupDocToBostaAddress } from './carrierPickup.controller.js';
 
 /** Convert a Mongoose doc to a plain object when needed. */
@@ -999,18 +1000,6 @@ export const handleBostaWebhookPayload = async (body) => {
 };
 
 // --- carrier assignment orchestration ---
-
-/** True when a shipment already has a committed carrier assignment. */
-const isCommittedCarrierAssignment = (shipment) => {
-  if (!shipment?.carrier) return false;
-  if (shipment.carrierType === 'api') {
-    return Boolean(shipment.externalDeliveryId);
-  }
-  if (shipment.carrierType === 'known' || shipment.carrierType === 'internal') {
-    return Boolean(shipment.trackingNumber);
-  }
-  return Boolean(shipment.externalDeliveryId || shipment.trackingNumber);
-};
 
 /** Clear carrier/tracking fields on a shipment (rollback helper). */
 const clearShipmentCarrier = (shipment) => {

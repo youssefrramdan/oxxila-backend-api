@@ -9,6 +9,7 @@ import District from "../models/District.js";
 import CarrierZoneMapping from "../models/CarrierZoneMapping.js";
 import ApiError from "../utils/apiError.js";
 import sendResponse from "../utils/apiResponse.js";
+import { resolveCarrierDeliveryDays } from "../utils/carrierDeliveryDays.js";
 import {
   normalizeBostaBaseUrl,
   fetchBostaCityDistricts,
@@ -325,7 +326,7 @@ export const getCarriers = asyncHandler(async (req, res) => {
  * @access  Admin
  */
 export const createCarrier = asyncHandler(async (req, res, next) => {
-  const { name, code, type, deliveryDays, logo, apiProvider, apiKey, apiBaseUrl } = req.body;
+  const { name, code, type, logo, apiProvider, apiKey, apiBaseUrl } = req.body;
 
   const exists = await Carrier.findOne({ code: code.toUpperCase() });
   if (exists) return next(new ApiError("Carrier code already exists", 400));
@@ -340,6 +341,13 @@ export const createCarrier = asyncHandler(async (req, res, next) => {
         new ApiError("A Bosta API carrier already exists. Edit the existing carrier instead.", 400)
       );
     }
+  }
+
+  let deliveryDays;
+  try {
+    deliveryDays = resolveCarrierDeliveryDays(req.body, { required: type !== "api" });
+  } catch (error) {
+    return next(new ApiError(error.message, 400));
   }
 
   const carrier = await Carrier.create({
@@ -371,6 +379,22 @@ export const updateCarrier = asyncHandler(async (req, res, next) => {
   const update = { ...req.body };
   if (update.apiBaseUrl) update.apiBaseUrl = normalizeBostaBaseUrl(update.apiBaseUrl);
   if (update.apiKey === "" || update.apiKey === undefined) delete update.apiKey;
+
+  if (
+    update.deliveryDaysMin != null ||
+    update.deliveryDaysMax != null ||
+    update.deliveryDays != null
+  ) {
+    try {
+      update.deliveryDays = resolveCarrierDeliveryDays(update, {
+        required: existing.type !== "api",
+      });
+    } catch (error) {
+      return next(new ApiError(error.message, 400));
+    }
+  }
+  delete update.deliveryDaysMin;
+  delete update.deliveryDaysMax;
 
   const carrier = await Carrier.findByIdAndUpdate(req.params.id, update, {
     returnDocument: "after",
