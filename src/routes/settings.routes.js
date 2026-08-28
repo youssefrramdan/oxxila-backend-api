@@ -13,6 +13,8 @@ import {
   updateInstagramSettings,
   getHowItWorksSettings,
   updateHowItWorksSettings,
+  getUtilityBarSettings,
+  updateUtilityBarSettings,
   sendContactMessage,
   parseInstagramBody,
   parseHowItWorksBody,
@@ -22,6 +24,7 @@ import {
   updateSocialSettingsValidator,
   updateInstagramSettingsValidator,
   updateHowItWorksSettingsValidator,
+  updateUtilityBarSettingsValidator,
   sendContactMessageValidator,
 } from '../validators/settings.validator.js';
 import SiteSettings from '../models/SiteSettings.js';
@@ -95,6 +98,17 @@ router.put(
   parseHowItWorksBody,
   updateHowItWorksSettingsValidator,
   updateHowItWorksSettings,
+);
+
+// Utility bar promo strip
+router.get('/utility-bar', getUtilityBarSettings);
+router.put(
+  '/utility-bar',
+  protectedRoutes,
+  allowTo('admin'),
+  requirePermission('settings', 'update'),
+  updateUtilityBarSettingsValidator,
+  updateUtilityBarSettings,
 );
 
 export default router;

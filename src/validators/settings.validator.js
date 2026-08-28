@@ -1,6 +1,7 @@
 // src/validators/settings.validator.js
 import { body } from 'express-validator';
 import validate from '../middlewares/validate.middleware.js';
+import { parsePhoneDigits, validateWhatsAppPhone } from '../utils/phoneNumber.js';
 
 const optionalTrimmedUrl = (field) =>
   body(field)
@@ -26,18 +27,26 @@ export const updateContactSettingsValidator = [
     .trim()
     .isLength({ min: 2, max: 120 })
     .withMessage('location must be 2–120 characters'),
-  body('whatsapp')
+  body('whatsappDialCode')
     .optional({ values: 'null' })
     .trim()
     .custom((value) => {
-      if (value === undefined || value === '') return true
-      if (typeof value !== 'string' || value.length < 8 || value.length > 20) {
-        throw new Error('whatsapp must be 8–20 characters')
+      if (value === undefined || value === '') return true;
+      const dial = parsePhoneDigits(value);
+      if (!dial || dial.length < 1 || dial.length > 4) {
+        throw new Error('whatsappDialCode must be 1–4 digits');
       }
-      if (!/^[+\d\s()-]+$/.test(value)) {
-        throw new Error('whatsapp must be a valid phone number')
-      }
-      return true
+      return true;
+    }),
+  body('whatsapp')
+    .optional({ values: 'null' })
+    .trim()
+    .custom((value, { req }) => {
+      if (value === undefined || value === '') return true;
+      const dialCode = parsePhoneDigits(req.body.whatsappDialCode) || '20';
+      const check = validateWhatsAppPhone(value, dialCode);
+      if (!check.ok) throw new Error(check.message);
+      return true;
     }),
   validate,
 ];
@@ -123,6 +132,26 @@ export const updateHowItWorksSettingsValidator = [
     .trim()
     .isLength({ min: 2, max: 1000 })
     .withMessage('Each step description must be 2–1000 characters'),
+  validate,
+];
+
+const utilityPromoFields = (prefix) => [
+  body(`${prefix}.title`)
+    .optional()
+    .trim()
+    .isLength({ max: 120 })
+    .withMessage(`${prefix}.title cannot exceed 120 characters`),
+  body(`${prefix}.subtitle`)
+    .optional()
+    .trim()
+    .isLength({ max: 120 })
+    .withMessage(`${prefix}.subtitle cannot exceed 120 characters`),
+];
+
+export const updateUtilityBarSettingsValidator = [
+  ...utilityPromoFields('default'),
+  ...utilityPromoFields('shop'),
+  ...utilityPromoFields('product'),
   validate,
 ];
 

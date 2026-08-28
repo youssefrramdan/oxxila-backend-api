@@ -6,21 +6,25 @@ import sendResponse from '../utils/apiResponse.js';
 import sendEmail from '../utils/email.js';
 import contactMessageTemplate from '../utils/emailTemplates/contactMessageTemplate.js';
 import { recordAdminActivity } from '../utils/adminActivity.js';
+import { buildWhatsAppUrl } from '../utils/whatsappUrl.js';
+import { parsePhoneDigits, validateWhatsAppPhone } from '../utils/phoneNumber.js';
 
 const SOCIAL_KEYS = ['facebook', 'twitter', 'instagram', 'linkedin', 'youtube'];
 const INSTAGRAM_SLOTS = SiteSettings.INSTAGRAM_SLOTS;
 const HOW_IT_WORKS_STEPS = SiteSettings.HOW_IT_WORKS_STEPS;
+const UTILITY_BAR_KEYS = ['default', 'shop', 'product'];
 
 const toContact = (doc) => {
   const whatsapp = doc.contact?.whatsapp ?? '';
-  const whatsappDigits = String(whatsapp).replace(/\D/g, '');
+  const whatsappDialCode = doc.contact?.whatsappDialCode ?? '20';
   return {
     phone: doc.contact?.phone ?? '',
     email: doc.contact?.email ?? '',
     location: doc.contact?.location ?? '',
     whatsapp,
+    whatsappDialCode,
     /** Ready-to-use deep link for the WhatsApp icon (empty when number not set). */
-    whatsappUrl: whatsappDigits ? `https://wa.me/${whatsappDigits}` : '',
+    whatsappUrl: buildWhatsAppUrl(whatsapp, whatsappDialCode),
   };
 };
 
@@ -54,6 +58,24 @@ const toHowItWorks = (doc) => {
   };
 };
 
+const toUtilityBar = (doc) => {
+  const section = doc.utilityBar ?? {};
+  return {
+    default: {
+      title: section.default?.title ?? '',
+      subtitle: section.default?.subtitle ?? '',
+    },
+    shop: {
+      title: section.shop?.title ?? '',
+      subtitle: section.shop?.subtitle ?? '',
+    },
+    product: {
+      title: section.product?.title ?? '',
+      subtitle: section.product?.subtitle ?? '',
+    },
+  };
+};
+
 const toPublicSettings = (doc) => {
   const plain = typeof doc.toObject === 'function' ? doc.toObject() : doc;
   return {
@@ -61,6 +83,7 @@ const toPublicSettings = (doc) => {
     social: toSocial(plain),
     instagramPosts: toInstagramPosts(plain),
     howItWorks: toHowItWorks(plain),
+    utilityBar: toUtilityBar(plain),
     updatedAt: plain.updatedAt,
   };
 };
@@ -128,14 +151,35 @@ export const getContactSettings = asyncHandler(async (_req, res) => {
  * @route   PUT /api/v1/settings/contact
  * @access  Admin
  */
-export const updateContactSettings = asyncHandler(async (req, res) => {
+export const updateContactSettings = asyncHandler(async (req, res, next) => {
   const settings = await SiteSettings.getSingleton();
-  const { phone, email, location, whatsapp } = req.body;
+  const { phone, email, location, whatsapp, whatsappDialCode } = req.body;
 
   if (phone !== undefined) settings.contact.phone = String(phone).trim();
   if (email !== undefined) settings.contact.email = String(email).trim().toLowerCase();
   if (location !== undefined) settings.contact.location = String(location).trim();
-  if (whatsapp !== undefined) settings.contact.whatsapp = String(whatsapp).trim();
+
+  const nextDialCode =
+    whatsappDialCode !== undefined
+      ? parsePhoneDigits(whatsappDialCode)
+      : parsePhoneDigits(settings.contact.whatsappDialCode ?? '20');
+
+  if (whatsappDialCode !== undefined) {
+    if (!nextDialCode || nextDialCode.length < 1 || nextDialCode.length > 4) {
+      return next(new ApiError('WhatsApp country code must be 1–4 digits', 400));
+    }
+    settings.contact.whatsappDialCode = nextDialCode;
+  }
+
+  if (whatsapp !== undefined) {
+    const nextWhatsapp = String(whatsapp).trim();
+    const check = validateWhatsAppPhone(nextWhatsapp, nextDialCode);
+    if (!check.ok) return next(new ApiError(check.message, 400));
+    settings.contact.whatsapp = nextWhatsapp;
+  } else if (whatsappDialCode !== undefined && settings.contact.whatsapp?.trim()) {
+    const check = validateWhatsAppPhone(settings.contact.whatsapp, nextDialCode);
+    if (!check.ok) return next(new ApiError(check.message, 400));
+  }
 
   settings.markModified('contact');
   await settings.save();
@@ -350,6 +394,60 @@ export const updateHowItWorksSettings = asyncHandler(async (req, res, next) => {
   sendResponse(res, {
     message: 'How it works settings updated successfully',
     data: toHowItWorks(settings),
+  });
+});
+
+/**
+ * @desc    Get utility bar promo messages
+ * @route   GET /api/v1/settings/utility-bar
+ * @access  Public
+ */
+export const getUtilityBarSettings = asyncHandler(async (_req, res) => {
+  const settings = await SiteSettings.getSingleton();
+  sendResponse(res, {
+    message: 'Utility bar settings retrieved successfully',
+    data: toUtilityBar(settings),
+  });
+});
+
+/**
+ * @desc    Update utility bar promo messages
+ * @route   PUT /api/v1/settings/utility-bar
+ * @access  Admin
+ *
+ * Body: { default?: { title?, subtitle? }, shop?: { title?, subtitle? }, product?: { title?, subtitle? } }
+ */
+export const updateUtilityBarSettings = asyncHandler(async (req, res) => {
+  const settings = await SiteSettings.getSingleton();
+  if (!settings.utilityBar) settings.utilityBar = {};
+
+  for (const key of UTILITY_BAR_KEYS) {
+    const payload = req.body[key];
+    if (!payload || typeof payload !== 'object') continue;
+    if (!settings.utilityBar[key]) settings.utilityBar[key] = { title: '', subtitle: '' };
+    if (payload.title !== undefined) {
+      settings.utilityBar[key].title = String(payload.title).trim();
+    }
+    if (payload.subtitle !== undefined) {
+      settings.utilityBar[key].subtitle = String(payload.subtitle).trim();
+    }
+  }
+
+  settings.markModified('utilityBar');
+  await settings.save();
+
+  recordAdminActivity(req, {
+    tab: 'websiteContent',
+    action: 'update',
+    resourceType: 'siteSettings',
+    resourceId: 'utilityBar',
+    resourceLabel: 'Utility bar',
+    summary: 'Updated utility bar promo messages',
+  });
+
+  sendResponse(res, {
+    message: 'Utility bar settings updated successfully',
+    data: toUtilityBar(settings),
   });
 });
 

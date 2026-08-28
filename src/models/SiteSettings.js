@@ -46,6 +46,29 @@ const howItWorksStepSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const utilityPromoSchema = new mongoose.Schema(
+  {
+    title: { type: String, default: '', trim: true, maxlength: 120 },
+    subtitle: { type: String, default: '', trim: true, maxlength: 120 },
+  },
+  { _id: false },
+);
+
+const defaultUtilityBarPromos = () => ({
+  default: {
+    title: 'Free shipping over 50 EGP orders',
+    subtitle: 'Limited-time offer',
+  },
+  shop: {
+    title: 'Return within 20 days',
+    subtitle: 'from purchase date',
+  },
+  product: {
+    title: 'Return within 30 days',
+    subtitle: 'from purchase date',
+  },
+});
+
 const siteSettingsSchema = new mongoose.Schema(
   {
     /** Singleton guard — only one settings document. */
@@ -59,8 +82,10 @@ const siteSettingsSchema = new mongoose.Schema(
       phone: { type: String, default: '080 152 111 55 17', trim: true },
       email: { type: String, default: 'contact@oxilla.com', trim: true, lowercase: true },
       location: { type: String, default: 'Texas, USA', trim: true },
-      /** Digits / international number used for wa.me deep link (dashboard-editable). */
+      /** Local/national WhatsApp number (dashboard-editable). */
       whatsapp: { type: String, default: '', trim: true },
+      /** ITU dial code without +, e.g. 20 (Egypt), 966 (Saudi). */
+      whatsappDialCode: { type: String, default: '20', trim: true },
     },
     social: {
       facebook: { type: String, default: '', trim: true },
@@ -91,6 +116,12 @@ const siteSettingsSchema = new mongoose.Schema(
           message: `howItWorks.steps must contain exactly ${HOW_IT_WORKS_STEPS} items`,
         },
       },
+    },
+    /** Top utility bar promo strip (title + subtitle per page group). */
+    utilityBar: {
+      default: { type: utilityPromoSchema, default: () => defaultUtilityBarPromos().default },
+      shop: { type: utilityPromoSchema, default: () => defaultUtilityBarPromos().shop },
+      product: { type: utilityPromoSchema, default: () => defaultUtilityBarPromos().product },
     },
   },
   { timestamps: true },
@@ -125,6 +156,24 @@ const normalizeHowItWorks = (existing) => {
   };
 };
 
+const normalizeUtilityBar = (existing) => {
+  const defaults = defaultUtilityBarPromos();
+  return {
+    default: {
+      title: existing?.default?.title?.trim() || defaults.default.title,
+      subtitle: existing?.default?.subtitle?.trim() || defaults.default.subtitle,
+    },
+    shop: {
+      title: existing?.shop?.title?.trim() || defaults.shop.title,
+      subtitle: existing?.shop?.subtitle?.trim() || defaults.shop.subtitle,
+    },
+    product: {
+      title: existing?.product?.title?.trim() || defaults.product.title,
+      subtitle: existing?.product?.subtitle?.trim() || defaults.product.subtitle,
+    },
+  };
+};
+
 /** Get or create the singleton settings document. */
 siteSettingsSchema.statics.getSingleton = async function getSingleton() {
   let doc = await this.findOne({ singletonKey: 'main' });
@@ -133,6 +182,11 @@ siteSettingsSchema.statics.getSingleton = async function getSingleton() {
 
     if (doc.contact && doc.contact.whatsapp === undefined) {
       doc.contact.whatsapp = '';
+      dirty = true;
+    }
+
+    if (doc.contact && !doc.contact.whatsappDialCode) {
+      doc.contact.whatsappDialCode = '20';
       dirty = true;
     }
 
@@ -150,6 +204,11 @@ siteSettingsSchema.statics.getSingleton = async function getSingleton() {
       dirty = true;
     }
 
+    if (!doc.utilityBar) {
+      doc.utilityBar = normalizeUtilityBar(null);
+      dirty = true;
+    }
+
     if (dirty) await doc.save();
     return doc;
   }
@@ -161,6 +220,7 @@ siteSettingsSchema.statics.getSingleton = async function getSingleton() {
       email: 'contact@oxilla.com',
       location: 'Texas, USA',
       whatsapp: '',
+      whatsappDialCode: '20',
     },
     social: {
       facebook: 'https://facebook.com',
@@ -171,6 +231,7 @@ siteSettingsSchema.statics.getSingleton = async function getSingleton() {
     },
     instagramPosts: emptyInstagramPosts(),
     howItWorks: normalizeHowItWorks(null),
+    utilityBar: normalizeUtilityBar(null),
   });
   return doc;
 };
