@@ -3,6 +3,7 @@
 
 export const ADMIN_TAB_KEYS = Object.freeze([
   'dashboard',
+  'reports',
   'products',
   'categories',
   'brands',
@@ -20,6 +21,7 @@ export const ADMIN_TAB_KEYS = Object.freeze([
 
 export const ADMIN_TAB_META = Object.freeze([
   { key: 'dashboard', label: 'Dashboard' },
+  { key: 'reports', label: 'Reports' },
   { key: 'products', label: 'Products' },
   { key: 'categories', label: 'Categories' },
   { key: 'brands', label: 'Brands' },
