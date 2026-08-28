@@ -30,7 +30,7 @@ import {
   buildAuditBlock,
   enrichDocsWithAudit,
   recordAdminActivity,
-  withAuditPopulate,
+  withOrderAuditPopulate,
 } from '../utils/adminActivity.js';
 import { buildOrderActivityLabel } from '../utils/adminActivityLabels.js';
 
@@ -1082,7 +1082,7 @@ const respondWithOrder = async (res, order, { message, statusCode = 200 }) => {
     const carrier = await Carrier.findById(shipment.carrier).select('deliveryDays').lean();
     carrierDeliveryDays = carrier?.deliveryDays ?? null;
   }
-  const orderDoc = await withAuditPopulate(Order.findById(order._id));
+  const orderDoc = await withOrderAuditPopulate(Order.findById(order._id));
   sendResponse(res, {
     statusCode,
     message,

@@ -57,12 +57,13 @@ export const buildAuditBlock = (doc) => {
   };
 };
 
-/** Populate audit user refs on a query for admin detail responses. */
+/** Populate audit user refs on catalog/settings/shipping models. */
 export const withAuditPopulate = (query) =>
-  query
-    .populate('createdBy', auditUserSelect)
-    .populate('updatedBy', auditUserSelect)
-    .populate('statusUpdatedBy', auditUserSelect);
+  query.populate('createdBy', auditUserSelect).populate('updatedBy', auditUserSelect);
+
+/** Orders track status changes via statusUpdatedBy (no updatedBy field). */
+export const withOrderAuditPopulate = (query) =>
+  query.populate('createdBy', auditUserSelect).populate('statusUpdatedBy', auditUserSelect);
 
 /** Record an admin activity log entry (non-blocking). */
 export const recordAdminActivity = (req, payload) => {
