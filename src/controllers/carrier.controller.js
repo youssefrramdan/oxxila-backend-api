@@ -345,7 +345,7 @@ export const createCarrier = asyncHandler(async (req, res, next) => {
 
   let deliveryDays;
   try {
-    deliveryDays = resolveCarrierDeliveryDays(req.body, { required: type !== "api" });
+    deliveryDays = resolveCarrierDeliveryDays(req.body, { required: true });
   } catch (error) {
     return next(new ApiError(error.message, 400));
   }
@@ -386,9 +386,7 @@ export const updateCarrier = asyncHandler(async (req, res, next) => {
     update.deliveryDays != null
   ) {
     try {
-      update.deliveryDays = resolveCarrierDeliveryDays(update, {
-        required: existing.type !== "api",
-      });
+      update.deliveryDays = resolveCarrierDeliveryDays(update, { required: true });
     } catch (error) {
       return next(new ApiError(error.message, 400));
     }

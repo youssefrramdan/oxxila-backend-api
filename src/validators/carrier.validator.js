@@ -2,7 +2,21 @@
 import { body, param } from 'express-validator';
 import validate from '../middlewares/validate.middleware.js';
 
-const nonApiCarrier = body('type').not().equals('api');
+const requireDeliveryDaysRange = (_, { req }) => {
+  const hasRange =
+    req.body.deliveryDaysMin != null &&
+    req.body.deliveryDaysMax != null &&
+    String(req.body.deliveryDaysMin) !== '' &&
+    String(req.body.deliveryDaysMax) !== '';
+  const hasLegacy =
+    typeof req.body.deliveryDays === 'string' && req.body.deliveryDays.trim();
+
+  if (!hasRange && !hasLegacy) {
+    throw new Error('deliveryDaysMin and deliveryDaysMax are required');
+  }
+
+  return true;
+};
 
 export const createCarrierValidator = [
   body('name')
@@ -32,39 +46,18 @@ export const createCarrierValidator = [
     .isString(),
 
   body('deliveryDaysMin')
-    .if(nonApiCarrier)
     .optional()
     .isInt({ min: 0 }).withMessage('deliveryDaysMin must be a non-negative integer')
     .toInt(),
 
   body('deliveryDaysMax')
-    .if(nonApiCarrier)
     .optional()
     .isInt({ min: 0 }).withMessage('deliveryDaysMax must be a non-negative integer')
     .toInt(),
 
-  body('deliveryDays')
-    .if(nonApiCarrier)
-    .optional()
-    .isString(),
+  body('deliveryDays').optional().isString(),
 
-  body().custom((_, { req }) => {
-    if (req.body.type === 'api') return true;
-
-    const hasRange =
-      req.body.deliveryDaysMin != null &&
-      req.body.deliveryDaysMax != null &&
-      String(req.body.deliveryDaysMin) !== '' &&
-      String(req.body.deliveryDaysMax) !== '';
-    const hasLegacy =
-      typeof req.body.deliveryDays === 'string' && req.body.deliveryDays.trim();
-
-    if (!hasRange && !hasLegacy) {
-      throw new Error('deliveryDaysMin and deliveryDaysMax are required for non-API carriers');
-    }
-
-    return true;
-  }),
+  body().custom(requireDeliveryDaysRange),
 
   validate,
 ];
