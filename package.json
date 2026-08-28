@@ -7,6 +7,8 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "seed:content-pages": "node scripts/seed-content-pages.js",
+    "backfill:admin-audit": "node scripts/backfill-admin-audit.js",
+    "backfill:admin-audit:dry": "node scripts/backfill-admin-audit.js --dry-run",
     "test:email": "node scripts/send-test-email.js",
     "test": "echo \"No tests configured\" && exit 1"
   },

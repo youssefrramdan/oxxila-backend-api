@@ -18,6 +18,7 @@ import {
   buildFieldChange,
   recordAdminActivity,
 } from '../utils/adminActivity.js';
+import { buildOrderActivityLabel } from '../utils/adminActivityLabels.js';
 
 /** Convert a Mongoose doc to a plain object when needed. */
 const toPlainDoc = (doc) => (typeof doc?.toObject === 'function' ? doc.toObject() : doc);
@@ -1359,8 +1360,8 @@ export const updateManualOrderShippingStatus = asyncHandler(async (req, res, nex
     action: nextStatus === 'cancelled' ? 'cancel' : 'update',
     resourceType: 'order',
     resourceId: order._id,
-    resourceLabel: order.customerName || String(order._id),
-    summary: `Updated manual shipment status to "${label}"`,
+    resourceLabel: buildOrderActivityLabel(order),
+    summary: `Updated manual shipment for ${buildOrderActivityLabel(order)} to "${label}"`,
     changes: buildFieldChange('orderStatus', previousStatus, nextStatus),
   });
 
@@ -1407,13 +1408,15 @@ export const assignOrderShipping = asyncHandler(async (req, res, next) => {
     allowToOpenPackage: req.body.allowToOpenPackage,
   });
 
+  const orderLabel = buildOrderActivityLabel(updated);
+
   recordAdminActivity(req, {
     tab: 'shipping',
     action: 'assign',
     resourceType: 'order',
     resourceId: updated._id,
-    resourceLabel: updated.customerName || String(updated._id),
-    summary: `Assigned carrier "${carrier.name}" to order "${updated.customerName || updated._id}"`,
+    resourceLabel: orderLabel,
+    summary: `Assigned carrier "${carrier.name}" to ${orderLabel}`,
   });
 
   const shipment = await Shipment.findOne({ order: updated._id }).lean();

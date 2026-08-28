@@ -32,6 +32,7 @@ import {
   recordAdminActivity,
   withAuditPopulate,
 } from '../utils/adminActivity.js';
+import { buildOrderActivityLabel } from '../utils/adminActivityLabels.js';
 
 // Stripe / Paymob card gateways eligible for refund flows
 const CARD_PROVIDERS = new Set(['stripe', 'paymob']);
@@ -1297,8 +1298,8 @@ export const createOrderB2B = asyncHandler(async (req, res, next) => {
     action: 'create',
     resourceType: 'order',
     resourceId: order._id,
-    resourceLabel: checkout.customerName || String(order._id),
-    summary: `Created B2B order for "${checkout.customerName}"`,
+    resourceLabel: buildOrderActivityLabel(order, checkout.customerName),
+    summary: `Created B2B order ${buildOrderActivityLabel(order, checkout.customerName)}`,
   });
 
   await respondWithOrder(res, order, {
@@ -1367,15 +1368,18 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
     }
   }
 
-  const order = await Order.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
+  const order = await Order.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true })
+    .populate('user', 'name');
+
+  const orderLabel = buildOrderActivityLabel(order);
 
   recordAdminActivity(req, {
     tab: 'orders',
     action: 'update',
     resourceType: 'order',
     resourceId: order._id,
-    resourceLabel: order.customerName || String(order._id),
-    summary: `Updated order status to "${req.body.orderStatus}"`,
+    resourceLabel: orderLabel,
+    summary: `Updated ${orderLabel} status to "${req.body.orderStatus}"`,
     changes: buildFieldChange('orderStatus', existing.orderStatus, req.body.orderStatus),
   });
 
@@ -1417,13 +1421,14 @@ export const cancelOrder = asyncHandler(async (req, res, next) => {
   );
 
   if (isAdmin) {
+    const orderLabel = buildOrderActivityLabel(updated);
     recordAdminActivity(req, {
       tab: 'orders',
       action: 'cancel',
       resourceType: 'order',
       resourceId: updated._id,
-      resourceLabel: updated.customerName || String(updated._id),
-      summary: `Cancelled order "${updated.customerName || updated._id}"`,
+      resourceLabel: orderLabel,
+      summary: `Cancelled ${orderLabel}`,
     });
   }
 
@@ -1443,15 +1448,17 @@ export const refundOrder = asyncHandler(async (req, res, next) => {
 
   await Order.findByIdAndUpdate(updated._id, { statusUpdatedBy: req.user._id });
 
+  const orderLabel = buildOrderActivityLabel(updated);
+
   recordAdminActivity(req, {
     tab: 'orders',
     action: 'refund',
     resourceType: 'order',
     resourceId: updated._id,
-    resourceLabel: updated.customerName || String(updated._id),
+    resourceLabel: orderLabel,
     summary: alreadyRefunded
-      ? `Order "${updated.customerName || updated._id}" was already refunded`
-      : `Refunded order "${updated.customerName || updated._id}"`,
+      ? `${orderLabel} was already refunded`
+      : `Refunded ${orderLabel}`,
   });
 
   sendResponse(res, {

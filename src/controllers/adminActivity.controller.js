@@ -3,6 +3,7 @@ import asyncHandler from 'express-async-handler';
 import AdminActivityLog from '../models/AdminActivityLog.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
+import { enrichActivityLogs } from '../utils/adminActivityLabels.js';
 
 /**
  * @desc    List admin activity logs (Super Admin only)
@@ -31,10 +32,11 @@ export const listAdminActivityLogs = asyncHandler(async (req, res) => {
 
   await features.paginate();
   const logs = await features.mongooseQuery.lean();
+  const enriched = await enrichActivityLogs(logs);
 
   sendResponse(res, {
     message: 'Admin activity logs retrieved successfully',
-    data: logs,
+    data: enriched,
     pagination: features.getPaginationResult(),
   });
 });
