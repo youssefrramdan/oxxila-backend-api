@@ -7,6 +7,7 @@ import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
 import { adminRolePopulate, countAdminsWithRole, serializeAdminRole } from '../utils/adminRole.js';
 import { SUPER_ADMIN_SLUG } from '../constants/adminTabs.js';
+import { recordAdminActivity } from '../utils/adminActivity.js';
 
 const ADMIN_FILTER = { role: 'admin' };
 
@@ -104,6 +105,15 @@ export const createAdmin = asyncHandler(async (req, res, next) => {
 
   await admin.populate(adminRolePopulate);
 
+  recordAdminActivity(req, {
+    tab: 'roles',
+    action: 'create',
+    resourceType: 'adminUser',
+    resourceId: admin._id,
+    resourceLabel: admin.name || admin.email,
+    summary: `Created admin "${admin.name || admin.email}"`,
+  });
+
   sendResponse(res, {
     statusCode: 201,
     message: 'Admin created successfully',
@@ -147,6 +157,15 @@ export const updateAdmin = asyncHandler(async (req, res, next) => {
   await existing.save();
   await existing.populate(adminRolePopulate);
 
+  recordAdminActivity(req, {
+    tab: 'roles',
+    action: 'update',
+    resourceType: 'adminUser',
+    resourceId: existing._id,
+    resourceLabel: existing.name || existing.email,
+    summary: `Updated admin "${existing.name || existing.email}"`,
+  });
+
   sendResponse(res, {
     message: 'Admin updated successfully',
     data: serializeAdminUser(existing),
@@ -168,6 +187,16 @@ export const deleteAdmin = asyncHandler(async (req, res, next) => {
   if (!admin) return next(adminNotFound(req.params.id));
 
   await assertNotLastSuperAdmin(admin, 'delete');
+
+  recordAdminActivity(req, {
+    tab: 'roles',
+    action: 'delete',
+    resourceType: 'adminUser',
+    resourceId: admin._id,
+    resourceLabel: admin.name || admin.email,
+    summary: `Deleted admin "${admin.name || admin.email}"`,
+  });
+
   await admin.deleteOne();
 
   sendResponse(res, { message: 'Admin deleted successfully' });

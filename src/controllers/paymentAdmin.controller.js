@@ -7,6 +7,7 @@ import ReturnRequest from '../models/ReturnRequest.js';
 import PaymentGateway, { GATEWAY_CODES } from '../models/PaymentGateway.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
+import { recordAdminActivity } from '../utils/adminActivity.js';
 
 const DEFAULT_PERIOD_DAYS = 30;
 const PAID_MATCH = { paymentStatus: 'paid', orderStatus: { $nin: ['cancelled'] } };
@@ -200,6 +201,8 @@ export const updatePaymentGateway = asyncHandler(async (req, res, next) => {
 
   await PaymentGateway.ensureDefaults();
 
+  const previous = await PaymentGateway.findOne({ code }).lean();
+
   const gateway = await PaymentGateway.findOneAndUpdate(
     { code },
     { isEnabled: Boolean(req.body.isEnabled) },
@@ -207,6 +210,16 @@ export const updatePaymentGateway = asyncHandler(async (req, res, next) => {
   );
 
   if (!gateway) return next(new ApiError(`No payment gateway found with code: ${code}`, 404));
+
+  recordAdminActivity(req, {
+    tab: 'settings',
+    action: 'update',
+    resourceType: 'paymentGateway',
+    resourceId: code,
+    resourceLabel: code,
+    summary: `${gateway.isEnabled ? 'Enabled' : 'Disabled'} payment gateway "${code}"`,
+    changes: previous ? { isEnabled: { from: previous.isEnabled, to: gateway.isEnabled } } : null,
+  });
 
   sendResponse(res, {
     message: 'Payment gateway updated successfully',

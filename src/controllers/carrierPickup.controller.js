@@ -12,6 +12,7 @@ import {
   getBostaCarrierContext,
   buildBostaAddress,
 } from './orderShipping.controller.js';
+import { recordAdminActivity } from '../utils/adminActivity.js';
 
 const PICKUP_PATH = '/api/v2/pickup-locations';
 
@@ -336,6 +337,15 @@ export const createCarrierPickup = asyncHandler(async (req, res) => {
   }
   const saved = await CarrierPickup.findById(pickup._id);
 
+  recordAdminActivity(req, {
+    tab: 'shipping',
+    action: 'create',
+    resourceType: 'carrierPickup',
+    resourceId: pickup._id,
+    resourceLabel: req.body.locationName,
+    summary: `Created pickup location "${req.body.locationName}"`,
+  });
+
   sendResponse(res, {
     statusCode: 201,
     message: 'Pickup location created successfully',
@@ -352,6 +362,15 @@ export const deleteCarrierPickup = asyncHandler(async (req, res) => {
   const ctx = await getBostaCarrierContext(req.params.id);
 
   const pickup = await findPickup(ctx.carrier._id, req.params.pickupId);
+
+  recordAdminActivity(req, {
+    tab: 'shipping',
+    action: 'delete',
+    resourceType: 'carrierPickup',
+    resourceId: pickup._id,
+    resourceLabel: pickup.locationName,
+    summary: `Deleted pickup location "${pickup.locationName}"`,
+  });
 
   if (pickup.bostaLocationId) {
     try {
@@ -390,6 +409,16 @@ export const setDefaultCarrierPickup = asyncHandler(async (req, res) => {
   }
 
   const updated = await CarrierPickup.findById(pickup._id);
+
+  recordAdminActivity(req, {
+    tab: 'shipping',
+    action: 'update',
+    resourceType: 'carrierPickup',
+    resourceId: pickup._id,
+    resourceLabel: pickup.locationName,
+    summary: `Set default pickup location "${pickup.locationName}"`,
+  });
+
   sendResponse(res, {
     message: 'Default pickup location updated successfully',
     data: updated ?? pickup,
@@ -411,6 +440,16 @@ export const syncBostaPickupsForCarrier = asyncHandler(async (req, res) => {
   }
 
   const pickups = await listPickupsFromDb(ctx.carrier._id);
+
+  recordAdminActivity(req, {
+    tab: 'shipping',
+    action: 'sync',
+    resourceType: 'carrierPickup',
+    resourceId: ctx.carrier._id,
+    resourceLabel: ctx.carrier.name,
+    summary: `Synced pickup locations from Bosta for "${ctx.carrier.name}"`,
+  });
+
   sendResponse(res, {
     message: 'Pickup locations synced from Bosta successfully',
     data: pickups,

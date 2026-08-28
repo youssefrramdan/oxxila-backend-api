@@ -5,6 +5,14 @@ import Product from '../models/Product.js';
 import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
+import {
+  attachAuditToDoc,
+  logAdminCreate,
+  logAdminDelete,
+  logAdminUpdate,
+  recordAdminActivity,
+  stampAuditFields,
+} from '../utils/adminActivity.js';
 
 const PRODUCT_ON_CARD = 'name slug price images isBundle';
 const PRODUCT_MINIMAL = 'name slug price images';
@@ -139,11 +147,17 @@ export const createOffer = asyncHandler(async (req, res, next) => {
     return next(new ApiError('This product already has an active offer', 400));
   }
 
+  stampAuditFields(req.body, req, { isCreate: true });
   const data = await Offer.create(req.body);
+  logAdminCreate(req, { tab: 'settings', resourceType: 'offer', doc: data });
   await syncProductOffer(data.product, data);
   await data.populate(popProduct(PRODUCT_ON_CARD));
 
-  sendResponse(res, { statusCode: 201, message: 'Offer created successfully', data });
+  sendResponse(res, {
+    statusCode: 201,
+    message: 'Offer created successfully',
+    data: attachAuditToDoc(data),
+  });
 });
 
 /**
@@ -155,6 +169,7 @@ export const updateOffer = asyncHandler(async (req, res, next) => {
   const doc = await Offer.findById(req.params.id);
   if (!doc) return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
 
+  const previous = doc.toObject();
   const prevProductId = doc.product.toString();
   const nextProductId = req.body.product ?? prevProductId;
 
@@ -163,6 +178,7 @@ export const updateOffer = asyncHandler(async (req, res, next) => {
   }
 
   Object.assign(doc, req.body);
+  stampAuditFields(doc, req);
   await doc.save();
   await doc.populate(popProduct(PRODUCT_ON_CARD));
 
@@ -171,7 +187,9 @@ export const updateOffer = asyncHandler(async (req, res, next) => {
   }
   await syncProductOffer(doc.product, doc);
 
-  sendResponse(res, { message: 'Offer updated successfully', data: doc });
+  logAdminUpdate(req, { tab: 'settings', resourceType: 'offer', doc, previous });
+
+  sendResponse(res, { message: 'Offer updated successfully', data: attachAuditToDoc(doc) });
 });
 
 /**
@@ -180,8 +198,11 @@ export const updateOffer = asyncHandler(async (req, res, next) => {
  * @access  Private (admin)
  */
 export const deleteOffer = asyncHandler(async (req, res, next) => {
-  const removed = await Offer.findOneAndDelete({ _id: req.params.id });
+  const removed = await Offer.findById(req.params.id);
   if (!removed) return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
+
+  logAdminDelete(req, { tab: 'settings', resourceType: 'offer', doc: removed });
+  await removed.deleteOne();
 
   await syncProductOffer(removed.product, null);
   sendResponse(res, { message: 'Offer deleted successfully' });
@@ -197,6 +218,15 @@ export const deleteAllOffers = asyncHandler(async (req, res) => {
   const { deletedCount } = await Offer.deleteMany({});
 
   await Promise.all(productIds.map((id) => syncProductOffer(id, null)));
+
+  recordAdminActivity(req, {
+    tab: 'settings',
+    action: 'delete',
+    resourceType: 'offer',
+    resourceId: 'all',
+    resourceLabel: 'all offers',
+    summary: `Deleted all offers (${deletedCount})`,
+  });
 
   sendResponse(res, {
     message: 'All offers deleted successfully',

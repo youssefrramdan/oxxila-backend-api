@@ -36,6 +36,7 @@ import {
   returnMyListPopulate,
   returnAdminDetailPopulate,
 } from "../utils/populate/returnPopulate.js";
+import { buildFieldChange, recordAdminActivity } from "../utils/adminActivity.js";
 
 // --- constants ---
 
@@ -950,6 +951,15 @@ export const updateReturnStatus = asyncHandler(async (req, res, next) => {
 
     const populated = await ReturnRequest.findById(returnRequest._id).populate(returnPopulate).lean();
 
+    recordAdminActivity(req, {
+      tab: "returns",
+      action: "refund",
+      resourceType: "returnRequest",
+      resourceId: returnRequest._id,
+      resourceLabel: String(returnRequest._id),
+      summary: `Refunded return request ${returnRequest._id}`,
+    });
+
     const isCod = order.paymentMethod === "cod";
     const giftCardBalance = isCod
       ? roundMoney((await User.findById(returnRequest.user).select("storeCreditBalance").lean())?.storeCreditBalance ?? 0)
@@ -978,6 +988,21 @@ export const updateReturnStatus = asyncHandler(async (req, res, next) => {
   })
     .populate(returnPopulate)
     .lean();
+
+  recordAdminActivity(req, {
+    tab: "returns",
+    action:
+      nextStatus === 'rejected'
+        ? 'reject'
+        : nextStatus === 'approved'
+          ? 'approve'
+          : 'update',
+    resourceType: "returnRequest",
+    resourceId: updated._id,
+    resourceLabel: String(updated._id),
+    summary: `Updated return status to "${nextStatus}"`,
+    changes: buildFieldChange("refundStatus", doc.refundStatus, nextStatus),
+  });
 
   sendResponse(res, { message: "Return status updated successfully", data: updated });
 });
@@ -1012,6 +1037,16 @@ export const refundReturnAsGift = asyncHandler(async (req, res, next) => {
 
   const { returnRequest, storeCreditIssued } = await finalizeReturnRefund(doc, order);
   const populated = await ReturnRequest.findById(returnRequest._id).populate(returnPopulate).lean();
+
+  recordAdminActivity(req, {
+    tab: "returns",
+    action: "refund",
+    resourceType: "returnRequest",
+    resourceId: returnRequest._id,
+    resourceLabel: String(returnRequest._id),
+    summary: `Refunded COD return ${returnRequest._id} as gift card`,
+  });
+
   const giftCardBalance = roundMoney(
     (await User.findById(returnRequest.user).select("storeCreditBalance").lean())?.storeCreditBalance ?? 0
   );
@@ -1061,6 +1096,17 @@ export const scheduleBostaReturn = asyncHandler(async (req, res, next) => {
     },
     { returnDocument: "after", runValidators: true }
   ).populate(returnPopulate);
+
+  recordAdminActivity(req, {
+    tab: "returns",
+    action: "schedule",
+    resourceType: "returnRequest",
+    resourceId: updated._id,
+    resourceLabel: String(updated._id),
+    summary: result.alreadyScheduled
+      ? `Bosta return ${updated._id} was already scheduled`
+      : `Scheduled Bosta return pickup for ${updated._id}`,
+  });
 
   sendResponse(res, {
     message: result.alreadyScheduled ? "Bosta return was already scheduled" : "Bosta return scheduled successfully",

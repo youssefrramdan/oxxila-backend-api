@@ -14,6 +14,10 @@ import sendResponse from '../utils/apiResponse.js';
 import logger from '../config/logger.js';
 import { isCommittedCarrierAssignment } from '../utils/orderDeliveryEstimate.js';
 import { getPickupForAssign, pickupDocToBostaAddress } from './carrierPickup.controller.js';
+import {
+  buildFieldChange,
+  recordAdminActivity,
+} from '../utils/adminActivity.js';
 
 /** Convert a Mongoose doc to a plain object when needed. */
 const toPlainDoc = (doc) => (typeof doc?.toObject === 'function' ? doc.toObject() : doc);
@@ -1151,6 +1155,7 @@ const assignOrderToCarrier = async (order, carrier, adminUserId, options = {}) =
 
   await shipment.save();
   order.orderStatus = orderStatus;
+  order.statusUpdatedBy = adminUserId;
   await order.save();
   await syncOrderFromShipment(shipment);
 
@@ -1319,6 +1324,7 @@ export const updateManualOrderShippingStatus = asyncHandler(async (req, res, nex
 
   const shipmentStatus = ORDER_TO_SHIPMENT_STATUS[nextStatus];
   const label = MANUAL_STATUS_LABELS[nextStatus] || nextStatus;
+  const previousStatus = order.orderStatus;
 
   order.orderStatus = nextStatus;
   if (nextStatus === 'delivered' && !order.deliveredAt) {
@@ -1334,6 +1340,8 @@ export const updateManualOrderShippingStatus = asyncHandler(async (req, res, nex
     order.cancellationReason = req.body.notes?.trim() || order.cancellationReason || 'Cancelled by admin';
   }
 
+  order.statusUpdatedBy = req.user._id;
+
   if (shipmentStatus) shipment.status = shipmentStatus;
   shipment.providerStateLabel = label;
   if (req.body.notes?.trim()) shipment.notes = req.body.notes.trim();
@@ -1345,6 +1353,16 @@ export const updateManualOrderShippingStatus = asyncHandler(async (req, res, nex
 
   await shipment.save();
   await order.save();
+
+  recordAdminActivity(req, {
+    tab: 'shipping',
+    action: nextStatus === 'cancelled' ? 'cancel' : 'update',
+    resourceType: 'order',
+    resourceId: order._id,
+    resourceLabel: order.customerName || String(order._id),
+    summary: `Updated manual shipment status to "${label}"`,
+    changes: buildFieldChange('orderStatus', previousStatus, nextStatus),
+  });
 
   const { enrichOrderDocument } = await import('./order.controller.js');
   sendResponse(res, {
@@ -1387,6 +1405,15 @@ export const assignOrderShipping = asyncHandler(async (req, res, next) => {
     size: req.body.size,
     pickupId: req.body.pickupId,
     allowToOpenPackage: req.body.allowToOpenPackage,
+  });
+
+  recordAdminActivity(req, {
+    tab: 'shipping',
+    action: 'assign',
+    resourceType: 'order',
+    resourceId: updated._id,
+    resourceLabel: updated.customerName || String(updated._id),
+    summary: `Assigned carrier "${carrier.name}" to order "${updated.customerName || updated._id}"`,
   });
 
   const shipment = await Shipment.findOne({ order: updated._id }).lean();

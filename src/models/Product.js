@@ -49,6 +49,8 @@ const productSchema = new mongoose.Schema(
     views: { type: Number, default: 0 },
     ratingsAverage: { type: Number, min: 0, max: 5, default: null },
     ratingsQuantity: { type: Number, min: 0, default: 0 },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true }
   

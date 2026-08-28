@@ -7,6 +7,7 @@ import User from '../models/User.js';
 import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
+import { recordAdminActivity } from '../utils/adminActivity.js';
 
 const COUNTED_ORDER_STATUSES = { $nin: ['cancelled'] };
 const PAID_ORDER_MATCH = { paymentStatus: 'paid', orderStatus: COUNTED_ORDER_STATUSES };
@@ -244,6 +245,14 @@ export const getSpecificUser = asyncHandler(async (req, res, next) => {
  */
 export const createUser = asyncHandler(async (req, res) => {
   const user = await User.create(req.body);
+  recordAdminActivity(req, {
+    tab: 'customers',
+    action: 'create',
+    resourceType: 'user',
+    resourceId: user._id,
+    resourceLabel: user.name || user.email,
+    summary: `Created customer "${user.name || user.email}"`,
+  });
   sendResponse(res, { statusCode: 201, message: 'User created successfully', data: user });
 });
 
@@ -254,11 +263,23 @@ export const createUser = asyncHandler(async (req, res) => {
  */
 export const updateUser = asyncHandler(async (req, res, next) => {
   const { password, role, ...rest } = req.body;
+  const existing = await User.findById(req.params.id).lean();
+  if (!existing) return next(new ApiError(`No user found with id: ${req.params.id}`, 404));
+
   const user = await User.findByIdAndUpdate(req.params.id, rest, {
     new: true,
     runValidators: true,
   });
-  if (!user) return next(new ApiError(`No user found with id: ${req.params.id}`, 404));
+
+  recordAdminActivity(req, {
+    tab: 'customers',
+    action: 'update',
+    resourceType: 'user',
+    resourceId: user._id,
+    resourceLabel: user.name || user.email,
+    summary: `Updated customer "${user.name || user.email}"`,
+  });
+
   sendResponse(res, { message: 'User updated successfully', data: user });
 });
 
@@ -268,8 +289,19 @@ export const updateUser = asyncHandler(async (req, res, next) => {
  * @access  Admin
  */
 export const deleteUser = asyncHandler(async (req, res, next) => {
-  const user = await User.findByIdAndDelete(req.params.id);
+  const user = await User.findById(req.params.id);
   if (!user) return next(new ApiError(`No user found with id: ${req.params.id}`, 404));
+
+  recordAdminActivity(req, {
+    tab: 'customers',
+    action: 'delete',
+    resourceType: 'user',
+    resourceId: user._id,
+    resourceLabel: user.name || user.email,
+    summary: `Deleted customer "${user.name || user.email}"`,
+  });
+
+  await user.deleteOne();
   sendResponse(res, { message: 'User deleted successfully' });
 });
 
@@ -281,6 +313,16 @@ export const deleteUser = asyncHandler(async (req, res, next) => {
 export const activateSpecificUser = asyncHandler(async (req, res, next) => {
   const user = await User.findByIdAndUpdate(req.params.id, { active: true }, { new: true });
   if (!user) return next(new ApiError(`No user found with id: ${req.params.id}`, 404));
+
+  recordAdminActivity(req, {
+    tab: 'customers',
+    action: 'update',
+    resourceType: 'user',
+    resourceId: user._id,
+    resourceLabel: user.name || user.email,
+    summary: `Activated customer "${user.name || user.email}"`,
+  });
+
   sendResponse(res, { message: 'User activated successfully', data: user });
 });
 
@@ -295,6 +337,15 @@ export const changeUserPassword = asyncHandler(async (req, res, next) => {
 
   user.password = req.body.password;
   await user.save();
+
+  recordAdminActivity(req, {
+    tab: 'customers',
+    action: 'update',
+    resourceType: 'user',
+    resourceId: user._id,
+    resourceLabel: user.name || user.email,
+    summary: `Changed password for customer "${user.name || user.email}"`,
+  });
 
   sendResponse(res, { message: "User's password updated successfully", data: user });
 });

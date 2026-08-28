@@ -4,6 +4,13 @@ import Coupon from '../models/Coupon.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import ApiFeatures from '../utils/apiFeatures.js';
+import {
+  attachAuditToDoc,
+  logAdminCreate,
+  logAdminDelete,
+  logAdminUpdate,
+  stampAuditFields,
+} from '../utils/adminActivity.js';
 
 /**
  * @desc    List coupons (admin)
@@ -44,12 +51,14 @@ export const getCoupon = asyncHandler(async (req, res, next) => {
  */
 export const createCoupon = asyncHandler(async (req, res) => {
   if (req.body.code) req.body.code = String(req.body.code).toUpperCase();
+  stampAuditFields(req.body, req, { isCreate: true });
 
   const coupon = await Coupon.create(req.body);
+  logAdminCreate(req, { tab: 'settings', resourceType: 'coupon', doc: coupon, labelKey: 'code' });
   sendResponse(res, {
     statusCode: 201,
     message: 'Coupon created successfully',
-    data: coupon,
+    data: attachAuditToDoc(coupon),
   });
 });
 
@@ -61,13 +70,24 @@ export const createCoupon = asyncHandler(async (req, res) => {
 export const updateCoupon = asyncHandler(async (req, res, next) => {
   if (req.body.code) req.body.code = String(req.body.code).toUpperCase();
 
+  const previous = await Coupon.findById(req.params.id).lean();
+  if (!previous) return next(new ApiError(`No coupon found with id: ${req.params.id}`, 404));
+
+  stampAuditFields(req.body, req);
   const coupon = await Coupon.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
   });
-  if (!coupon) return next(new ApiError(`No coupon found with id: ${req.params.id}`, 404));
 
-  sendResponse(res, { message: 'Coupon updated successfully', data: coupon });
+  logAdminUpdate(req, {
+    tab: 'settings',
+    resourceType: 'coupon',
+    doc: coupon,
+    previous,
+    labelKey: 'code',
+  });
+
+  sendResponse(res, { message: 'Coupon updated successfully', data: attachAuditToDoc(coupon) });
 });
 
 /**
@@ -76,8 +96,11 @@ export const updateCoupon = asyncHandler(async (req, res, next) => {
  * @access  Admin
  */
 export const deleteCoupon = asyncHandler(async (req, res, next) => {
-  const coupon = await Coupon.findByIdAndDelete(req.params.id);
+  const coupon = await Coupon.findById(req.params.id);
   if (!coupon) return next(new ApiError(`No coupon found with id: ${req.params.id}`, 404));
+
+  logAdminDelete(req, { tab: 'settings', resourceType: 'coupon', doc: coupon, labelKey: 'code' });
+  await coupon.deleteOne();
 
   sendResponse(res, { message: 'Coupon deleted successfully' });
 });

@@ -6,6 +6,13 @@ import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import sendEmail from '../utils/email.js';
 import askSpecialistTemplate from '../utils/emailTemplates/askSpecialistTemplate.js';
+import {
+  attachAuditToDoc,
+  logAdminCreate,
+  logAdminDelete,
+  logAdminUpdate,
+  stampAuditFields,
+} from '../utils/adminActivity.js';
 
 // @desc    Get all active FAQs for a product
 // @route   GET /api/v1/products/:productId/faqs
@@ -33,17 +40,21 @@ export const createFaq = asyncHandler(async (req, res, next) => {
   const product = await Product.findById(productId).select('_id');
   if (!product) return next(new ApiError(`No product found with id: ${productId}`, 404));
 
-  const faq = await FAQ.create({
+  const payload = {
     question: req.body.question,
     answer: req.body.answer,
     product: productId,
     ...(typeof req.body.isActive === 'boolean' ? { isActive: req.body.isActive } : {}),
-  });
+  };
+  stampAuditFields(payload, req, { isCreate: true });
+
+  const faq = await FAQ.create(payload);
+  logAdminCreate(req, { tab: 'products', resourceType: 'faq', doc: faq, labelKey: 'question' });
 
   sendResponse(res, {
     statusCode: 201,
     message: 'FAQ created successfully',
-    data: faq,
+    data: attachAuditToDoc(faq),
   });
 });
 
@@ -60,21 +71,35 @@ export const updateFaq = asyncHandler(async (req, res, next) => {
     return next(new ApiError('Provide at least one of: question, answer, isActive', 400));
   }
 
+  const previous = await FAQ.findById(req.params.id).lean();
+  if (!previous) return next(new ApiError(`No FAQ found with id: ${req.params.id}`, 404));
+
+  stampAuditFields(payload, req);
   const faq = await FAQ.findByIdAndUpdate(req.params.id, payload, {
     new: true,
     runValidators: true,
   });
-  if (!faq) return next(new ApiError(`No FAQ found with id: ${req.params.id}`, 404));
 
-  sendResponse(res, { message: 'FAQ updated successfully', data: faq });
+  logAdminUpdate(req, {
+    tab: 'products',
+    resourceType: 'faq',
+    doc: faq,
+    previous,
+    labelKey: 'question',
+  });
+
+  sendResponse(res, { message: 'FAQ updated successfully', data: attachAuditToDoc(faq) });
 });
 
 // @desc    Delete FAQ
 // @route   DELETE /api/v1/faqs/:id
 // @access  Admin
 export const deleteFaq = asyncHandler(async (req, res, next) => {
-  const faq = await FAQ.findByIdAndDelete(req.params.id);
+  const faq = await FAQ.findById(req.params.id);
   if (!faq) return next(new ApiError(`No FAQ found with id: ${req.params.id}`, 404));
+
+  logAdminDelete(req, { tab: 'products', resourceType: 'faq', doc: faq, labelKey: 'question' });
+  await faq.deleteOne();
 
   sendResponse(res, { message: 'FAQ deleted successfully' });
 });

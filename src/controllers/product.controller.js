@@ -8,6 +8,14 @@ import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
 import { productPopulate, productSelect } from '../utils/populate/productPopulate.js';
+import {
+  attachAuditToDoc,
+  logAdminCreate,
+  logAdminDelete,
+  logAdminUpdate,
+  stampAuditFields,
+  withAuditPopulate,
+} from '../utils/adminActivity.js';
 
 /** Mongo filter for active (listed) products */
 const activeFilter = { isActive: true };
@@ -276,10 +284,18 @@ export const createProduct = asyncHandler(async (req, res) => {
     req.body.catalog = req.files.catalog[0].path;
   }
 
+  stampAuditFields(req.body, req, { isCreate: true });
   const product = await Product.create(req.body);
-  const populated = await product.populate(productPopulate);
+  logAdminCreate(req, { tab: 'products', resourceType: 'product', doc: product });
+  const populated = await withAuditPopulate(
+    Product.findById(product._id).select(productSelect).populate(productPopulate)
+  );
 
-  sendResponse(res, { statusCode: 201, message: 'Product created successfully', data: populated });
+  sendResponse(res, {
+    statusCode: 201,
+    message: 'Product created successfully',
+    data: attachAuditToDoc(populated),
+  });
 });
 
 /**
@@ -303,14 +319,21 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     req.body.isCertified = !!req.body.certificationImage;
   }
 
+  const previous = await Product.findById(req.params.id).lean();
+  if (!previous) return next(new ApiError(`No product found with id: ${req.params.id}`, 404));
+
+  stampAuditFields(req.body, req);
   const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
   }).populate(productPopulate);
 
-  if (!product) return next(new ApiError(`No product found with id: ${req.params.id}`, 404));
+  logAdminUpdate(req, { tab: 'products', resourceType: 'product', doc: product, previous });
 
-  sendResponse(res, { message: 'Product updated successfully', data: product });
+  sendResponse(res, {
+    message: 'Product updated successfully',
+    data: attachAuditToDoc(await withAuditPopulate(Product.findById(product._id).populate(productPopulate))),
+  });
 });
 
 /**
@@ -324,6 +347,7 @@ export const deleteProduct = asyncHandler(async (req, res, next) => {
 
   const productId = product._id;
 
+  logAdminDelete(req, { tab: 'products', resourceType: 'product', doc: product });
   await product.deleteOne();
 
   // Remove orphaned history entries so previously-browsed carousels stay clean.
@@ -344,8 +368,12 @@ export const toggleBestSeller = asyncHandler(async (req, res, next) => {
   const product = await Product.findById(req.params.id);
   if (!product) return next(new ApiError(`No product found with id: ${req.params.id}`, 404));
 
+  const previous = product.toObject();
   product.isBestSeller = !product.isBestSeller;
+  stampAuditFields(product, req);
   await product.save();
+
+  logAdminUpdate(req, { tab: 'products', resourceType: 'product', doc: product, previous });
 
   sendResponse(res, {
     message: `Product ${product.isBestSeller ? 'marked as' : 'removed from'} best seller`,

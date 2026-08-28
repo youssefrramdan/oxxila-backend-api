@@ -10,6 +10,7 @@ import {
   SUPER_ADMIN_SLUG,
 } from '../constants/adminTabs.js';
 import { countAdminsWithRole, serializeAdminRole } from '../utils/adminRole.js';
+import { recordAdminActivity } from '../utils/adminActivity.js';
 
 /**
  * @desc    Fixed tab registry for Roles UI checkboxes
@@ -63,6 +64,15 @@ export const createAdminRole = asyncHandler(async (req, res, next) => {
     permissions: normalizePermissions(req.body.permissions),
   });
 
+  recordAdminActivity(req, {
+    tab: 'roles',
+    action: 'create',
+    resourceType: 'adminRole',
+    resourceId: role._id,
+    resourceLabel: role.name,
+    summary: `Created admin role "${role.name}"`,
+  });
+
   sendResponse(res, {
     statusCode: 201,
     message: 'Admin role created successfully',
@@ -95,6 +105,15 @@ export const updateAdminRole = asyncHandler(async (req, res, next) => {
 
   await role.save();
 
+  recordAdminActivity(req, {
+    tab: 'roles',
+    action: 'update',
+    resourceType: 'adminRole',
+    resourceId: role._id,
+    resourceLabel: role.name,
+    summary: `Updated admin role "${role.name}"`,
+  });
+
   sendResponse(res, {
     message: 'Admin role updated successfully',
     data: serializeAdminRole(role),
@@ -122,6 +141,15 @@ export const deleteAdminRole = asyncHandler(async (req, res, next) => {
       )
     );
   }
+
+  recordAdminActivity(req, {
+    tab: 'roles',
+    action: 'delete',
+    resourceType: 'adminRole',
+    resourceId: role._id,
+    resourceLabel: role.name,
+    summary: `Deleted admin role "${role.name}"`,
+  });
 
   await role.deleteOne();
   sendResponse(res, { message: 'Admin role deleted successfully' });

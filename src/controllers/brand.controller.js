@@ -6,6 +6,14 @@ import Brand from '../models/Brand.js';
 import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
+import {
+  attachAuditToDoc,
+  logAdminCreate,
+  logAdminDelete,
+  logAdminUpdate,
+  stampAuditFields,
+  withAuditPopulate,
+} from '../utils/adminActivity.js';
 
 /** Restrict public queries to active brands */
 const activeFilter = { isActive: true };
@@ -72,9 +80,15 @@ export const getBrand = asyncHandler(async (req, res, next) => {
 export const createBrand = asyncHandler(async (req, res) => {
   if (req.file?.path) req.body.logo = req.file.path;
   delete req.body.slug;
+  stampAuditFields(req.body, req, { isCreate: true });
   const brand = await Brand.create(req.body);
-  await brand.populate(categoryPopulate);
-  sendResponse(res, { statusCode: 201, message: 'Brand created successfully', data: brand });
+  logAdminCreate(req, { tab: 'brands', resourceType: 'brand', doc: brand });
+  const populated = await withAuditPopulate(Brand.findById(brand._id).populate(categoryPopulate));
+  sendResponse(res, {
+    statusCode: 201,
+    message: 'Brand created successfully',
+    data: attachAuditToDoc(populated),
+  });
 });
 
 /**
@@ -85,12 +99,21 @@ export const createBrand = asyncHandler(async (req, res) => {
 export const updateBrand = asyncHandler(async (req, res, next) => {
   if (req.file?.path) req.body.logo = req.file.path;
   delete req.body.slug;
+  const previous = await Brand.findById(req.params.id).lean();
+  if (!previous) return next(new ApiError(`No brand found with id: ${req.params.id}`, 404));
+
+  stampAuditFields(req.body, req);
   const brand = await Brand.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
   }).populate(categoryPopulate);
-  if (!brand) return next(new ApiError(`No brand found with id: ${req.params.id}`, 404));
-  sendResponse(res, { message: 'Brand updated successfully', data: brand });
+
+  logAdminUpdate(req, { tab: 'brands', resourceType: 'brand', doc: brand, previous });
+
+  sendResponse(res, {
+    message: 'Brand updated successfully',
+    data: attachAuditToDoc(await withAuditPopulate(Brand.findById(brand._id).populate(categoryPopulate))),
+  });
 });
 
 /**
@@ -102,6 +125,7 @@ export const deleteBrand = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const brand = await Brand.findById(id);
   if (!brand) return next(new ApiError(`No brand found with id: ${id}`, 404));
+  logAdminDelete(req, { tab: 'brands', resourceType: 'brand', doc: brand });
   await brand.deleteOne();
   sendResponse(res, { message: 'Brand deleted successfully' });
 });

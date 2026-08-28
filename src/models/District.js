@@ -26,6 +26,8 @@ const districtSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true }
 );

@@ -16,6 +16,15 @@ import {
   getBostaCarrierContext,
 } from "./orderShipping.controller.js";
 import { remapAllZoneRefsAfterSync } from "./order.controller.js";
+import {
+  attachAuditToDoc,
+  logAdminCreate,
+  logAdminDelete,
+  logAdminUpdate,
+  recordAdminActivity,
+  stampAuditFields,
+  withAuditPopulate,
+} from "../utils/adminActivity.js";
 
 /** Convert a Mongoose doc to a plain object when needed. */
 const toPlainDoc = (doc) => (typeof doc?.toObject === "function" ? doc.toObject() : doc);
@@ -350,7 +359,7 @@ export const createCarrier = asyncHandler(async (req, res, next) => {
     return next(new ApiError(error.message, 400));
   }
 
-  const carrier = await Carrier.create({
+  const carrierData = {
     name,
     code,
     type,
@@ -359,9 +368,21 @@ export const createCarrier = asyncHandler(async (req, res, next) => {
     ...(type === "api"
       ? { apiProvider, apiKey, apiBaseUrl: apiBaseUrl ? normalizeBostaBaseUrl(apiBaseUrl) : null }
       : {}),
-  });
+  };
+  stampAuditFields(carrierData, req, { isCreate: true });
+  const carrier = await Carrier.create(carrierData);
 
-  sendResponse(res, { statusCode: 201, message: "Carrier created successfully", data: { carrier } });
+  logAdminCreate(req, { tab: "shipping", resourceType: "carrier", doc: carrier, labelKey: "name" });
+
+  sendResponse(res, {
+    statusCode: 201,
+    message: "Carrier created successfully",
+    data: {
+      carrier: attachAuditToDoc(
+        await withAuditPopulate(Carrier.findById(carrier._id).select("+apiKey +apiBaseUrl"))
+      ),
+    },
+  });
 });
 
 /**
@@ -373,7 +394,7 @@ export const updateCarrier = asyncHandler(async (req, res, next) => {
   delete req.body.type;
   delete req.body.apiProvider;
 
-  const existing = await Carrier.findById(req.params.id).select("+apiKey +apiBaseUrl");
+  const existing = await Carrier.findById(req.params.id).select("+apiKey +apiBaseUrl").lean();
   if (!existing) return next(new ApiError(`No carrier found with id: ${req.params.id}`, 404));
 
   const update = { ...req.body };
@@ -394,12 +415,29 @@ export const updateCarrier = asyncHandler(async (req, res, next) => {
   delete update.deliveryDaysMin;
   delete update.deliveryDaysMax;
 
+  stampAuditFields(update, req);
   const carrier = await Carrier.findByIdAndUpdate(req.params.id, update, {
     returnDocument: "after",
     runValidators: true,
   }).select("+apiKey +apiBaseUrl");
 
-  sendResponse(res, { message: "Carrier updated successfully", data: { carrier: mapCarrierForAdmin(carrier, []) } });
+  logAdminUpdate(req, {
+    tab: "shipping",
+    resourceType: "carrier",
+    doc: carrier,
+    previous: existing,
+    labelKey: "name",
+  });
+
+  sendResponse(res, {
+    message: "Carrier updated successfully",
+    data: {
+      carrier: mapCarrierForAdmin(
+        attachAuditToDoc(await withAuditPopulate(Carrier.findById(carrier._id).select("+apiKey +apiBaseUrl"))),
+        []
+      ),
+    },
+  });
 });
 
 /**
@@ -411,6 +449,16 @@ export const syncBostaZonesForCarrier = asyncHandler(async (req, res) => {
   const ctx = await getBostaCarrierContext(req.params.id);
 
   const zoneStats = await syncBostaCarrierCoverage(ctx.carrier._id, ctx.credentials);
+
+  recordAdminActivity(req, {
+    tab: "shipping",
+    action: "sync",
+    resourceType: "carrier",
+    resourceId: ctx.carrier._id,
+    resourceLabel: ctx.carrier.name,
+    summary: `Synced Bosta zones for carrier "${ctx.carrier.name}"`,
+  });
+
   sendResponse(res, { message: "Bosta governorates and districts synced successfully", data: zoneStats });
 });
 
@@ -428,6 +476,16 @@ export const syncBostaCoverageForCarrier = asyncHandler(async (req, res, next) =
   }
 
   const stats = await syncBostaCoveredOnly(ctx.credentials);
+
+  recordAdminActivity(req, {
+    tab: "shipping",
+    action: "sync",
+    resourceType: "carrier",
+    resourceId: ctx.carrier._id,
+    resourceLabel: ctx.carrier.name,
+    summary: `Synced Bosta coverage for carrier "${ctx.carrier.name}"`,
+  });
+
   sendResponse(res, { message: "Bosta district coverage updated successfully", data: stats });
 });
 
@@ -439,6 +497,8 @@ export const syncBostaCoverageForCarrier = asyncHandler(async (req, res, next) =
 export const deleteCarrier = asyncHandler(async (req, res, next) => {
   const carrier = await Carrier.findById(req.params.id);
   if (!carrier) return next(new ApiError(`No carrier found with id: ${req.params.id}`, 404));
+
+  logAdminDelete(req, { tab: "shipping", resourceType: "carrier", doc: carrier, labelKey: "name" });
 
   await CarrierCoverage.deleteMany({ carrier: req.params.id });
   await CarrierPickup.deleteMany({ carrier: req.params.id });
@@ -484,6 +544,15 @@ export const updateCarrierCoverage = asyncHandler(async (req, res, next) => {
       governorateIds.map((govId) => ({ carrier: req.params.id, governorate: govId, isActive: true }))
     );
   }
+
+  recordAdminActivity(req, {
+    tab: "shipping",
+    action: "update",
+    resourceType: "carrierCoverage",
+    resourceId: carrier._id,
+    resourceLabel: carrier.name,
+    summary: `Updated coverage for carrier "${carrier.name}" (${governorateIds.length} governorate(s))`,
+  });
 
   sendResponse(res, { message: "Coverage updated successfully", data: { count: governorateIds.length } });
 });

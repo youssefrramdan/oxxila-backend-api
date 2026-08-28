@@ -3,6 +3,7 @@ import asyncHandler from 'express-async-handler';
 import ContentPage, { CONTENT_PAGE_SLUGS } from '../models/ContentPage.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
+import { recordAdminActivity } from '../utils/adminActivity.js';
 
 const normalizeItems = (items) => {
   if (!Array.isArray(items)) return [];
@@ -133,6 +134,8 @@ export const updateContentPage = asyncHandler(async (req, res, next) => {
   const page = await ContentPage.findOne({ slug });
   if (!page) return next(new ApiError(`No page found with slug: ${slug}`, 404));
 
+  const previousPublished = page.isPublished;
+
   if (req.body.title !== undefined) page.title = String(req.body.title).trim();
   if (req.body.subtitle !== undefined) page.subtitle = String(req.body.subtitle ?? '').trim();
   if (req.body.isPublished !== undefined) {
@@ -156,6 +159,19 @@ export const updateContentPage = asyncHandler(async (req, res, next) => {
   }
 
   await page.save();
+
+  recordAdminActivity(req, {
+    tab: 'websiteContent',
+    action: 'update',
+    resourceType: 'contentPage',
+    resourceId: slug,
+    resourceLabel: page.title || slug,
+    summary: `Updated content page "${page.title || slug}"`,
+    changes:
+      req.body.isPublished !== undefined && previousPublished !== page.isPublished
+        ? { isPublished: { from: previousPublished, to: page.isPublished } }
+        : null,
+  });
 
   sendResponse(res, {
     message: 'Content page updated successfully',

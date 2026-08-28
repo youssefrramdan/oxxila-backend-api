@@ -5,6 +5,7 @@ import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import sendEmail from '../utils/email.js';
 import contactMessageTemplate from '../utils/emailTemplates/contactMessageTemplate.js';
+import { recordAdminActivity } from '../utils/adminActivity.js';
 
 const SOCIAL_KEYS = ['facebook', 'twitter', 'instagram', 'linkedin', 'youtube'];
 const INSTAGRAM_SLOTS = SiteSettings.INSTAGRAM_SLOTS;
@@ -139,6 +140,15 @@ export const updateContactSettings = asyncHandler(async (req, res) => {
   settings.markModified('contact');
   await settings.save();
 
+  recordAdminActivity(req, {
+    tab: 'settings',
+    action: 'update',
+    resourceType: 'siteSettings',
+    resourceId: 'contact',
+    resourceLabel: 'Contact settings',
+    summary: 'Updated contact settings',
+  });
+
   sendResponse(res, {
     message: 'Contact settings updated successfully',
     data: toContact(settings),
@@ -173,6 +183,15 @@ export const updateSocialSettings = asyncHandler(async (req, res) => {
 
   settings.markModified('social');
   await settings.save();
+
+  recordAdminActivity(req, {
+    tab: 'settings',
+    action: 'update',
+    resourceType: 'siteSettings',
+    resourceId: 'social',
+    resourceLabel: 'Social settings',
+    summary: 'Updated social media settings',
+  });
 
   sendResponse(res, {
     message: 'Social settings updated successfully',
@@ -242,6 +261,15 @@ export const updateInstagramSettings = asyncHandler(async (req, res, next) => {
   settings.markModified('instagramPosts');
   await settings.save();
 
+  recordAdminActivity(req, {
+    tab: 'settings',
+    action: 'update',
+    resourceType: 'siteSettings',
+    resourceId: 'instagram',
+    resourceLabel: 'Instagram settings',
+    summary: 'Updated Instagram grid settings',
+  });
+
   sendResponse(res, {
     message: 'Instagram settings updated successfully',
     data: toInstagramPosts(settings),
@@ -309,6 +337,15 @@ export const updateHowItWorksSettings = asyncHandler(async (req, res, next) => {
 
   settings.markModified('howItWorks');
   await settings.save();
+
+  recordAdminActivity(req, {
+    tab: 'settings',
+    action: 'update',
+    resourceType: 'siteSettings',
+    resourceId: 'howItWorks',
+    resourceLabel: 'How it works',
+    summary: 'Updated How it works section',
+  });
 
   sendResponse(res, {
     message: 'How it works settings updated successfully',

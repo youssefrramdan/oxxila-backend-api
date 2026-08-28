@@ -6,6 +6,15 @@ import Product from '../models/Product.js';
 import ApiError from '../utils/apiError.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
+import {
+  attachAuditToDoc,
+  enrichDocsWithAudit,
+  logAdminCreate,
+  logAdminDelete,
+  logAdminUpdate,
+  stampAuditFields,
+  withAuditPopulate,
+} from '../utils/adminActivity.js';
 
 const publicFilter = { isActive: true };
 const categoryPopulate = { path: 'category', select: 'name slug isActive' };
@@ -42,17 +51,18 @@ export const getAllSubcategories = asyncHandler(async (req, res, next) => {
 
   const features = new ApiFeatures(
     SubCategory.find(filter)
-      .select('name slug image isActive category')
+      .select('name slug image isActive category createdBy updatedBy createdAt updatedAt')
       .populate(categoryPopulate),
     safeQuery
   )
     .search(['name'])
     .sort();
 
-  const subcategories = await features.mongooseQuery;
+  const subcategories = await features.mongooseQuery.lean();
+  const data = includeInactive ? await enrichDocsWithAudit(subcategories) : subcategories;
   sendResponse(res, {
     message: 'Sub-categories retrieved successfully',
-    data: subcategories,
+    data,
   });
 });
 
@@ -70,12 +80,16 @@ export const getSubCategory = asyncHandler(async (req, res, next) => {
     ...(req.params.categoryId && { category: req.params.categoryId }),
   };
 
-  const sub = await SubCategory.findOne(filter).populate(categoryPopulate);
+  let query = SubCategory.findOne(filter).populate(categoryPopulate);
+  if (includeInactive) query = withAuditPopulate(query);
+
+  const sub = await query;
   if (!sub) {
     return next(new ApiError(`No sub-category found with id: ${req.params.id}`, 404));
   }
 
-  sendResponse(res, { message: 'Sub-category retrieved successfully', data: sub });
+  const data = includeInactive ? attachAuditToDoc(sub) : sub;
+  sendResponse(res, { message: 'Sub-category retrieved successfully', data });
 });
 
 /**
@@ -85,14 +99,18 @@ export const getSubCategory = asyncHandler(async (req, res, next) => {
  */
 export const createSubCategory = asyncHandler(async (req, res) => {
   if (req.file?.path) req.body.image = req.file.path;
+  stampAuditFields(req.body, req, { isCreate: true });
 
   const sub = await SubCategory.create(req.body);
-  const populated = await sub.populate(categoryPopulate);
+  logAdminCreate(req, { tab: 'categories', resourceType: 'subCategory', doc: sub });
+  const populated = await withAuditPopulate(
+    SubCategory.findById(sub._id).populate(categoryPopulate)
+  );
 
   sendResponse(res, {
     statusCode: 201,
     message: 'Sub-category created successfully',
-    data: populated,
+    data: attachAuditToDoc(populated),
   });
 });
 
@@ -104,17 +122,32 @@ export const createSubCategory = asyncHandler(async (req, res) => {
 export const updateSubCategory = asyncHandler(async (req, res, next) => {
   if (req.file?.path) req.body.image = req.file.path;
 
+  const previous = await SubCategory.findOne({
+    _id: req.params.id,
+    category: req.params.categoryId,
+  }).lean();
+  if (!previous) {
+    return next(new ApiError(`No sub-category found with id: ${req.params.id}`, 404));
+  }
+
+  stampAuditFields(req.body, req);
   const sub = await SubCategory.findOneAndUpdate(
     { _id: req.params.id, category: req.params.categoryId },
     req.body,
     { new: true, runValidators: true }
   ).populate(categoryPopulate);
 
-  if (!sub) {
-    return next(new ApiError(`No sub-category found with id: ${req.params.id}`, 404));
-  }
+  logAdminUpdate(req, {
+    tab: 'categories',
+    resourceType: 'subCategory',
+    doc: sub,
+    previous,
+  });
 
-  sendResponse(res, { message: 'Sub-category updated successfully', data: sub });
+  sendResponse(res, {
+    message: 'Sub-category updated successfully',
+    data: attachAuditToDoc(await withAuditPopulate(SubCategory.findById(sub._id).populate(categoryPopulate))),
+  });
 });
 
 /**
@@ -133,7 +166,7 @@ export const deleteSubCategory = asyncHandler(async (req, res, next) => {
     );
   }
 
-  const sub = await SubCategory.findOneAndDelete({
+  const sub = await SubCategory.findOne({
     _id: req.params.id,
     category: req.params.categoryId,
   });
@@ -141,6 +174,9 @@ export const deleteSubCategory = asyncHandler(async (req, res, next) => {
   if (!sub) {
     return next(new ApiError(`No sub-category found with id: ${req.params.id}`, 404));
   }
+
+  logAdminDelete(req, { tab: 'categories', resourceType: 'subCategory', doc: sub });
+  await sub.deleteOne();
 
   sendResponse(res, { message: 'Sub-category deleted successfully' });
 });

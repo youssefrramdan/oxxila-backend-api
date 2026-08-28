@@ -93,6 +93,8 @@ const orderSchema = new mongoose.Schema(
     cancelledAt: { type: Date, default: null },
     cancellationReason: { type: String, default: null },
     cancelledBy: { type: String, enum: ['user', 'admin'], default: null },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    statusUpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true }
 );

@@ -7,6 +7,15 @@ import Product from '../models/Product.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import ApiFeatures from '../utils/apiFeatures.js';
+import {
+  attachAuditToDoc,
+  enrichDocsWithAudit,
+  logAdminCreate,
+  logAdminDelete,
+  logAdminUpdate,
+  stampAuditFields,
+  withAuditPopulate,
+} from '../utils/adminActivity.js';
 
 /** Restrict public queries to active categories */
 const activeFilter = { isActive: true };
@@ -38,7 +47,7 @@ export const getAllCategories = asyncHandler(async (req, res) => {
 
   const features = new ApiFeatures(
     Category.find(filter)
-      .select('name slug image isActive subcategories')
+      .select('name slug image isActive subcategories createdBy updatedBy createdAt updatedAt')
       .populate(populateSubcategories(includeInactive)),
     safeQuery
   )
@@ -47,7 +56,11 @@ export const getAllCategories = asyncHandler(async (req, res) => {
 
   await features.paginate();
 
-  const categories = await features.mongooseQuery.lean();
+  let categories = await features.mongooseQuery.lean();
+  if (includeInactive) {
+    categories = await enrichDocsWithAudit(categories);
+  }
+
   sendResponse(res, {
     message: 'Categories retrieved successfully',
     data: categories,
@@ -66,13 +79,18 @@ export const getCategory = asyncHandler(async (req, res, next) => {
     ? { _id: req.params.id }
     : { _id: req.params.id, ...activeFilter };
 
-  const category = await Category.findOne(filter).populate(
-    populateSubcategories(includeInactive)
-  );
+  let query = Category.findOne(filter).populate(populateSubcategories(includeInactive));
+  if (includeInactive) {
+    query = withAuditPopulate(query);
+  }
+
+  const category = await query;
   if (!category) {
     return next(new ApiError(`No category found with id: ${req.params.id}`, 404));
   }
-  sendResponse(res, { message: 'Category retrieved successfully', data: category });
+
+  const data = includeInactive ? attachAuditToDoc(category) : category;
+  sendResponse(res, { message: 'Category retrieved successfully', data });
 });
 
 /**
@@ -82,11 +100,16 @@ export const getCategory = asyncHandler(async (req, res, next) => {
  */
 export const createCategory = asyncHandler(async (req, res) => {
   if (req.file?.path) req.body.image = req.file.path;
+  stampAuditFields(req.body, req, { isCreate: true });
   const category = await Category.create(req.body);
+  logAdminCreate(req, { tab: 'categories', resourceType: 'category', doc: category });
+  const populated = await withAuditPopulate(Category.findById(category._id)).populate(
+    populateSubcategories(true)
+  );
   sendResponse(res, {
     statusCode: 201,
     message: 'Category created successfully',
-    data: category,
+    data: attachAuditToDoc(populated),
   });
 });
 
@@ -97,14 +120,30 @@ export const createCategory = asyncHandler(async (req, res) => {
  */
 export const updateCategory = asyncHandler(async (req, res, next) => {
   if (req.file?.path) req.body.image = req.file.path;
-  const category = await Category.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  }).populate(populateSubcategories(true));
-  if (!category) {
+  const previous = await Category.findById(req.params.id).lean();
+  if (!previous) {
     return next(new ApiError(`No category found with id: ${req.params.id}`, 404));
   }
-  sendResponse(res, { message: 'Category updated successfully', data: category });
+
+  stampAuditFields(req.body, req);
+  const category = await withAuditPopulate(
+    Category.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    })
+  ).populate(populateSubcategories(true));
+
+  logAdminUpdate(req, {
+    tab: 'categories',
+    resourceType: 'category',
+    doc: category,
+    previous,
+  });
+
+  sendResponse(res, {
+    message: 'Category updated successfully',
+    data: attachAuditToDoc(category),
+  });
 });
 
 /**
@@ -127,6 +166,7 @@ export const deleteCategory = asyncHandler(async (req, res, next) => {
     );
   }
 
+  logAdminDelete(req, { tab: 'categories', resourceType: 'category', doc: category });
   await SubCategory.deleteMany({ category: id });
   await category.deleteOne();
   sendResponse(res, { message: 'Category and its sub-categories deleted successfully' });

@@ -3,6 +3,7 @@ import asyncHandler from 'express-async-handler';
 import ShippingMethodSetting, { SHIPPING_METHOD_TYPES } from '../models/ShippingMethodSetting.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
+import { recordAdminActivity } from '../utils/adminActivity.js';
 
 /**
  * @desc    List shipping method type toggles (api / known / internal)
@@ -34,6 +35,8 @@ export const updateShippingMethod = asyncHandler(async (req, res, next) => {
 
   await ShippingMethodSetting.ensureDefaults();
 
+  const previous = await ShippingMethodSetting.findOne({ type }).lean();
+
   const method = await ShippingMethodSetting.findOneAndUpdate(
     { type },
     { isEnabled: Boolean(req.body.isEnabled) },
@@ -43,6 +46,18 @@ export const updateShippingMethod = asyncHandler(async (req, res, next) => {
   if (!method) {
     return next(new ApiError(`No shipping method found with type: ${type}`, 404));
   }
+
+  recordAdminActivity(req, {
+    tab: 'shipping',
+    action: 'update',
+    resourceType: 'shippingMethod',
+    resourceId: type,
+    resourceLabel: type,
+    summary: `${method.isEnabled ? 'Enabled' : 'Disabled'} shipping method "${type}"`,
+    changes: previous
+      ? { isEnabled: { from: previous.isEnabled, to: method.isEnabled } }
+      : null,
+  });
 
   sendResponse(res, {
     message: `Shipping method ${type} ${method.isEnabled ? 'enabled' : 'disabled'} successfully`,

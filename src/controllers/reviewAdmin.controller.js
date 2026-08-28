@@ -6,6 +6,7 @@ import Order from '../models/Order.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import ApiFeatures from '../utils/apiFeatures.js';
+import { recordAdminActivity } from '../utils/adminActivity.js';
 
 const DEFAULT_LIST_LIMIT = 10;
 const DEFAULT_QUEUE_LIMIT = 5;
@@ -361,8 +362,19 @@ export const updateReviewVisibility = asyncHandler(async (req, res, next) => {
   const review = await Review.findById(req.params.id);
   if (!review) return next(reviewNotFound(req.params.id));
 
+  const previousVisible = review.isVisible;
   review.isVisible = Boolean(req.body.isVisible);
   await review.save();
+
+  recordAdminActivity(req, {
+    tab: 'reviews',
+    action: review.isVisible ? 'show' : 'hide',
+    resourceType: 'review',
+    resourceId: review._id,
+    resourceLabel: formatReviewRef(review._id),
+    summary: `${review.isVisible ? 'Showed' : 'Hidden'} review ${formatReviewRef(review._id)}`,
+    changes: { isVisible: { from: previousVisible, to: review.isVisible } },
+  });
 
   sendResponse(res, {
     message: 'Review visibility updated successfully',
@@ -383,8 +395,21 @@ export const updateReviewFlag = asyncHandler(async (req, res, next) => {
   const review = await Review.findById(req.params.id);
   if (!review) return next(reviewNotFound(req.params.id));
 
+  const previousFlagged = review.isFlagged;
   review.isFlagged = Boolean(req.body.isFlagged);
   await review.save();
+
+  recordAdminActivity(req, {
+    tab: 'reviews',
+    action: review.isFlagged ? 'flag' : 'unflag',
+    resourceType: 'review',
+    resourceId: review._id,
+    resourceLabel: formatReviewRef(review._id),
+    summary: review.isFlagged
+      ? `Flagged review ${formatReviewRef(review._id)}`
+      : `Unflagged review ${formatReviewRef(review._id)}`,
+    changes: { isFlagged: { from: previousFlagged, to: review.isFlagged } },
+  });
 
   sendResponse(res, {
     message: review.isFlagged ? 'Review flagged successfully' : 'Review unflagged successfully',

@@ -25,6 +25,13 @@ import {
   buildOrderDeliveryEstimate,
   isCommittedCarrierAssignment,
 } from '../utils/orderDeliveryEstimate.js';
+import {
+  buildFieldChange,
+  buildAuditBlock,
+  enrichDocsWithAudit,
+  recordAdminActivity,
+  withAuditPopulate,
+} from '../utils/adminActivity.js';
 
 // Stripe / Paymob card gateways eligible for refund flows
 const CARD_PROVIDERS = new Set(['stripe', 'paymob']);
@@ -524,6 +531,7 @@ export const enrichOrderDocument = (order, shipment = null, itemCount = null, ca
     shipment: shipmentSummary,
     tracking: buildOrderTrackingPayload(doc, shipment),
     delivery: buildOrderDeliveryEstimate(shipment, carrierDeliveryDays),
+    audit: buildAuditBlock(doc),
   };
 };
 
@@ -534,7 +542,7 @@ export const enrichOrdersDocuments = async (orders) => {
   const itemCountMap = needsItemCount ? await loadOrderItemCounts(orders.map((o) => o._id)) : new Map();
   const shipmentMap = await loadShipmentsForOrders(orders);
   const carrierDeliveryDaysMap = await loadCarrierDeliveryDaysForShipments([...shipmentMap.values()]);
-  return orders.map((order) => {
+  const enriched = orders.map((order) => {
     const shipment = shipmentMap.get(String(order._id)) ?? null;
     const carrierDeliveryDays = shipment?.carrier
       ? (carrierDeliveryDaysMap.get(String(shipment.carrier)) ?? null)
@@ -546,6 +554,7 @@ export const enrichOrdersDocuments = async (orders) => {
       carrierDeliveryDays
     );
   });
+  return enrichDocsWithAudit(enriched);
 };
 
 // ── Checkout inputs: cart subtotal, store credit ──
@@ -860,6 +869,7 @@ export const fulfillCheckout = async (snapshot, payment, options = {}) => {
             paymentProvider: payment.provider ?? null,
             paymentReference: payment.reference ?? null,
             orderStatus: payment.orderStatus ?? 'pending',
+            ...(snapshot.createdBy ? { createdBy: snapshot.createdBy } : {}),
             ...(payment.status === 'paid' && payment.method === 'cod'
               ? { codCollectedAt: new Date() }
               : {}),
@@ -1071,10 +1081,11 @@ const respondWithOrder = async (res, order, { message, statusCode = 200 }) => {
     const carrier = await Carrier.findById(shipment.carrier).select('deliveryDays').lean();
     carrierDeliveryDays = carrier?.deliveryDays ?? null;
   }
+  const orderDoc = await withAuditPopulate(Order.findById(order._id));
   sendResponse(res, {
     statusCode,
     message,
-    data: enrichOrderDocument(order, shipment, null, carrierDeliveryDays),
+    data: enrichOrderDocument(orderDoc ?? order, shipment, null, carrierDeliveryDays),
   });
 };
 
@@ -1272,7 +1283,7 @@ export const createOrderB2B = asyncHandler(async (req, res, next) => {
   });
 
   const order = await fulfillCheckout(
-    checkout,
+    { ...checkout, createdBy: req.user._id },
     {
       method: 'cod',
       status: markPaid ? 'paid' : 'pending',
@@ -1280,6 +1291,15 @@ export const createOrderB2B = asyncHandler(async (req, res, next) => {
     },
     { clearCart: false }
   );
+
+  recordAdminActivity(req, {
+    tab: 'orders',
+    action: 'create',
+    resourceType: 'order',
+    resourceId: order._id,
+    resourceLabel: checkout.customerName || String(order._id),
+    summary: `Created B2B order for "${checkout.customerName}"`,
+  });
 
   await respondWithOrder(res, order, {
     statusCode: 201,
@@ -1338,7 +1358,7 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   const existing = await Order.findById(req.params.id);
   if (!existing) return next(orderNotFound(req.params.id));
 
-  const update = { orderStatus: req.body.orderStatus };
+  const update = { orderStatus: req.body.orderStatus, statusUpdatedBy: req.user._id };
   if (req.body.orderStatus === 'delivered' && !existing.deliveredAt) {
     update.deliveredAt = new Date();
     if (existing.paymentMethod === 'cod' && existing.paymentStatus === 'pending') {
@@ -1348,6 +1368,17 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   }
 
   const order = await Order.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
+
+  recordAdminActivity(req, {
+    tab: 'orders',
+    action: 'update',
+    resourceType: 'order',
+    resourceId: order._id,
+    resourceLabel: order.customerName || String(order._id),
+    summary: `Updated order status to "${req.body.orderStatus}"`,
+    changes: buildFieldChange('orderStatus', existing.orderStatus, req.body.orderStatus),
+  });
+
   await respondWithOrder(res, order, { message: 'Order status updated successfully' });
 });
 
@@ -1380,9 +1411,21 @@ export const cancelOrder = asyncHandler(async (req, res, next) => {
       cancelledAt: new Date(),
       cancellationReason: req.body.reason?.trim() || null,
       cancelledBy: isAdmin ? 'admin' : 'user',
+      ...(isAdmin ? { statusUpdatedBy: req.user._id } : {}),
     },
     { new: true, runValidators: true }
   );
+
+  if (isAdmin) {
+    recordAdminActivity(req, {
+      tab: 'orders',
+      action: 'cancel',
+      resourceType: 'order',
+      resourceId: updated._id,
+      resourceLabel: updated.customerName || String(updated._id),
+      summary: `Cancelled order "${updated.customerName || updated._id}"`,
+    });
+  }
 
   await respondWithOrder(res, updated, { message: 'Order cancelled successfully' });
 });
@@ -1397,6 +1440,19 @@ export const refundOrder = asyncHandler(async (req, res, next) => {
   if (!order) return next(orderNotFound(req.params.id));
 
   const { order: updated, gatewayRefundId, alreadyRefunded } = await processCardOrderRefund(order);
+
+  await Order.findByIdAndUpdate(updated._id, { statusUpdatedBy: req.user._id });
+
+  recordAdminActivity(req, {
+    tab: 'orders',
+    action: 'refund',
+    resourceType: 'order',
+    resourceId: updated._id,
+    resourceLabel: updated.customerName || String(updated._id),
+    summary: alreadyRefunded
+      ? `Order "${updated.customerName || updated._id}" was already refunded`
+      : `Refunded order "${updated.customerName || updated._id}"`,
+  });
 
   sendResponse(res, {
     message: alreadyRefunded ? 'Order is already refunded' : 'Order refunded successfully',

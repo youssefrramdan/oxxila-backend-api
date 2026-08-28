@@ -6,6 +6,13 @@ import Product from '../models/Product.js';
 import Category from '../models/Category.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
+import {
+  attachAuditToDoc,
+  logAdminCreate,
+  logAdminDelete,
+  logAdminUpdate,
+  stampAuditFields,
+} from '../utils/adminActivity.js';
 
 /** Maps banner linkType to Mongoose model */
 const MODEL_BY_LINK = { product: Product, category: Category };
@@ -82,8 +89,14 @@ export const createBanner = asyncHandler(async (req, res, next) => {
   if (req.file?.path) req.body.image = req.file.path;
   const payload = { ...req.body, linkType: req.body.linkType ?? 'none' };
   if (!(await checkLinkTarget(payload.linkType, payload.linkId, next))) return;
+  stampAuditFields(payload, req, { isCreate: true });
   const data = await Banner.create(payload);
-  sendResponse(res, { statusCode: 201, message: 'Banner created successfully', data: toAdminBanner(data) });
+  logAdminCreate(req, { tab: 'settings', resourceType: 'banner', doc: data, labelKey: 'title' });
+  sendResponse(res, {
+    statusCode: 201,
+    message: 'Banner created successfully',
+    data: attachAuditToDoc(toAdminBanner(data)),
+  });
 });
 
 /**
@@ -94,14 +107,26 @@ export const createBanner = asyncHandler(async (req, res, next) => {
 export const updateBanner = asyncHandler(async (req, res, next) => {
   const doc = await Banner.findById(req.params.id);
   if (!doc) return next(new ApiError(`No banner found with id: ${req.params.id}`, 404));
+  const previous = doc.toObject();
   if (req.file?.path) req.body.image = req.file.path;
 
   mergeBannerBody(doc, req.body);
 
   if (!(await checkLinkTarget(doc.linkType, doc.linkId, next))) return;
 
+  stampAuditFields(doc, req);
   await doc.save();
-  sendResponse(res, { message: 'Banner updated successfully', data: toAdminBanner(doc) });
+  logAdminUpdate(req, {
+    tab: 'settings',
+    resourceType: 'banner',
+    doc,
+    previous,
+    labelKey: 'title',
+  });
+  sendResponse(res, {
+    message: 'Banner updated successfully',
+    data: attachAuditToDoc(toAdminBanner(doc)),
+  });
 });
 
 /**
@@ -110,8 +135,11 @@ export const updateBanner = asyncHandler(async (req, res, next) => {
  * @access  Admin
  */
 export const deleteBanner = asyncHandler(async (req, res, next) => {
-  const removed = await Banner.findOneAndDelete({ _id: req.params.id });
+  const removed = await Banner.findById(req.params.id);
   if (!removed) return next(new ApiError(`No banner found with id: ${req.params.id}`, 404));
+
+  logAdminDelete(req, { tab: 'settings', resourceType: 'banner', doc: removed, labelKey: 'title' });
+  await removed.deleteOne();
 
   sendResponse(res, { message: 'Banner deleted successfully' });
 });
