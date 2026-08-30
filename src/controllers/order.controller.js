@@ -989,7 +989,7 @@ const queryPaginatedOrders = async (filter, req, { populateUser = false } = {}) 
 
   let query = features.mongooseQuery;
   if (!req.query.fields) query = query.select(ORDER_LIST_SELECT);
-  if (populateUser) query = query.populate('user', 'name email phone');
+  if (populateUser) query = query.populate('user', 'name email phone avatar');
 
   const orders = await query.lean();
   return { orders, pagination: { ...features.getPaginationResult(), results: orders.length } };
@@ -1090,7 +1090,10 @@ const respondWithOrder = async (res, order, { message, statusCode = 200 }) => {
     const carrier = await Carrier.findById(shipment.carrier).select('deliveryDays').lean();
     carrierDeliveryDays = carrier?.deliveryDays ?? null;
   }
-  const orderDoc = await withOrderAuditPopulate(Order.findById(order._id));
+  // Re-fetch with user + audit so admin detail always has customer name/email/phone.
+  const orderDoc = await withOrderAuditPopulate(
+    Order.findById(order._id).populate('user', 'name email phone avatar'),
+  );
   sendResponse(res, {
     statusCode,
     message,
@@ -1353,7 +1356,7 @@ export const getOrders = asyncHandler(async (req, res) => {
  * @access  Admin
  */
 export const getOrder = asyncHandler(async (req, res, next) => {
-  const order = await Order.findById(req.params.id).populate('user', 'name email phone');
+  const order = await Order.findById(req.params.id).populate('user', 'name email phone avatar');
   if (!order) return next(orderNotFound(req.params.id));
   await respondWithOrder(res, order, { message: 'Order retrieved successfully' });
 });
@@ -1377,7 +1380,7 @@ export const updateOrderStatus = asyncHandler(async (req, res, next) => {
   }
 
   const order = await Order.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true })
-    .populate('user', 'name');
+    .populate('user', 'name email phone avatar');
 
   const orderLabel = buildOrderActivityLabel(order);
 
