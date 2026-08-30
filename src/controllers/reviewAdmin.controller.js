@@ -247,6 +247,7 @@ const mapAdminDetail = async (review) => {
       images: product?.images ?? [],
       price: product?.price,
       priceAfterDiscount: product?.priceAfterDiscount ?? null,
+      offerEndsAt: product?.offerEndsAt ?? null,
     },
   };
 };
@@ -343,7 +344,7 @@ export const getReviewsAdminList = asyncHandler(async (req, res) => {
 export const getReviewsAdminDetail = asyncHandler(async (req, res, next) => {
   const review = await Review.findById(req.params.id)
     .populate('user', 'name email phone avatar role active createdAt')
-    .populate('product', 'name slug images price priceAfterDiscount');
+    .populate('product', 'name slug images price priceAfterDiscount offerEndsAt');
 
   if (!review) return next(reviewNotFound(req.params.id));
 

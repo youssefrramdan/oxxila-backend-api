@@ -6,6 +6,7 @@ import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import sendEmail from '../utils/email.js';
 import askSpecialistTemplate from '../utils/emailTemplates/askSpecialistTemplate.js';
+import { getLivePriceAfterDiscount } from '../utils/productOffer.js';
 import {
   attachAuditToDoc,
   logAdminCreate,
@@ -137,7 +138,7 @@ export const askSpecialist = asyncHandler(async (req, res, next) => {
   }
 
   const product = await Product.findById(productId)
-    .select('name slug images price priceAfterDiscount stock description isActive brand category')
+    .select('name slug images price priceAfterDiscount offerEndsAt stock description isActive brand category')
     .populate('brand', 'name')
     .populate('category', 'name');
 
@@ -159,7 +160,7 @@ export const askSpecialist = asyncHandler(async (req, res, next) => {
     productSlug: product.slug,
     imageUrl,
     price: product.price,
-    priceAfterDiscount: product.priceAfterDiscount,
+    priceAfterDiscount: getLivePriceAfterDiscount(product),
     stock: product.stock,
     descriptionExcerpt: descriptionExcerpt || null,
     brandName: product.brand?.name ?? null,

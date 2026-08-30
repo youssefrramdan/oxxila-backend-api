@@ -7,6 +7,7 @@ import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import { csvFilename, sendCsvResponse } from '../utils/csvExport.js';
 import { formatReportPeriodIso, resolveReportDateRange } from '../utils/reportDateRange.js';
+import { resolveProductPrice } from '../utils/productOffer.js';
 
 const COUNTED_ORDER_STATUSES = { $nin: ['cancelled'] };
 const SALES_ORDER_MATCH = { paymentStatus: 'paid', orderStatus: COUNTED_ORDER_STATUSES };
@@ -299,7 +300,7 @@ const resolveProductHeader = async (productId) => {
   const product = await Product.findById(productId)
     .populate('category', 'name')
     .populate('brand', 'name')
-    .select('name images price priceAfterDiscount category brand')
+    .select('name images price priceAfterDiscount offerEndsAt category brand')
     .lean();
 
   if (!product) return null;
@@ -308,7 +309,7 @@ const resolveProductHeader = async (productId) => {
     productId: product._id,
     name: product.name,
     image: product.images?.[0] ?? null,
-    price: roundMoney(product.priceAfterDiscount ?? product.price),
+    price: roundMoney(resolveProductPrice(product)),
     category: product.category
       ? { id: product.category._id, name: product.category.name }
       : null,

@@ -5,7 +5,7 @@ import Product from '../models/Product.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 
-const PRODUCT_SELECT = 'name images price priceAfterDiscount stock isActive slug';
+const PRODUCT_SELECT = 'name images price priceAfterDiscount offerEndsAt stock isActive slug';
 
 /** Load wishlist with populated products; drop items whose product is missing */
 const getFormattedWishlist = async (userId) => {

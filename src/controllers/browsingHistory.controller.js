@@ -6,7 +6,7 @@ import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 
 const productSelect =
-  'name slug images price priceAfterDiscount views isCertified isActive ratingsAverage ratingsQuantity category';
+  'name slug images price priceAfterDiscount offerEndsAt views isCertified isActive ratingsAverage ratingsQuantity category';
 
 /**
  * @desc    Get browsing history

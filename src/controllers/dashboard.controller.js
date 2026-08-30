@@ -5,6 +5,7 @@ import Order from '../models/Order.js';
 import PaymentSession from '../models/PaymentSession.js';
 import Product from '../models/Product.js';
 import sendResponse from '../utils/apiResponse.js';
+import { resolveProductPrice } from '../utils/productOffer.js';
 
 const DEFAULT_PERIOD_DAYS = 30;
 const DEFAULT_LIST_LIMIT = 5;
@@ -42,8 +43,6 @@ const calcTrend = (current, previous) => {
   if (previous === 0) return current > 0 ? 100 : 0;
   return roundPercent(((current - previous) / previous) * 100);
 };
-
-const resolveProductPrice = (product) => product.priceAfterDiscount ?? product.price;
 
 const mapOrderBadge = (order) => {
   if (order.paymentStatus === 'paid') return 'PAID';
@@ -269,7 +268,7 @@ const buildTopProducts = async (limit) => {
   const products = await Product.find({ isActive: true })
     .sort({ soldCount: -1, views: -1 })
     .limit(limit)
-    .select('name images soldCount price priceAfterDiscount')
+    .select('name images soldCount price priceAfterDiscount offerEndsAt')
     .lean();
 
   return products.map((product) => ({

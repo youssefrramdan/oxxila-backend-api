@@ -1,13 +1,16 @@
 // src/controllers/product.controller.js
-import asyncHandler from 'express-async-handler';
-import mongoose from 'mongoose';
-import Order from '../models/Order.js';
-import Product from '../models/Product.js';
-import User from '../models/User.js';
-import ApiError from '../utils/apiError.js';
-import ApiFeatures from '../utils/apiFeatures.js';
-import sendResponse from '../utils/apiResponse.js';
-import { productPopulate, productSelect } from '../utils/populate/productPopulate.js';
+import asyncHandler from "express-async-handler";
+import mongoose from "mongoose";
+import Order from "../models/Order.js";
+import Product from "../models/Product.js";
+import User from "../models/User.js";
+import ApiError from "../utils/apiError.js";
+import ApiFeatures from "../utils/apiFeatures.js";
+import sendResponse from "../utils/apiResponse.js";
+import {
+  productPopulate,
+  productSelect,
+} from "../utils/populate/productPopulate.js";
 import {
   attachAuditToDoc,
   logAdminCreate,
@@ -15,13 +18,17 @@ import {
   logAdminUpdate,
   stampAuditFields,
   withAuditPopulate,
-} from '../utils/adminActivity.js';
+} from "../utils/adminActivity.js";
+import { refreshProductOffers } from "../utils/productOffer.js";
 
 /** Mongo filter for active (listed) products */
 const activeFilter = { isActive: true };
 
 const DEFAULT_PERFORMANCE_PERIOD_DAYS = 30;
-const PAID_ORDER_MATCH = { paymentStatus: 'paid', orderStatus: { $nin: ['cancelled'] } };
+const PAID_ORDER_MATCH = {
+  paymentStatus: "paid",
+  orderStatus: { $nin: ["cancelled"] },
+};
 
 const roundPercent = (value) => Math.round(value * 10) / 10;
 
@@ -31,7 +38,9 @@ const parsePositiveInt = (value, fallback) => {
 };
 
 const startOfUtcDay = (date) =>
-  new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
 
 const shiftDays = (date, days) => {
   const next = new Date(date);
@@ -65,17 +74,21 @@ const buildPerformanceByProductId = async (productIds, days) => {
       $match: {
         ...PAID_ORDER_MATCH,
         createdAt: { $gte: previousStart, $lte: end },
-        'items.product': { $in: productIds },
+        "items.product": { $in: productIds },
       },
     },
-    { $unwind: '$items' },
-    { $match: { 'items.product': { $in: productIds } } },
+    { $unwind: "$items" },
+    { $match: { "items.product": { $in: productIds } } },
     {
       $group: {
-        _id: '$items.product',
+        _id: "$items.product",
         current: {
           $sum: {
-            $cond: [{ $gte: ['$createdAt', currentStart] }, '$items.quantity', 0],
+            $cond: [
+              { $gte: ["$createdAt", currentStart] },
+              "$items.quantity",
+              0,
+            ],
           },
         },
         previous: {
@@ -83,11 +96,11 @@ const buildPerformanceByProductId = async (productIds, days) => {
             $cond: [
               {
                 $and: [
-                  { $gte: ['$createdAt', previousStart] },
-                  { $lte: ['$createdAt', previousEnd] },
+                  { $gte: ["$createdAt", previousStart] },
+                  { $lte: ["$createdAt", previousEnd] },
                 ],
               },
-              '$items.quantity',
+              "$items.quantity",
               0,
             ],
           },
@@ -110,8 +123,8 @@ const addToBrowsingHistory = async (userId, productId, categoryId) => {
       : new mongoose.Types.ObjectId(String(productId));
 
   const updated = await User.findOneAndUpdate(
-    { _id: userId, 'browsingHistory.product': pid },
-    { $set: { 'browsingHistory.$.viewedAt': new Date() } }
+    { _id: userId, "browsingHistory.product": pid },
+    { $set: { "browsingHistory.$.viewedAt": new Date() } },
   );
 
   if (!updated) {
@@ -132,9 +145,9 @@ const buildFilter = (query) => {
   const filter = {};
 
   // Default active-only for storefront. Admin catalog can pass isActive=false|all.
-  if (query.isActive === 'false') {
+  if (query.isActive === "false") {
     filter.isActive = false;
-  } else if (query.isActive !== 'all') {
+  } else if (query.isActive !== "all") {
     filter.isActive = true;
   }
 
@@ -142,26 +155,28 @@ const buildFilter = (query) => {
     filter.category = query.category;
   }
   if (query.subCategory) {
-    const ids = query.subCategory.split(',').filter((id) => mongoose.Types.ObjectId.isValid(id));
+    const ids = query.subCategory
+      .split(",")
+      .filter((id) => mongoose.Types.ObjectId.isValid(id));
     if (ids.length) filter.subCategory = { $in: ids };
   }
   if (query.brand && mongoose.Types.ObjectId.isValid(query.brand)) {
     filter.brand = query.brand;
   }
   if (query.concerns) {
-    filter.concerns = { $in: query.concerns.split(',') };
+    filter.concerns = { $in: query.concerns.split(",") };
   }
   if (query.isSensitiveSkin !== undefined) {
-    filter.isSensitiveSkin = query.isSensitiveSkin === 'true';
+    filter.isSensitiveSkin = query.isSensitiveSkin === "true";
   }
   if (query.isCertified !== undefined) {
-    filter.isCertified = query.isCertified === 'true';
+    filter.isCertified = query.isCertified === "true";
   }
   if (query.isBestSeller !== undefined) {
-    filter.isBestSeller = query.isBestSeller === 'true';
+    filter.isBestSeller = query.isBestSeller === "true";
   }
   if (query.isBundle !== undefined) {
-    filter.isBundle = query.isBundle === 'true';
+    filter.isBundle = query.isBundle === "true";
   }
   if (query.priceMin || query.priceMax) {
     filter.price = {};
@@ -171,12 +186,12 @@ const buildFilter = (query) => {
 
   const now = new Date();
 
-  if (query.allOffers === 'true') {
+  if (query.allOffers === "true") {
     filter.priceAfterDiscount = { $ne: null };
     filter.offerEndsAt = { $gt: now };
   }
 
-  if (query.todayOffers === 'true') {
+  if (query.todayOffers === "true") {
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
     filter.priceAfterDiscount = { $ne: null };
@@ -184,7 +199,7 @@ const buildFilter = (query) => {
   }
 
   // inverse of active offer: no discount set, or offer window missing/expired
-  if (query.noOffers === 'true') {
+  if (query.noOffers === "true") {
     filter.$or = [
       { priceAfterDiscount: null },
       { offerEndsAt: null },
@@ -201,27 +216,45 @@ const buildFilter = (query) => {
  */
 export const getAllProducts = asyncHandler(async (req, res) => {
   const filter = buildFilter(req.query);
-  const periodDays = parsePositiveInt(req.query.period, DEFAULT_PERFORMANCE_PERIOD_DAYS);
+  const periodDays = parsePositiveInt(
+    req.query.period,
+    DEFAULT_PERFORMANCE_PERIOD_DAYS,
+  );
 
   const safeQuery = { ...req.query };
-  ['category', 'subCategory', 'brand', 'concerns', 'isSensitiveSkin',
-    'isCertified', 'isBestSeller', 'isBundle', 'priceMin', 'priceMax', 'isActive',
-    'allOffers', 'todayOffers', 'noOffers', 'period']
-     .forEach((k) => delete safeQuery[k]);
+  [
+    "category",
+    "subCategory",
+    "brand",
+    "concerns",
+    "isSensitiveSkin",
+    "isCertified",
+    "isBestSeller",
+    "isBundle",
+    "priceMin",
+    "priceMax",
+    "isActive",
+    "allOffers",
+    "todayOffers",
+    "noOffers",
+    "period",
+  ].forEach((k) => delete safeQuery[k]);
 
   const features = new ApiFeatures(
     Product.find(filter).select(productSelect).populate(productPopulate),
-    safeQuery
+    safeQuery,
   )
-    .search(['name'])
+    .search(["name"])
     .sort();
 
   await features.paginate();
 
   const products = await features.mongooseQuery.lean();
+  await refreshProductOffers(products);
+
   const performanceById = await buildPerformanceByProductId(
     products.map((p) => p._id),
-    periodDays
+    periodDays,
   );
 
   const data = products.map((product) => ({
@@ -230,7 +263,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
   }));
 
   sendResponse(res, {
-    message: 'Products retrieved successfully',
+    message: "Products retrieved successfully",
     pagination: { ...features.getPaginationResult(), results: data.length },
     data,
   });
@@ -244,7 +277,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
 export const getProduct = asyncHandler(async (req, res, next) => {
   // Admins can open archived formulas; storefront stays active-only.
   const filter =
-    req.user?.role === 'admin'
+    req.user?.role === "admin"
       ? { _id: req.params.id }
       : { _id: req.params.id, ...activeFilter };
 
@@ -252,20 +285,32 @@ export const getProduct = asyncHandler(async (req, res, next) => {
     .select(`${productSelect} description advantages composition catalog`)
     .populate(productPopulate);
 
-  if (!product) return next(new ApiError(`No product found with id: ${req.params.id}`, 404));
+  if (!product)
+    return next(
+      new ApiError(`No product found with id: ${req.params.id}`, 404),
+    );
+
+  await refreshProductOffers(product);
 
   const categoryId =
-    product.category != null && typeof product.category === 'object' && '_id' in product.category
+    product.category != null &&
+    typeof product.category === "object" &&
+    "_id" in product.category
       ? product.category._id
       : product.category;
 
   // fire and forget
-  Product.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } }).catch(() => {});
+  Product.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } }).catch(
+    () => {},
+  );
   if (req.user) {
     addToBrowsingHistory(req.user._id, product._id, categoryId).catch(() => {});
   }
 
-  sendResponse(res, { message: 'Product retrieved successfully', data: product });
+  sendResponse(res, {
+    message: "Product retrieved successfully",
+    data: product,
+  });
 });
 
 /**
@@ -286,14 +331,20 @@ export const createProduct = asyncHandler(async (req, res) => {
 
   stampAuditFields(req.body, req, { isCreate: true });
   const product = await Product.create(req.body);
-  logAdminCreate(req, { tab: 'products', resourceType: 'product', doc: product });
+  logAdminCreate(req, {
+    tab: "products",
+    resourceType: "product",
+    doc: product,
+  });
   const populated = await withAuditPopulate(
-    Product.findById(product._id).select(productSelect).populate(productPopulate)
+    Product.findById(product._id)
+      .select(productSelect)
+      .populate(productPopulate),
   );
 
   sendResponse(res, {
     statusCode: 201,
-    message: 'Product created successfully',
+    message: "Product created successfully",
     data: attachAuditToDoc(populated),
   });
 });
@@ -315,12 +366,15 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
   }
 
   // ensure isCertified stays in sync
-  if ('certificationImage' in req.body) {
+  if ("certificationImage" in req.body) {
     req.body.isCertified = !!req.body.certificationImage;
   }
 
   const previous = await Product.findById(req.params.id).lean();
-  if (!previous) return next(new ApiError(`No product found with id: ${req.params.id}`, 404));
+  if (!previous)
+    return next(
+      new ApiError(`No product found with id: ${req.params.id}`, 404),
+    );
 
   stampAuditFields(req.body, req);
   const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
@@ -328,11 +382,20 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
     runValidators: true,
   }).populate(productPopulate);
 
-  logAdminUpdate(req, { tab: 'products', resourceType: 'product', doc: product, previous });
+  logAdminUpdate(req, {
+    tab: "products",
+    resourceType: "product",
+    doc: product,
+    previous,
+  });
 
   sendResponse(res, {
-    message: 'Product updated successfully',
-    data: attachAuditToDoc(await withAuditPopulate(Product.findById(product._id).populate(productPopulate))),
+    message: "Product updated successfully",
+    data: attachAuditToDoc(
+      await withAuditPopulate(
+        Product.findById(product._id).populate(productPopulate),
+      ),
+    ),
   });
 });
 
@@ -343,20 +406,27 @@ export const updateProduct = asyncHandler(async (req, res, next) => {
  */
 export const deleteProduct = asyncHandler(async (req, res, next) => {
   const product = await Product.findById(req.params.id);
-  if (!product) return next(new ApiError(`No product found with id: ${req.params.id}`, 404));
+  if (!product)
+    return next(
+      new ApiError(`No product found with id: ${req.params.id}`, 404),
+    );
 
   const productId = product._id;
 
-  logAdminDelete(req, { tab: 'products', resourceType: 'product', doc: product });
+  logAdminDelete(req, {
+    tab: "products",
+    resourceType: "product",
+    doc: product,
+  });
   await product.deleteOne();
 
   // Remove orphaned history entries so previously-browsed carousels stay clean.
   await User.updateMany(
-    { 'browsingHistory.product': productId },
+    { "browsingHistory.product": productId },
     { $pull: { browsingHistory: { product: productId } } },
   );
 
-  sendResponse(res, { message: 'Product deleted successfully' });
+  sendResponse(res, { message: "Product deleted successfully" });
 });
 
 /**
@@ -366,17 +436,25 @@ export const deleteProduct = asyncHandler(async (req, res, next) => {
  */
 export const toggleBestSeller = asyncHandler(async (req, res, next) => {
   const product = await Product.findById(req.params.id);
-  if (!product) return next(new ApiError(`No product found with id: ${req.params.id}`, 404));
+  if (!product)
+    return next(
+      new ApiError(`No product found with id: ${req.params.id}`, 404),
+    );
 
   const previous = product.toObject();
   product.isBestSeller = !product.isBestSeller;
   stampAuditFields(product, req);
   await product.save();
 
-  logAdminUpdate(req, { tab: 'products', resourceType: 'product', doc: product, previous });
+  logAdminUpdate(req, {
+    tab: "products",
+    resourceType: "product",
+    doc: product,
+    previous,
+  });
 
   sendResponse(res, {
-    message: `Product ${product.isBestSeller ? 'marked as' : 'removed from'} best seller`,
+    message: `Product ${product.isBestSeller ? "marked as" : "removed from"} best seller`,
     data: { isBestSeller: product.isBestSeller },
   });
 });

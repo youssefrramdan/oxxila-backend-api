@@ -6,6 +6,9 @@ import Product from '../models/Product.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import { getCartSubtotal, getStoreCreditBalance, computeStoreCreditApplied } from './order.controller.js';
+import { refreshProductOffers, resolveProductPrice } from '../utils/productOffer.js';
+
+const PRODUCT_CART_SELECT = 'name images price priceAfterDiscount offerEndsAt stock isActive';
 
 // --- coupon validation (single source of truth — order.controller.js reuses assertCouponApplicable) ---
 
@@ -54,9 +57,6 @@ const findActiveCouponByCode = (code) =>
 
 // --- cart pricing/formatting ---
 
-/** Resolve the effective unit price (discounted when present) */
-const resolveProductPrice = (product) => product.priceAfterDiscount ?? product.price;
-
 /** Shape cart + pricing fields for API responses */
 const formatCartResponse = (result) => ({
   _id: result.cart._id,
@@ -75,9 +75,12 @@ const formatCartResponse = (result) => ({
 const getUpdatedCart = async (userId) => {
   const cart = await Cart.findOne({ user: userId }).populate(
     'items.product',
-    'name images price priceAfterDiscount stock isActive'
+    PRODUCT_CART_SELECT
   );
   if (!cart) return null;
+
+  const cartProducts = cart.items.map((item) => item.product).filter(Boolean);
+  await refreshProductOffers(cartProducts);
 
   let changed = false;
   for (const item of cart.items) {

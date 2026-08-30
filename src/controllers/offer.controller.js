@@ -1,10 +1,10 @@
 // src/controllers/offer.controller.js
-import asyncHandler from 'express-async-handler';
-import Offer from '../models/Offer.js';
-import Product from '../models/Product.js';
-import ApiError from '../utils/apiError.js';
-import ApiFeatures from '../utils/apiFeatures.js';
-import sendResponse from '../utils/apiResponse.js';
+import asyncHandler from "express-async-handler";
+import Offer from "../models/Offer.js";
+import Product from "../models/Product.js";
+import ApiError from "../utils/apiError.js";
+import ApiFeatures from "../utils/apiFeatures.js";
+import sendResponse from "../utils/apiResponse.js";
 import {
   attachAuditToDoc,
   logAdminCreate,
@@ -12,47 +12,28 @@ import {
   logAdminUpdate,
   recordAdminActivity,
   stampAuditFields,
-} from '../utils/adminActivity.js';
-import { formatOfferActivityLabel } from '../utils/adminActivityLabels.js';
+} from "../utils/adminActivity.js";
+import { formatOfferActivityLabel } from "../utils/adminActivityLabels.js";
+import { syncProductOffer } from "../utils/productOffer.js";
 
-const PRODUCT_ON_CARD = 'name slug price images isBundle';
-const PRODUCT_MINIMAL = 'name slug price images';
+const PRODUCT_ON_CARD = "name slug price images isBundle";
+const PRODUCT_MINIMAL = "name slug price images";
 
 /** Build a product populate descriptor with the given field select */
-const popProduct = (fields) => ({ path: 'product', select: fields });
+const popProduct = (fields) => ({ path: "product", select: fields });
 
 /** Normalize a product ref (populated doc or ObjectId) to a string id */
-const productIdOf = (ref) => String(ref?._id ?? ref ?? '');
+const productIdOf = (ref) => String(ref?._id ?? ref ?? "");
 
 /** Another non-expired active offer on this product (optional `excludeOfferId` for updates). */
 const findBlockingOffer = (productId, excludeOfferId) => {
-  const filter = { product: productId, isActive: true, endDate: { $gt: new Date() } };
+  const filter = {
+    product: productId,
+    isActive: true,
+    endDate: { $gt: new Date() },
+  };
   if (excludeOfferId) filter._id = { $ne: excludeOfferId };
   return Offer.findOne(filter);
-};
-
-/** Sync product priceAfterDiscount / offerEndsAt from an offer, or clear when null */
-const syncProductOffer = async (productRef, offer = null) => {
-  const id = productRef?._id ?? productRef;
-  if (!id) return;
-
-  if (!offer) {
-    await Product.findByIdAndUpdate(id, { $set: { priceAfterDiscount: null, offerEndsAt: null } });
-    return;
-  }
-
-  const product = await Product.findById(id);
-  if (!product) return;
-
-  const discount =
-    offer.discountPercent != null ? (product.price * offer.discountPercent) / 100 : offer.discountAmount;
-
-  await Product.findByIdAndUpdate(id, {
-    $set: {
-      priceAfterDiscount: +Math.max(product.price - discount, 0).toFixed(2),
-      offerEndsAt: offer.endDate,
-    },
-  });
 };
 
 /**
@@ -70,7 +51,7 @@ export const getAdminOffers = asyncHandler(async (req, res) => {
 
   const data = await features.mongooseQuery.lean();
   sendResponse(res, {
-    message: 'Offers retrieved successfully',
+    message: "Offers retrieved successfully",
     data,
     pagination: { ...features.getPaginationResult(), results: data.length },
   });
@@ -83,24 +64,30 @@ export const getAdminOffers = asyncHandler(async (req, res) => {
  */
 export const getAllOffers = asyncHandler(async (req, res) => {
   const now = new Date();
-  const filter = { isActive: true, startDate: { $lte: now }, endDate: { $gt: now } };
+  const filter = {
+    isActive: true,
+    startDate: { $lte: now },
+    endDate: { $gt: now },
+  };
 
-  if (req.query.todayOffers === 'true') {
+  if (req.query.todayOffers === "true") {
     const endOfToday = new Date();
     endOfToday.setHours(23, 59, 59, 999);
     filter.endDate = { $lte: endOfToday, $gt: now };
   }
 
   const features = new ApiFeatures(
-    Offer.find(filter).populate(popProduct(PRODUCT_ON_CARD)).sort({ endDate: 1 }),
-    req.query
+    Offer.find(filter)
+      .populate(popProduct(PRODUCT_ON_CARD))
+      .sort({ endDate: 1 }),
+    req.query,
   );
 
   await features.paginate();
 
   const data = await features.mongooseQuery.lean();
   sendResponse(res, {
-    message: 'Offers retrieved successfully',
+    message: "Offers retrieved successfully",
     data,
     pagination: { ...features.getPaginationResult(), results: data.length },
   });
@@ -118,7 +105,7 @@ export const getUpcomingOffer = asyncHandler(async (req, res) => {
     .sort({ startDate: 1 })
     .lean();
 
-  sendResponse(res, { message: 'Upcoming offer retrieved successfully', data });
+  sendResponse(res, { message: "Upcoming offer retrieved successfully", data });
 });
 
 /**
@@ -127,10 +114,13 @@ export const getUpcomingOffer = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const getOffer = asyncHandler(async (req, res, next) => {
-  const data = await Offer.findById(req.params.id).populate(popProduct(PRODUCT_ON_CARD));
-  if (!data) return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
+  const data = await Offer.findById(req.params.id).populate(
+    popProduct(PRODUCT_ON_CARD),
+  );
+  if (!data)
+    return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
 
-  sendResponse(res, { message: 'Offer retrieved successfully', data });
+  sendResponse(res, { message: "Offer retrieved successfully", data });
 });
 
 /**
@@ -145,16 +135,16 @@ export const createOffer = asyncHandler(async (req, res, next) => {
     return next(new ApiError(`No product found with id: ${productId}`, 404));
   }
   if (await findBlockingOffer(productId)) {
-    return next(new ApiError('This product already has an active offer', 400));
+    return next(new ApiError("This product already has an active offer", 400));
   }
 
   stampAuditFields(req.body, req, { isCreate: true });
   const data = await Offer.create(req.body);
-  await data.populate(popProduct('name'));
+  await data.populate(popProduct("name"));
   const offerLabel = formatOfferActivityLabel(data, data.product);
   logAdminCreate(req, {
-    tab: 'settings',
-    resourceType: 'offer',
+    tab: "settings",
+    resourceType: "offer",
     doc: data,
     resourceLabel: offerLabel,
   });
@@ -163,7 +153,7 @@ export const createOffer = asyncHandler(async (req, res, next) => {
 
   sendResponse(res, {
     statusCode: 201,
-    message: 'Offer created successfully',
+    message: "Offer created successfully",
     data: attachAuditToDoc(data),
   });
 });
@@ -175,14 +165,18 @@ export const createOffer = asyncHandler(async (req, res, next) => {
  */
 export const updateOffer = asyncHandler(async (req, res, next) => {
   const doc = await Offer.findById(req.params.id);
-  if (!doc) return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
+  if (!doc)
+    return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
 
   const previous = doc.toObject();
   const prevProductId = doc.product.toString();
   const nextProductId = req.body.product ?? prevProductId;
 
-  if (nextProductId !== prevProductId && (await findBlockingOffer(nextProductId, doc._id))) {
-    return next(new ApiError('This product already has an active offer', 400));
+  if (
+    nextProductId !== prevProductId &&
+    (await findBlockingOffer(nextProductId, doc._id))
+  ) {
+    return next(new ApiError("This product already has an active offer", 400));
   }
 
   Object.assign(doc, req.body);
@@ -195,17 +189,20 @@ export const updateOffer = asyncHandler(async (req, res, next) => {
   }
   await syncProductOffer(doc.product, doc);
 
-  await doc.populate(popProduct('name'));
+  await doc.populate(popProduct("name"));
   const offerLabel = formatOfferActivityLabel(doc, doc.product);
   logAdminUpdate(req, {
-    tab: 'settings',
-    resourceType: 'offer',
+    tab: "settings",
+    resourceType: "offer",
     doc,
     previous,
     resourceLabel: offerLabel,
   });
 
-  sendResponse(res, { message: 'Offer updated successfully', data: attachAuditToDoc(doc) });
+  sendResponse(res, {
+    message: "Offer updated successfully",
+    data: attachAuditToDoc(doc),
+  });
 });
 
 /**
@@ -214,20 +211,23 @@ export const updateOffer = asyncHandler(async (req, res, next) => {
  * @access  Private (admin)
  */
 export const deleteOffer = asyncHandler(async (req, res, next) => {
-  const removed = await Offer.findById(req.params.id).populate(popProduct('name'));
-  if (!removed) return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
+  const removed = await Offer.findById(req.params.id).populate(
+    popProduct("name"),
+  );
+  if (!removed)
+    return next(new ApiError(`No offer found with id: ${req.params.id}`, 404));
 
   const offerLabel = formatOfferActivityLabel(removed, removed.product);
   logAdminDelete(req, {
-    tab: 'settings',
-    resourceType: 'offer',
+    tab: "settings",
+    resourceType: "offer",
     doc: removed,
     resourceLabel: offerLabel,
   });
   await removed.deleteOne();
 
   await syncProductOffer(removed.product, null);
-  sendResponse(res, { message: 'Offer deleted successfully' });
+  sendResponse(res, { message: "Offer deleted successfully" });
 });
 
 /**
@@ -236,22 +236,22 @@ export const deleteOffer = asyncHandler(async (req, res, next) => {
  * @access  Private (admin)
  */
 export const deleteAllOffers = asyncHandler(async (req, res) => {
-  const productIds = await Offer.distinct('product');
+  const productIds = await Offer.distinct("product");
   const { deletedCount } = await Offer.deleteMany({});
 
   await Promise.all(productIds.map((id) => syncProductOffer(id, null)));
 
   recordAdminActivity(req, {
-    tab: 'settings',
-    action: 'delete',
-    resourceType: 'offer',
-    resourceId: 'all',
-    resourceLabel: 'all offers',
+    tab: "settings",
+    action: "delete",
+    resourceType: "offer",
+    resourceId: "all",
+    resourceLabel: "all offers",
     summary: `Deleted all offers (${deletedCount})`,
   });
 
   sendResponse(res, {
-    message: 'All offers deleted successfully',
+    message: "All offers deleted successfully",
     data: { deletedCount },
   });
 });

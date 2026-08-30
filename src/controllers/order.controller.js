@@ -20,6 +20,7 @@ import sendResponse from '../utils/apiResponse.js';
 import sendEmail from '../utils/email.js';
 import orderConfirmationTemplate from '../utils/emailTemplates/orderConfirmationTemplate.js';
 import logger from '../config/logger.js';
+import { refreshProductOffers, resolveProductPrice } from '../utils/productOffer.js';
 import { mapBostaStateToPhase, normalizeBostaState, loadShipmentsForOrders } from './orderShipping.controller.js';
 import {
   buildOrderDeliveryEstimate,
@@ -669,7 +670,8 @@ const mapCartItemsToOrderItems = (cartItems) =>
       product: product._id,
       name: product.name,
       image: product.images?.[0] ?? null,
-      price: item.price,
+      // Re-resolve at checkout so an expired offer cannot keep a stale cart price.
+      price: resolveProductPrice(product),
       quantity: item.quantity,
     };
   });
@@ -729,12 +731,18 @@ export const buildShippingSnapshot = async ({ governorateId, districtId, address
 export const prepareCheckoutFromCart = async (userId, addressInput) => {
   const cart = await Cart.findOne({ user: userId }).populate(
     'items.product',
-    'name images price priceAfterDiscount stock isActive'
+    'name images price priceAfterDiscount offerEndsAt stock isActive'
   );
   if (!cart?.items?.length) throw new ApiError('Cart is empty', 400);
 
+  const cartProducts = cart.items.map((item) => item.product).filter(Boolean);
+  await refreshProductOffers(cartProducts);
+
   const orderItems = mapCartItemsToOrderItems(cart.items);
-  const subtotal = getCartSubtotal(cart);
+  // Prefer live offer pricing over any stale cart line prices.
+  const subtotal = roundMoney(
+    orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+  );
 
   let { discountAmount = 0, couponCode, couponId } = cart;
   let freeShipping = false;
@@ -1134,12 +1142,12 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   await respondWithOrder(res, order, { statusCode: 201, message: 'Order created successfully' });
 });
 
-/** Resolve product line price: optional B2B override, else offer/list price. */
+/** Resolve product line price: optional B2B override, else live offer/list price. */
 const resolveLineUnitPrice = (product, unitPrice) => {
   if (unitPrice != null && Number.isFinite(Number(unitPrice))) {
     return roundMoney(Number(unitPrice));
   }
-  return roundMoney(product.priceAfterDiscount ?? product.price);
+  return roundMoney(resolveProductPrice(product));
 };
 
 /** Map admin B2B item payload → order item snapshots (validates stock/active). */
@@ -1163,7 +1171,7 @@ const mapB2BItemsToOrderItems = async (items) => {
 
   const productIds = normalized.map((item) => item.productId);
   const products = await Product.find({ _id: { $in: productIds } }).select(
-    'name images price priceAfterDiscount stock isActive'
+    'name images price priceAfterDiscount offerEndsAt stock isActive'
   );
   const byId = new Map(products.map((p) => [String(p._id), p]));
 
