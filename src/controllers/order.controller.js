@@ -34,6 +34,7 @@ import {
   withOrderAuditPopulate,
 } from '../utils/adminActivity.js';
 import { buildOrderActivityLabel } from '../utils/adminActivityLabels.js';
+import { runInTransaction } from '../utils/mongoTransaction.js';
 
 // Stripe / Paymob card gateways eligible for refund flows
 const CARD_PROVIDERS = new Set(['stripe', 'paymob']);
@@ -851,58 +852,54 @@ export const fulfillCheckout = async (snapshot, payment, options = {}) => {
     couponId,
   } = snapshot;
 
-  const session = await mongoose.startSession();
-  let order;
+  const order = await runInTransaction(async (session) => {
+    const writeOpts = session ? { session } : {};
+    await decrementStockForOrderItems(items, session);
 
-  try {
-    await session.withTransaction(async () => {
-      await decrementStockForOrderItems(items, session);
+    const [created] = await Order.create(
+      [
+        {
+          user: userId,
+          customerName,
+          items,
+          shippingAddress,
+          shipping: shipping ?? { methodName: DEFAULT_SHIPPING_METHOD_NAME, price: shippingPrice, quotedAt: new Date() },
+          subtotal,
+          shippingPrice,
+          discountAmount,
+          storeCreditApplied,
+          totalPrice,
+          couponCode,
+          couponId,
+          paymentMethod: payment.method,
+          paymentStatus: payment.status,
+          paymentProvider: payment.provider ?? null,
+          paymentReference: payment.reference ?? null,
+          orderStatus: payment.orderStatus ?? 'pending',
+          ...(snapshot.createdBy ? { createdBy: snapshot.createdBy } : {}),
+          ...(payment.status === 'paid' && payment.method === 'cod'
+            ? { codCollectedAt: new Date() }
+            : {}),
+        },
+      ],
+      writeOpts
+    );
 
-      [order] = await Order.create(
-        [
-          {
-            user: userId,
-            customerName,
-            items,
-            shippingAddress,
-            shipping: shipping ?? { methodName: DEFAULT_SHIPPING_METHOD_NAME, price: shippingPrice, quotedAt: new Date() },
-            subtotal,
-            shippingPrice,
-            discountAmount,
-            storeCreditApplied,
-            totalPrice,
-            couponCode,
-            couponId,
-            paymentMethod: payment.method,
-            paymentStatus: payment.status,
-            paymentProvider: payment.provider ?? null,
-            paymentReference: payment.reference ?? null,
-            orderStatus: payment.orderStatus ?? 'pending',
-            ...(snapshot.createdBy ? { createdBy: snapshot.createdBy } : {}),
-            ...(payment.status === 'paid' && payment.method === 'cod'
-              ? { codCollectedAt: new Date() }
-              : {}),
-          },
-        ],
-        { session }
-      );
+    if (storeCreditApplied > 0 && userId) {
+      await redeemStoreCredit({ userId, amount: storeCreditApplied, orderId: created._id, session });
+    }
 
-      if (storeCreditApplied > 0 && userId) {
-        await redeemStoreCredit({ userId, amount: storeCreditApplied, orderId: order._id, session });
-      }
+    if (clearCart && userId) {
+      await Cart.deleteOne({ user: userId }, writeOpts);
+    }
 
-      if (clearCart && userId) {
-        await Cart.deleteOne({ user: userId }, { session });
-      }
-    });
+    return created;
+  });
 
-    if (couponId && userId) await commitCouponUsage(couponId, userId);
-    // After commit so a mail failure never rolls back the order
-    await notifyOrderConfirmation(order);
-    return order;
-  } finally {
-    session.endSession();
-  }
+  if (couponId && userId) await commitCouponUsage(couponId, userId);
+  // After commit so a mail failure never rolls back the order
+  await notifyOrderConfirmation(order);
+  return order;
 };
 
 /** Convert an order shippingAddress snapshot into a User.addresses subdoc shape. */
@@ -997,34 +994,24 @@ const queryPaginatedOrders = async (filter, req, { populateUser = false } = {}) 
 
 /** Mark paid order refunded, restore stock; idempotent if already refunded. */
 const markOrderRefundedInDb = async (orderId) => {
-  const session = await mongoose.startSession();
-  let updated;
+  return runInTransaction(async (session) => {
+    const order = await Order.findOneAndUpdate(
+      { _id: orderId, paymentStatus: 'paid' },
+      { paymentStatus: 'refunded', orderStatus: 'cancelled' },
+      { returnDocument: 'after', session }
+    );
 
-  try {
-    await session.withTransaction(async () => {
-      const order = await Order.findOneAndUpdate(
-        { _id: orderId, paymentStatus: 'paid' },
-        { paymentStatus: 'refunded', orderStatus: 'cancelled' },
-        { new: true, session }
-      );
+    if (!order) {
+      const existing = session
+        ? await Order.findById(orderId).session(session)
+        : await Order.findById(orderId);
+      if (existing?.paymentStatus === 'refunded') return existing;
+      throw new ApiError('Order is not in a refundable state', 409);
+    }
 
-      if (!order) {
-        const existing = await Order.findById(orderId).session(session);
-        if (existing?.paymentStatus === 'refunded') {
-          updated = existing;
-          return;
-        }
-        throw new ApiError('Order is not in a refundable state', 409);
-      }
-
-      await restoreStockForOrderItems(order.items, session);
-      updated = order;
-    });
-  } finally {
-    session.endSession();
-  }
-
-  return updated;
+    await restoreStockForOrderItems(order.items, session);
+    return order;
+  });
 };
 
 /** Full Stripe/Paymob refund for a paid card order, then mark refunded in DB. */

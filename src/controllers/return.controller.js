@@ -11,6 +11,7 @@ import ApiError from "../utils/apiError.js";
 import ApiFeatures from "../utils/apiFeatures.js";
 import sendResponse from "../utils/apiResponse.js";
 import { restoreStockForOrderItems, toMinorUnits, resolveZoneRefs } from "./order.controller.js";
+import { runInTransaction } from "../utils/mongoTransaction.js";
 import { pickupDocToBostaAddress } from "./carrierPickup.controller.js";
 import {
   getBostaCredentials,
@@ -727,40 +728,34 @@ const finalizeReturnRefund = async (returnRequest, order) => {
     }
   }
 
-  const session = await mongoose.startSession();
-  let updated;
-  let storeCreditIssued = false;
+  const { updated, storeCreditIssued } = await runInTransaction(async (session) => {
+    let issued = false;
+    if (order.paymentMethod === "cod") {
+      const creditResult = await issueStoreCredit({
+        userId: returnRequest.user,
+        amount: returnRequest.refundAmount,
+        returnRequestId: returnRequest._id,
+        session,
+      });
+      issued = !creditResult.alreadyIssued;
+    }
 
-  try {
-    await session.withTransaction(async () => {
-      if (order.paymentMethod === "cod") {
-        const creditResult = await issueStoreCredit({
-          userId: returnRequest.user,
-          amount: returnRequest.refundAmount,
-          returnRequestId: returnRequest._id,
-          session,
-        });
-        storeCreditIssued = !creditResult.alreadyIssued;
-      }
+    await restoreStockForOrderItems(returnRequest.items, session);
 
-      await restoreStockForOrderItems(returnRequest.items, session);
+    const next = await ReturnRequest.findByIdAndUpdate(
+      returnRequest._id,
+      {
+        refundStatus: "refunded",
+        restocked: true,
+        refundedAt: new Date(),
+        gatewayRefundId: gatewayRefundId ?? null,
+      },
+      { returnDocument: "after", session, runValidators: true }
+    );
 
-      updated = await ReturnRequest.findByIdAndUpdate(
-        returnRequest._id,
-        {
-          refundStatus: "refunded",
-          restocked: true,
-          refundedAt: new Date(),
-          gatewayRefundId: gatewayRefundId ?? null,
-        },
-        { new: true, session, runValidators: true }
-      );
-
-      await syncOrderReturnState(order._id, session);
-    });
-  } finally {
-    session.endSession();
-  }
+    await syncOrderReturnState(order._id, session);
+    return { updated: next, storeCreditIssued: issued };
+  });
 
   return { returnRequest: updated, gatewayRefundId, alreadyDone: false, storeCreditIssued };
 };

@@ -98,7 +98,7 @@ const fulfillPaymentSession = async (paymentSessionId, paymentReference) => {
   const locked = await PaymentSession.findOneAndUpdate(
     { _id: paymentSessionId, status: { $in: LOCKABLE_STATUSES } },
     { status: 'processing' },
-    { new: true }
+    { returnDocument: 'after' }
   );
 
   if (!locked) {
@@ -380,11 +380,19 @@ const buildPaymobReturnUrl = ({ success, merchantOrderId }) => {
   return url.toString();
 };
 
+/** HMAC concat uses lowercase "true"/"false" for bools (Paymob POST body). */
+const hmacField = (value) => {
+  if (value == null) return '';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  return String(value);
+};
+
 /** Verify Paymob HMAC signature over the canonical field concatenation. */
 const verifyPaymobHmac = (obj, hmac) => {
   const secret = process.env.PAYMOB_HMAC_SECRET;
   if (!secret) throw new ApiError('Paymob HMAC secret is not configured', 503);
-  if (!hmac) return false;
+  const received = String(hmac || '').toLowerCase();
+  if (!received) return false;
 
   const parts = [
     obj.amount_cents,
@@ -407,10 +415,12 @@ const verifyPaymobHmac = (obj, hmac) => {
     obj.source_data?.sub_type,
     obj.source_data?.type,
     obj.success,
-  ].map((v) => (v == null ? '' : String(v)));
+  ].map(hmacField);
 
   const digest = crypto.createHmac('sha512', secret).update(parts.join('')).digest('hex');
-  return digest === hmac;
+  const expected = Buffer.from(digest, 'utf8');
+  const actual = Buffer.from(received, 'utf8');
+  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
 };
 
 /** Verify HMAC then fulfill (or mark failed) the linked PaymentSession. */
@@ -551,7 +561,9 @@ export const stripeWebhook = asyncHandler(async (req, res) => {
  * @access  Public
  */
 export const paymobWebhook = asyncHandler(async (req, res) => {
-  const { type, obj, hmac } = req.body;
+  const { type, obj } = req.body ?? {};
+  // Paymob sends hmac as a query param on processed callbacks, not always in the JSON body
+  const hmac = req.body?.hmac || req.query?.hmac;
   if (type === 'TRANSACTION' && obj) await processPaymobTransaction(obj, hmac);
   res.status(200).json({ received: true });
 });
