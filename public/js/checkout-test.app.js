@@ -469,14 +469,9 @@ async function placeOrder() {
     return;
   }
 
-  if (selectedPay === 'paymob' && data.data.iframeUrl) {
-    const payWindow = window.open(data.data.iframeUrl, '_blank', 'noopener,noreferrer');
-    if (!payWindow) {
-      showToast('Allow pop-ups to open Paymob payment', 'err');
-      return;
-    }
-    showToast('Complete payment in the new tab — this page will update when done');
-    pollPaymentSession(psId);
+  if (selectedPay === 'paymob' && data.data.url) {
+    showToast('Redirecting to Paymob…');
+    window.location.href = data.data.url;
   }
 }
 

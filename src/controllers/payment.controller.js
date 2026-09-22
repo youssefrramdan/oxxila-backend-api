@@ -24,8 +24,8 @@ const LOCKABLE_STATUSES = ['pending', 'failed'];
 // Brief wait when another callback is mid-fulfillment (Paymob POST + GET race)
 const PROCESSING_WAIT_MS = 200;
 const PROCESSING_WAIT_ATTEMPTS = 8;
-// Paymob Accept API root
-const PAYMOB_BASE = 'https://accept.paymob.com/api';
+// Paymob Flash / Unified Checkout host (Egypt). Override for other regions.
+const PAYMOB_HOST = (process.env.PAYMOB_BASE_URL || 'https://accept.paymob.com').replace(/\/$/, '');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -250,27 +250,50 @@ const handleStripeWebhookEvent = async (event) => {
 
 // ── Paymob ──
 
-/** POST JSON to Paymob Accept API; map non-OK responses to ApiError. */
+/** Flatten Paymob error payloads (string or nested field maps) for ApiError. */
+const paymobErrorMessage = (data) => {
+  if (!data) return 'Paymob request failed';
+  if (typeof data.detail === 'string') return data.detail;
+  if (typeof data.message === 'string') return data.message;
+  try {
+    const serialized = JSON.stringify(data);
+    return serialized.length > 400 ? 'Paymob request failed' : serialized;
+  } catch {
+    return 'Paymob request failed';
+  }
+};
+
+/** POST JSON to Paymob Flash APIs with Secret Key auth. */
 const paymobFetch = async (path, body) => {
-  const res = await fetch(`${PAYMOB_BASE}${path}`, {
+  const secretKey = process.env.PAYMOB_SECRET_KEY;
+  if (!secretKey) throw new ApiError('Paymob is not configured', 503);
+
+  const res = await fetch(`${PAYMOB_HOST}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Token ${secretKey}`,
+    },
     body: JSON.stringify(body),
   });
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(data?.detail || data?.message || 'Paymob request failed', 502);
+  if (!res.ok) throw new ApiError(paymobErrorMessage(data), 502);
   return data;
 };
 
-/** Authenticate with Paymob and return an auth token. */
-const getAuthToken = async () => {
-  const apiKey = process.env.PAYMOB_API_KEY;
-  if (!apiKey) throw new ApiError('Paymob is not configured', 503);
+/** Processed + response callback URL Paymob should hit. */
+const paymobWebhookUrl = (req) => {
+  const explicit = process.env.PAYMOB_NOTIFICATION_URL?.trim();
+  if (explicit) return explicit;
 
-  const { token } = await paymobFetch('/auth/tokens', { api_key: apiKey });
-  if (!token) throw new ApiError('Paymob authentication failed', 502);
-  return token;
+  const base = (process.env.API_PUBLIC_URL || process.env.PAYMOB_WEBHOOK_BASE_URL || '').replace(/\/$/, '');
+  if (base) return `${base}/api/v1/webhooks/paymob`;
+
+  const host = req?.get?.('x-forwarded-host') || req?.get?.('host');
+  if (!host) return null;
+  const proto = (req.get('x-forwarded-proto') || req.protocol || 'https').split(',')[0].trim();
+  return `${proto}://${host}/api/v1/webhooks/paymob`;
 };
 
 /** Build Paymob billing_data payload from the authenticated user. */
@@ -286,49 +309,50 @@ const paymobBillingData = (user) => {
     phone_number: user.phone || '01000000000',
     shipping_method: 'NA',
     postal_code: 'NA',
-    city: 'NA',
-    country: 'EG',
+    city: 'Cairo',
+    country: 'EGY',
     last_name: rest.join(' ') || '-',
-    state: 'NA',
+    state: 'Cairo',
   };
 };
 
-/** Create Paymob order + payment key and return iframe URL. */
-const createPaymobCheckout = async ({ paymentSessionId, totalPrice, user }) => {
+/** Create a Paymob Intention and return Unified Checkout URL. */
+const createPaymobCheckout = async ({ paymentSessionId, totalPrice, user, req }) => {
   const integrationId = Number(process.env.PAYMOB_INTEGRATION_ID);
-  const iframeId = process.env.PAYMOB_IFRAME_ID;
-  if (!integrationId || !iframeId) {
+  const publicKey = process.env.PAYMOB_PUBLIC_KEY;
+  if (!integrationId || !publicKey) {
     throw new ApiError('Paymob integration settings are not configured', 503);
   }
 
-  const authToken = await getAuthToken();
   const amountCents = toMinorUnits(totalPrice);
   const currency = process.env.PAYMOB_CURRENCY || 'EGP';
+  const callbackUrl = paymobWebhookUrl(req);
 
-  const { id: paymobOrderId } = await paymobFetch('/ecommerce/orders', {
-    auth_token: authToken,
-    delivery_needed: false,
-    amount_cents: amountCents,
+  const intention = await paymobFetch('/v1/intention/', {
+    amount: amountCents,
     currency,
-    merchant_order_id: paymentSessionId,
-    items: [],
-  });
-
-  const { token: paymentToken } = await paymobFetch('/acceptance/payment_keys', {
-    auth_token: authToken,
-    amount_cents: amountCents,
-    expiration: 3600,
-    order_id: paymobOrderId,
+    payment_methods: [integrationId],
+    items: [{ name: 'Oxxila order', amount: amountCents, quantity: 1 }],
     billing_data: paymobBillingData(user),
-    currency,
-    integration_id: integrationId,
+    special_reference: paymentSessionId,
+    extras: { paymentSessionId },
+    expiration: 3600,
+    ...(callbackUrl && {
+      notification_url: callbackUrl,
+      redirection_url: callbackUrl,
+    }),
   });
 
-  if (!paymentToken) throw new ApiError('Paymob payment key creation failed', 502);
+  const clientSecret = intention.client_secret;
+  if (!clientSecret) throw new ApiError('Paymob intention creation failed', 502);
+
+  const checkoutUrl =
+    `${PAYMOB_HOST}/unifiedcheckout/?publicKey=${encodeURIComponent(publicKey)}` +
+    `&clientSecret=${encodeURIComponent(clientSecret)}`;
 
   return {
-    providerSessionId: String(paymobOrderId),
-    iframeUrl: `${PAYMOB_BASE}/acceptance/iframes/${iframeId}?payment_token=${paymentToken}`,
+    providerSessionId: String(intention.intention_order_id ?? intention.id ?? clientSecret),
+    url: checkoutUrl,
   };
 };
 
@@ -450,8 +474,7 @@ const processPaymobTransaction = async (obj, hmac) => {
 
 /** Refund a Paymob transaction by id (amount in cents). */
 export const createPaymobRefund = async ({ transactionId, amountCents }) => {
-  const data = await paymobFetch('/acceptance/void_refund/refund', {
-    auth_token: await getAuthToken(),
+  const data = await paymobFetch('/api/acceptance/void_refund/refund', {
     transaction_id: Number(transactionId),
     amount_cents: amountCents,
   });
@@ -483,13 +506,14 @@ const paymentProviders = {
       })
     ),
 
-  paymob: async ({ paymentSession, totalPrice, user }) =>
+  paymob: async ({ paymentSession, totalPrice, user, req }) =>
     persistProviderLaunch(
       paymentSession,
       await createPaymobCheckout({
         paymentSessionId: paymentSession._id.toString(),
         totalPrice,
         user: { name: user.name, email: user.email, phone: user.phone },
+        req,
       })
     ),
 };
@@ -526,7 +550,12 @@ export const createPaymentSession = asyncHandler(async (req, res, next) => {
 
   let providerPayload;
   try {
-    providerPayload = await startProvider({ paymentSession, totalPrice: checkout.totalPrice, user: req.user });
+    providerPayload = await startProvider({
+      paymentSession,
+      totalPrice: checkout.totalPrice,
+      user: req.user,
+      req,
+    });
   } catch (err) {
     await PaymentSession.deleteOne({ _id: paymentSession._id });
     throw err;

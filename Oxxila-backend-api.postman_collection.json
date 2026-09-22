@@ -7787,7 +7787,7 @@
                     "payment-session"
                   ]
                 },
-                "description": "**User** Bearer. Same address rules as COD (`addressId` or inline geo fields; optional `saveAddress` / `label` / `setAsDefault`). Required `provider`: `stripe` | `paymob`. Snapshots cart into a `PaymentSession` (24h TTL). Returns `paymentSessionId`, `provider`, `totalPrice`, `expiresAt`, and `url` (Stripe Checkout)."
+                "description": "**User** Bearer. Same address rules as COD (`addressId` or inline geo fields; optional `saveAddress` / `label` / `setAsDefault`). Required `provider`: `stripe` | `paymob`. Snapshots cart into a `PaymentSession` (24h TTL). Returns `paymentSessionId`, `provider`, `totalPrice`, `expiresAt`, and `url` (Stripe Checkout or Paymob Unified Checkout)."
               },
               "response": []
             },
@@ -7803,7 +7803,7 @@
                       "if (res?.data?.paymentSessionId) {",
                       "  pm.environment.set('paymentSessionId', res.data.paymentSessionId);",
                       "}",
-                      "if (res?.data?.iframeUrl) console.log('Paymob iframe URL:', res.data.iframeUrl);"
+                      "if (res?.data?.url) console.log('Paymob Unified Checkout URL:', res.data.url);"
                     ]
                   }
                 }
@@ -7832,7 +7832,7 @@
                     "payment-session"
                   ]
                 },
-                "description": "**User** Bearer. Same address rules as COD. Required `provider`: `paymob`. Returns Paymob payment details / iframe URL."
+                "description": "**User** Bearer. Same address rules as COD. Required `provider`: `paymob`. Returns Paymob Unified Checkout `url`."
               },
               "response": []
             },
