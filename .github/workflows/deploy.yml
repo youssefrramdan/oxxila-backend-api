@@ -1,0 +1,48 @@
+name: Deploy backend
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never run two deploys at the same time; queue them instead.
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax check every source file
+        run: |
+          find src -name '*.js' -print0 | while IFS= read -r -d '' f; do
+            node --check "$f" || exit 1
+          done
+
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      # The deploy key only runs /usr/local/bin/oxxila-deploy on the server
+      # (see deploy/oxxila-deploy.sh): git pull, npm ci, pm2 reload, health check.
+      - name: Deploy
+        run: ssh -i ~/.ssh/deploy_key "root@${{ secrets.VPS_HOST }}" backend
