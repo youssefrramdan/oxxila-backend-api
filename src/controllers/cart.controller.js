@@ -84,10 +84,18 @@ const getUpdatedCart = async (userId) => {
   );
   if (!cart) return null;
 
+  let changed = false;
+
+  // Lines whose product was deleted populate to null; drop them so clients never see a dangling line.
+  const liveItems = cart.items.filter((item) => item.product);
+  if (liveItems.length !== cart.items.length) {
+    cart.items = liveItems;
+    changed = true;
+  }
+
   const cartProducts = cart.items.map((item) => item.product).filter(Boolean);
   await refreshProductOffers(cartProducts);
 
-  let changed = false;
   for (const item of cart.items) {
     if (!item.product) continue;
     const currentPrice = resolveProductPrice(item.product);
