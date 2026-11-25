@@ -36,6 +36,13 @@ const toSocial = (doc) => ({
   youtube: doc.social?.youtube ?? '',
 });
 
+const toDelivery = (doc) => ({
+  messageEn: doc.delivery?.messageEn ?? '',
+  messageAr: doc.delivery?.messageAr ?? '',
+  minDays: doc.delivery?.minDays ?? 2,
+  maxDays: doc.delivery?.maxDays ?? 5,
+});
+
 const toInstagramPosts = (doc) =>
   (doc.instagramPosts ?? []).map((post, index) => ({
     index,
@@ -44,30 +51,70 @@ const toInstagramPosts = (doc) =>
     alt: post.alt ?? '',
   }));
 
+const pickEn = (...values) => {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+};
+
 const toHowItWorks = (doc) => {
   const section = doc.howItWorks ?? {};
+  const titleEn = pickEn(section.titleEn, section.title, 'How it works');
   return {
-    title: section.title ?? 'How it works',
+    title: titleEn,
+    titleEn,
+    titleAr: section.titleAr ?? '',
     thumbnailImage: section.thumbnailImage ?? '',
     videoUrl: section.videoUrl ?? '',
-    steps: (section.steps ?? []).map((step, index) => ({
-      index,
-      title: step.title ?? '',
-      description: step.description ?? '',
-    })),
+    steps: (section.steps ?? []).map((step, index) => {
+      const stepTitleEn = pickEn(step.titleEn, step.title);
+      const stepDescriptionEn = pickEn(step.descriptionEn, step.description);
+      return {
+        index,
+        title: stepTitleEn,
+        titleEn: stepTitleEn,
+        titleAr: step.titleAr ?? '',
+        description: stepDescriptionEn,
+        descriptionEn: stepDescriptionEn,
+        descriptionAr: step.descriptionAr ?? '',
+      };
+    }),
   };
 };
 
 const toUtilityBar = (doc) => {
   const section = doc.utilityBar ?? {};
   return {
-    promos: (section.promos ?? []).map((promo, index) => ({
-      index,
-      title: promo.title ?? '',
-      subtitle: promo.subtitle ?? '',
-    })),
+    promos: (section.promos ?? []).map((promo, index) => {
+      const titleEn = pickEn(promo.titleEn, promo.title);
+      const subtitleEn = pickEn(promo.subtitleEn, promo.subtitle);
+      return {
+        index,
+        title: titleEn,
+        titleEn,
+        titleAr: promo.titleAr ?? '',
+        subtitle: subtitleEn,
+        subtitleEn,
+        subtitleAr: promo.subtitleAr ?? '',
+      };
+    }),
     rotateIntervalSeconds: section.rotateIntervalSeconds ?? 6,
   };
+};
+
+const resolveBilingualPair = (body, enKey, arKey, legacyKey) => {
+  const en =
+    body?.[enKey] !== undefined && body[enKey] !== null
+      ? String(body[enKey]).trim()
+      : body?.[legacyKey] !== undefined && body[legacyKey] !== null
+        ? String(body[legacyKey]).trim()
+        : undefined;
+  const ar =
+    body?.[arKey] !== undefined && body[arKey] !== null
+      ? String(body[arKey]).trim()
+      : undefined;
+  return { en, ar };
 };
 
 const toPublicSettings = (doc) => {
@@ -77,6 +124,7 @@ const toPublicSettings = (doc) => {
     social: toSocial(plain),
     instagramPosts: toInstagramPosts(plain),
     howItWorks: toHowItWorks(plain),
+    delivery: toDelivery(plain),
     utilityBar: toUtilityBar(plain),
     updatedAt: plain.updatedAt,
   };
@@ -238,6 +286,52 @@ export const updateSocialSettings = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Get the general delivery-time message
+ * @route   GET /api/v1/settings/delivery
+ * @access  Public
+ */
+export const getDeliverySettings = asyncHandler(async (_req, res) => {
+  const settings = await SiteSettings.getSingleton();
+  sendResponse(res, {
+    message: 'Delivery settings retrieved successfully',
+    data: toDelivery(settings),
+  });
+});
+
+/**
+ * @desc    Update the general delivery-time message
+ * @route   PUT /api/v1/settings/delivery
+ * @access  Admin
+ */
+export const updateDeliverySettings = asyncHandler(async (req, res) => {
+  const settings = await SiteSettings.getSingleton();
+
+  for (const key of ['messageEn', 'messageAr']) {
+    if (req.body[key] !== undefined) settings.delivery[key] = String(req.body[key] ?? '').trim();
+  }
+  for (const key of ['minDays', 'maxDays']) {
+    if (req.body[key] !== undefined) settings.delivery[key] = Number(req.body[key]);
+  }
+
+  settings.markModified('delivery');
+  await settings.save();
+
+  recordAdminActivity(req, {
+    tab: 'settings',
+    action: 'update',
+    resourceType: 'siteSettings',
+    resourceId: 'delivery',
+    resourceLabel: 'Delivery settings',
+    summary: 'Updated delivery time message',
+  });
+
+  sendResponse(res, {
+    message: 'Delivery settings updated successfully',
+    data: toDelivery(settings),
+  });
+});
+
+/**
  * @desc    Get Instagram grid posts
  * @route   GET /api/v1/settings/instagram
  * @access  Public
@@ -339,9 +433,15 @@ export const updateHowItWorksSettings = asyncHandler(async (req, res, next) => {
   const settings = await SiteSettings.getSingleton();
   if (!settings.howItWorks) settings.howItWorks = {};
 
-  if (req.body.title !== undefined) {
-    settings.howItWorks.title = String(req.body.title).trim();
+  const titlePair = resolveBilingualPair(req.body, 'titleEn', 'titleAr', 'title');
+  if (titlePair.en !== undefined) {
+    settings.howItWorks.titleEn = titlePair.en;
+    settings.howItWorks.title = titlePair.en;
   }
+  if (titlePair.ar !== undefined) {
+    settings.howItWorks.titleAr = titlePair.ar;
+  }
+
   if (req.body.videoUrl !== undefined) {
     settings.howItWorks.videoUrl = String(req.body.videoUrl ?? '').trim();
   }
@@ -356,15 +456,31 @@ export const updateHowItWorksSettings = asyncHandler(async (req, res, next) => {
 
     settings.howItWorks.steps = req.body.steps.map((step, index) => {
       const current = settings.howItWorks.steps?.[index] || {};
+      const stepTitle = resolveBilingualPair(step, 'titleEn', 'titleAr', 'title');
+      const stepDescription = resolveBilingualPair(
+        step,
+        'descriptionEn',
+        'descriptionAr',
+        'description',
+      );
+      const titleEn =
+        stepTitle.en !== undefined
+          ? stepTitle.en
+          : pickEn(current.titleEn, current.title);
+      const descriptionEn =
+        stepDescription.en !== undefined
+          ? stepDescription.en
+          : pickEn(current.descriptionEn, current.description);
       return {
-        title:
-          step?.title !== undefined && step.title !== null
-            ? String(step.title).trim()
-            : current.title || '',
-        description:
-          step?.description !== undefined && step.description !== null
-            ? String(step.description).trim()
-            : current.description || '',
+        title: titleEn,
+        titleEn,
+        titleAr: stepTitle.ar !== undefined ? stepTitle.ar : current.titleAr || '',
+        description: descriptionEn,
+        descriptionEn,
+        descriptionAr:
+          stepDescription.ar !== undefined
+            ? stepDescription.ar
+            : current.descriptionAr || '',
       };
     });
   }
@@ -434,11 +550,26 @@ export const updateUtilityBarSettings = asyncHandler(async (req, res, next) => {
     }
 
     const promos = req.body.promos
-      .map((promo) => ({
-        title: String(promo?.title ?? '').trim(),
-        subtitle: String(promo?.subtitle ?? '').trim(),
-      }))
-      .filter((promo) => promo.title);
+      .map((promo) => {
+        const titlePair = resolveBilingualPair(promo, 'titleEn', 'titleAr', 'title');
+        const subtitlePair = resolveBilingualPair(
+          promo,
+          'subtitleEn',
+          'subtitleAr',
+          'subtitle',
+        );
+        const titleEn = titlePair.en ?? '';
+        const subtitleEn = subtitlePair.en ?? '';
+        return {
+          title: titleEn,
+          titleEn,
+          titleAr: titlePair.ar ?? '',
+          subtitle: subtitleEn,
+          subtitleEn,
+          subtitleAr: subtitlePair.ar ?? '',
+        };
+      })
+      .filter((promo) => promo.titleEn);
 
     if (promos.length === 0) {
       return next(new ApiError('At least one promo with a title is required', 400));

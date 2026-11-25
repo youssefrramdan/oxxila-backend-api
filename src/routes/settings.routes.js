@@ -11,6 +11,8 @@ import {
   updateSocialSettings,
   getInstagramSettings,
   updateInstagramSettings,
+  getDeliverySettings,
+  updateDeliverySettings,
   getHowItWorksSettings,
   updateHowItWorksSettings,
   getUtilityBarSettings,
@@ -23,6 +25,7 @@ import {
   updateContactSettingsValidator,
   updateSocialSettingsValidator,
   updateInstagramSettingsValidator,
+  updateDeliverySettingsValidator,
   updateHowItWorksSettingsValidator,
   updateUtilityBarSettingsValidator,
   sendContactMessageValidator,
@@ -72,6 +75,17 @@ router.put(
   requirePermission('settings', 'update'),
   updateSocialSettingsValidator,
   updateSocialSettings,
+);
+
+// General delivery-time note (order confirmation / tracking)
+router.get('/delivery', getDeliverySettings);
+router.put(
+  '/delivery',
+  protectedRoutes,
+  allowTo('admin'),
+  requirePermission('settings', 'update'),
+  updateDeliverySettingsValidator,
+  updateDeliverySettings,
 );
 
 // Instagram grid

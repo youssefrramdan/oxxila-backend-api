@@ -60,6 +60,19 @@ export const updateSocialSettingsValidator = [
   validate,
 ];
 
+export const updateDeliverySettingsValidator = [
+  body('messageEn').optional().trim().isLength({ max: 240 }).withMessage('messageEn must be at most 240 characters'),
+  body('messageAr').optional().trim().isLength({ max: 240 }).withMessage('messageAr must be at most 240 characters'),
+  body('minDays').optional().isInt({ min: 0, max: 60 }).withMessage('minDays must be 0–60'),
+  body('maxDays')
+    .optional()
+    .isInt({ min: 0, max: 60 })
+    .withMessage('maxDays must be 0–60')
+    .custom((value, { req }) => req.body.minDays === undefined || Number(value) >= Number(req.body.minDays))
+    .withMessage('maxDays must be greater than or equal to minDays'),
+  validate,
+];
+
 export const updateInstagramSettingsValidator = [
   body('posts')
     .optional()
@@ -108,6 +121,16 @@ export const updateHowItWorksSettingsValidator = [
     .trim()
     .isLength({ min: 2, max: 120 })
     .withMessage('title must be 2–120 characters'),
+  body('titleEn')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 120 })
+    .withMessage('titleEn must be 2–120 characters'),
+  body('titleAr')
+    .optional()
+    .trim()
+    .isLength({ max: 120 })
+    .withMessage('titleAr cannot exceed 120 characters'),
   body('thumbnailImage')
     .optional({ values: 'falsy' })
     .trim()
@@ -127,11 +150,31 @@ export const updateHowItWorksSettingsValidator = [
     .trim()
     .isLength({ min: 2, max: 120 })
     .withMessage('Each step title must be 2–120 characters'),
+  body('steps.*.titleEn')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 120 })
+    .withMessage('Each step titleEn must be 2–120 characters'),
+  body('steps.*.titleAr')
+    .optional()
+    .trim()
+    .isLength({ max: 120 })
+    .withMessage('Each step titleAr cannot exceed 120 characters'),
   body('steps.*.description')
     .optional()
     .trim()
     .isLength({ min: 2, max: 1000 })
     .withMessage('Each step description must be 2–1000 characters'),
+  body('steps.*.descriptionEn')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 1000 })
+    .withMessage('Each step descriptionEn must be 2–1000 characters'),
+  body('steps.*.descriptionAr')
+    .optional()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('Each step descriptionAr cannot exceed 1000 characters'),
   validate,
 ];
 
@@ -141,11 +184,31 @@ const utilityPromoFields = (prefix) => [
     .trim()
     .isLength({ max: 120 })
     .withMessage(`${prefix}.title cannot exceed 120 characters`),
+  body(`${prefix}.titleEn`)
+    .optional()
+    .trim()
+    .isLength({ max: 120 })
+    .withMessage(`${prefix}.titleEn cannot exceed 120 characters`),
+  body(`${prefix}.titleAr`)
+    .optional()
+    .trim()
+    .isLength({ max: 120 })
+    .withMessage(`${prefix}.titleAr cannot exceed 120 characters`),
   body(`${prefix}.subtitle`)
     .optional()
     .trim()
     .isLength({ max: 120 })
     .withMessage(`${prefix}.subtitle cannot exceed 120 characters`),
+  body(`${prefix}.subtitleEn`)
+    .optional()
+    .trim()
+    .isLength({ max: 120 })
+    .withMessage(`${prefix}.subtitleEn cannot exceed 120 characters`),
+  body(`${prefix}.subtitleAr`)
+    .optional()
+    .trim()
+    .isLength({ max: 120 })
+    .withMessage(`${prefix}.subtitleAr cannot exceed 120 characters`),
 ];
 
 export const updateUtilityBarSettingsValidator = [
