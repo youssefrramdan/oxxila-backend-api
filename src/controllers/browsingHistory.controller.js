@@ -4,9 +4,10 @@ import User from '../models/User.js';
 import Product from '../models/Product.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
+import { buildPersonalRecommendations } from '../utils/recommendations.js';
 
 const productSelect =
-  'name slug images price priceAfterDiscount offerEndsAt views isCertified isActive ratingsAverage ratingsQuantity category';
+  'name nameEn nameAr slug images price priceAfterDiscount offerEndsAt views isCertified isActive ratingsAverage ratingsQuantity stock category subCategory brand concerns';
 
 /**
  * @desc    Get browsing history
@@ -21,13 +22,19 @@ export const getBrowsingHistory = asyncHandler(async (req, res, next) => {
       select: productSelect,
       // Archived/inactive products must not surface in storefront history carousels.
       match: { isActive: true },
-      populate: { path: 'category', select: 'name slug' },
+      populate: [
+        { path: 'category', select: 'name nameEn nameAr slug' },
+        { path: 'brand', select: 'name nameEn nameAr slug logo' },
+      ],
     });
 
   if (!user) return next(new ApiError(`No user found with id: ${req.user._id}`, 404));
 
   // Drop deleted (null populate) and inactive (match miss) entries.
-  const history = user.browsingHistory.filter((h) => h.product).slice(0, 10);
+  const history = user.browsingHistory
+    .filter((h) => h.product)
+    .sort((a, b) => b.viewedAt - a.viewedAt)
+    .slice(0, 10);
 
   sendResponse(res, { message: 'Browsing history retrieved successfully', data: history });
 });
@@ -38,39 +45,21 @@ export const getBrowsingHistory = asyncHandler(async (req, res, next) => {
  * @access  Private
  */
 export const getRecommendations = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.user._id).select('browsingHistory');
+  const user = await User.findById(req.user._id)
+    .select('browsingHistory')
+    .populate({
+      path: 'browsingHistory.product',
+      select: 'category subCategory brand concerns',
+      match: { isActive: true },
+    });
 
   if (!user) return next(new ApiError(`No user found with id: ${req.user._id}`, 404));
 
-  if (!user.browsingHistory.length) {
-    return sendResponse(res, { message: 'No recommendations yet', data: [] });
-  }
+  // Newest first so recent interests weigh more (re-views only bump viewedAt).
+  const history = [...user.browsingHistory].sort((a, b) => b.viewedAt - a.viewedAt);
+  const data = await buildPersonalRecommendations({ userId: req.user._id, history });
 
-  const categoryCount = {};
-  const viewedProductIds = [];
-
-  user.browsingHistory.forEach((h) => {
-    const catId = h.category.toString();
-    categoryCount[catId] = (categoryCount[catId] || 0) + 1;
-    viewedProductIds.push(h.product);
-  });
-
-  const topCategories = Object.entries(categoryCount)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([id]) => id);
-
-  const products = await Product.find({
-    category: { $in: topCategories },
-    _id: { $nin: viewedProductIds },
-    isActive: true,
-  })
-    .select(productSelect)
-    .populate({ path: 'category', select: 'name slug' })
-    .sort({ views: -1 })
-    .limit(20);
-
-  sendResponse(res, { message: 'Recommendations retrieved successfully', data: products });
+  sendResponse(res, { message: 'Recommendations retrieved successfully', data });
 });
 
 /**

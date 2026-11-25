@@ -5,6 +5,10 @@ import * as products from '../controllers/product.controller.js';
 import { protectedRoutes, allowTo, optionalAuth } from '../middlewares/auth.middleware.js';
 import { requirePermission } from '../middlewares/permission.middleware.js';
 import {
+  getRelatedProducts,
+  getProductsByIdList,
+} from '../controllers/recommendation.controller.js';
+import {
   createProductValidator,
   updateProductValidator,
   productIdParamValidator,
@@ -24,6 +28,8 @@ const productUploadFields = productUpload.fields([
 ]);
 
 router.get('/', products.getAllProducts);
+router.post('/by-ids', getProductsByIdList);
+router.get('/:id/related', productIdParamValidator, getRelatedProducts);
 router.get('/:id', productIdParamValidator, optionalAuth, products.getProduct);
 
 router.use(protectedRoutes, allowTo('admin'));
