@@ -1,0 +1,22 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "oxxila-backend",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "src/server.js"
+      ],
+      "port": 1897
+    },
+    {
+      "name": "oxxila-frontend",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "set BASE_URL=http://localhost:1897/api/v1&& npm --prefix Oxxila run dev -- --port 5173"
+      ],
+      "port": 5173
+    }
+  ]
+}
