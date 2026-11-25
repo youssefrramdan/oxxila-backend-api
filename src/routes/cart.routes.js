@@ -10,6 +10,9 @@ import {
   clearCart,
   applyCoupon,
   removeCoupon,
+  previewGuestCart,
+  previewGuestCoupon,
+  mergeGuestCart,
 } from '../controllers/cart.controller.js'
 import {
   addToCartValidator,
@@ -19,7 +22,13 @@ import {
 
 const router = express.Router()
 
+// Public: guests price their localStorage cart (no account needed to shop).
+router.post('/preview',      previewGuestCart)
+router.post('/coupon/preview', previewGuestCoupon)
+
 router.use(protectedRoutes)
+
+router.post('/merge',         mergeGuestCart)
 
 router.get('/',               getCart)
 router.post('/',              addToCartValidator,        validate, addToCart)

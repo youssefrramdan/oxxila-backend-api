@@ -8,7 +8,10 @@ import sendResponse from '../utils/apiResponse.js';
 import { getCartSubtotal, getStoreCreditBalance, computeStoreCreditApplied } from './order.controller.js';
 import { refreshProductOffers, resolveProductPrice } from '../utils/productOffer.js';
 
-const PRODUCT_CART_SELECT = 'name images price priceAfterDiscount offerEndsAt stock isActive';
+const PRODUCT_CART_SELECT = 'name nameEn nameAr slug images price priceAfterDiscount offerEndsAt stock isActive';
+
+/** Max distinct lines accepted from a guest cart (preview/merge). */
+const GUEST_CART_MAX_LINES = 50;
 
 // --- coupon validation (single source of truth — order.controller.js reuses assertCouponApplicable) ---
 
@@ -63,6 +66,8 @@ const formatCartResponse = (result) => ({
   items: result.cart.items,
   couponCode: result.cart.couponCode,
   discountType: result.discountType ?? null,
+  // 10 for a 10% coupon / EGP for a fixed one — lets the UI show "10% off".
+  discountValue: result.discountValue ?? null,
   freeShipping: Boolean(result.freeShipping),
   discountAmount: result.cart.discountAmount,
   storeCreditBalance: result.storeCreditBalance ?? 0,
@@ -94,6 +99,7 @@ const getUpdatedCart = async (userId) => {
 
   const subtotal = getCartSubtotal(cart);
   let discountType = null;
+  let discountValue = null;
   let freeShipping = false;
 
   if (cart.couponId) {
@@ -106,6 +112,7 @@ const getUpdatedCart = async (userId) => {
       changed = true;
     } else {
       discountType = coupon.discountType;
+      discountValue = coupon.discountValue;
       freeShipping = isFreeShippingCoupon(coupon);
       const discount = calculateCouponDiscount(coupon, subtotal);
       if (cart.discountAmount !== discount) {
@@ -133,11 +140,166 @@ const getUpdatedCart = async (userId) => {
     storeCreditApplied,
     totalPrice: payableAfterCredit,
     discountType,
+    discountValue,
     freeShipping,
   };
 };
 
+// --- guest cart helpers ---
+
+/** Normalize `[{ productId, quantity }]` from a guest (localStorage) cart. */
+const normalizeGuestItems = (rawItems) => {
+  const merged = new Map();
+  for (const raw of Array.isArray(rawItems) ? rawItems : []) {
+    const productId = String(raw?.productId ?? '').trim();
+    const quantity = Math.floor(Number(raw?.quantity));
+    if (!/^[a-f\d]{24}$/i.test(productId) || !Number.isFinite(quantity) || quantity < 1) continue;
+    merged.set(productId, (merged.get(productId) ?? 0) + quantity);
+    if (merged.size >= GUEST_CART_MAX_LINES) break;
+  }
+  return [...merged.entries()].map(([productId, quantity]) => ({ productId, quantity }));
+};
+
 // --- handlers ---
+
+/**
+ * @desc    Price a guest cart (no account) with live offer prices.
+ *          Line `_id` is the product id so the client can address lines without a server cart.
+ *          Lines are clamped to stock; inactive/missing products are dropped.
+ * @route   POST /api/v1/cart/preview
+ * @access  Public
+ */
+/** Price guest lines with live offers, clamped to stock (shared by cart + coupon previews). */
+const priceGuestLines = async (rawItems) => {
+  const items = normalizeGuestItems(rawItems);
+  const products = items.length
+    ? await Product.find({ _id: { $in: items.map((i) => i.productId) }, isActive: true })
+        .select(PRODUCT_CART_SELECT)
+        .lean()
+    : [];
+  await refreshProductOffers(products);
+  const byId = new Map(products.map((p) => [String(p._id), p]));
+
+  const lines = [];
+  for (const { productId, quantity } of items) {
+    const product = byId.get(productId);
+    if (!product || product.stock <= 0) continue;
+    lines.push({
+      _id: productId,
+      product,
+      quantity: Math.min(quantity, product.stock),
+      price: resolveProductPrice(product),
+    });
+  }
+  const subtotal = Math.round(lines.reduce((sum, l) => sum + l.price * l.quantity, 0) * 100) / 100;
+  return { lines, subtotal };
+};
+
+export const previewGuestCart = asyncHandler(async (req, res) => {
+  const { lines, subtotal } = await priceGuestLines(req.body?.items);
+
+  sendResponse(res, {
+    message: 'Guest cart priced successfully',
+    data: {
+      items: lines,
+      couponCode: null,
+      discountType: null,
+      freeShipping: false,
+      discountAmount: 0,
+      storeCreditBalance: 0,
+      storeCreditApplied: 0,
+      subtotal,
+      totalPrice: subtotal,
+    },
+  });
+});
+
+/**
+ * @desc    Show a guest how much a promo code would save — WITHOUT consuming it.
+ *          Usage (usageCount / usedBy) is only recorded when an order is actually placed
+ *          (commitCouponUsage after checkout), so previewing never burns a code.
+ *          Per-customer reuse can't be checked without an account; it is enforced at checkout.
+ * @route   POST /api/v1/cart/coupon/preview
+ * @access  Public
+ */
+export const previewGuestCoupon = asyncHandler(async (req, res, next) => {
+  const code = String(req.body?.code ?? '').trim();
+  if (!code || code.length > 40) return next(new ApiError('Enter a valid promo code', 400));
+
+  const { subtotal } = await priceGuestLines(req.body?.items);
+  const coupon = await findActiveCouponByCode(code);
+  const problem = assertCouponApplicable(coupon, null, subtotal);
+  if (problem) return next(problem);
+
+  const discountAmount = calculateCouponDiscount(coupon, subtotal);
+  sendResponse(res, {
+    message: 'Coupon is valid',
+    data: {
+      couponCode: coupon.code,
+      discountType: coupon.discountType,
+      // 10 for a 10% coupon, or the fixed EGP amount — lets the UI show "10% off".
+      discountValue: coupon.discountValue,
+      freeShipping: isFreeShippingCoupon(coupon),
+      discountAmount,
+      subtotal,
+      totalPrice: Math.max(0, Math.round((subtotal - discountAmount) * 100) / 100),
+    },
+  });
+});
+
+/**
+ * @desc    Merge a guest cart into the signed-in user's cart (after login/register).
+ *          Quantities add up and are clamped to stock; bad lines are skipped, never fatal.
+ * @route   POST /api/v1/cart/merge
+ * @access  Private
+ */
+export const mergeGuestCart = asyncHandler(async (req, res) => {
+  const items = normalizeGuestItems(req.body?.items);
+
+  if (items.length) {
+    const products = await Product.find({
+      _id: { $in: items.map((i) => i.productId) },
+      isActive: true,
+    }).select('price priceAfterDiscount offerEndsAt stock isActive');
+    const byId = new Map(products.map((p) => [String(p._id), p]));
+
+    let cart = await Cart.findOne({ user: req.user._id });
+    if (!cart) cart = new Cart({ user: req.user._id, items: [] });
+
+    for (const { productId, quantity } of items) {
+      const product = byId.get(productId);
+      if (!product || product.stock <= 0) continue;
+      const existing = cart.items.find((item) => item.product.toString() === productId);
+      const nextQty = Math.min((existing?.quantity ?? 0) + quantity, product.stock);
+      if (existing) {
+        existing.quantity = nextQty;
+        existing.price = resolveProductPrice(product);
+      } else {
+        cart.items.push({ product: productId, quantity: nextQty, price: resolveProductPrice(product) });
+      }
+    }
+
+    if (cart.items.length) await cart.save();
+  }
+
+  const result = await getUpdatedCart(req.user._id);
+  sendResponse(res, {
+    message: 'Cart merged successfully',
+    data: result
+      ? formatCartResponse(result)
+      : {
+          items: [],
+          subtotal: 0,
+          discountAmount: 0,
+          storeCreditBalance: 0,
+          storeCreditApplied: 0,
+          totalPrice: 0,
+          couponCode: null,
+          discountType: null,
+          freeShipping: false,
+        },
+  });
+});
 
 /**
  * @desc    Get the current user's cart
