@@ -19,7 +19,7 @@ import {
 const activeFilter = { isActive: true };
 
 /** Shared category populate for brand responses */
-const categoryPopulate = { path: 'category', select: 'name slug' };
+const categoryPopulate = { path: 'category', select: 'name nameEn nameAr slug' };
 
 /**
  * @desc    List active brands (optional category filter)
@@ -42,11 +42,11 @@ export const getAllBrands = asyncHandler(async (req, res, next) => {
 
   const features = new ApiFeatures(
     Brand.find(filter)
-      .select('name slug logo description isActive category')
+      .select('name nameEn nameAr slug logo description isActive category')
       .populate(categoryPopulate),
     safeQuery
   )
-    .search(['name'])
+    .search(['name', 'nameEn', 'nameAr'])
     .sort();
 
   await features.paginate();

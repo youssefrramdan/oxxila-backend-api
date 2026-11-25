@@ -20,6 +20,7 @@ import {
   withAuditPopulate,
 } from "../utils/adminActivity.js";
 import { refreshProductOffers } from "../utils/productOffer.js";
+import { searchProductIds } from "../utils/searchIndex.js";
 
 /** Mongo filter for active (listed) products */
 const activeFilter = { isActive: true };
@@ -160,8 +161,22 @@ const buildFilter = (query) => {
       .filter((id) => mongoose.Types.ObjectId.isValid(id));
     if (ids.length) filter.subCategory = { $in: ids };
   }
-  if (query.brand && mongoose.Types.ObjectId.isValid(query.brand)) {
-    filter.brand = query.brand;
+  if (query.brand) {
+    // Accepts one id or a comma-separated list (multi-brand filter).
+    const brandIds = String(query.brand)
+      .split(",")
+      .filter((id) => mongoose.Types.ObjectId.isValid(id));
+    if (brandIds.length === 1) filter.brand = brandIds[0];
+    else if (brandIds.length > 1) filter.brand = { $in: brandIds };
+  }
+  if (query.ratingMin !== undefined) {
+    const ratingMin = Number(query.ratingMin);
+    if (Number.isFinite(ratingMin) && ratingMin > 0) {
+      filter.ratingsAverage = { $gte: ratingMin };
+    }
+  }
+  if (query.inStock === "true") {
+    filter.stock = { $gt: 0 };
   }
   if (query.concerns) {
     filter.concerns = { $in: query.concerns.split(",") };
@@ -231,6 +246,8 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     "isCertified",
     "isBestSeller",
     "isBundle",
+    "ratingMin",
+    "inStock",
     "priceMin",
     "priceMax",
     "isActive",
@@ -238,24 +255,66 @@ export const getAllProducts = asyncHandler(async (req, res) => {
     "todayOffers",
     "noOffers",
     "period",
+    "includePerformance",
   ].forEach((k) => delete safeQuery[k]);
 
-  const features = new ApiFeatures(
-    Product.find(filter).select(productSelect).populate(productPopulate),
-    safeQuery,
-  )
-    .search(["name"])
-    .sort();
+  // Storefront keyword search: Arabic-normalized, typo-tolerant ranking from the in-memory
+  // index. Admin lists (isActive=false|all) and zero-hit queries use the plain regex search.
+  let rankedIds = null;
+  const keyword = String(req.query.keyword ?? "").trim();
+  if (keyword && filter.isActive === true) {
+    const ids = await searchProductIds(keyword);
+    if (ids.length) {
+      rankedIds = ids;
+      filter._id = { $in: ids };
+      delete safeQuery.keyword;
+    }
+  }
 
-  await features.paginate();
+  const relevanceMode = rankedIds && (!req.query.sort || req.query.sort === "relevance");
+  let products;
+  let paginationResult;
 
-  const products = await features.mongooseQuery.lean();
+  if (relevanceMode) {
+    // Best match first: filter in Mongo, order by index rank, paginate in memory
+    // (a keyword narrows the catalog to at most a few hundred ids).
+    const matched = await Product.find(filter).select(productSelect).populate(productPopulate).lean();
+    const rank = new Map(rankedIds.map((id, i) => [id, i]));
+    matched.sort((a, b) => rank.get(String(a._id)) - rank.get(String(b._id)));
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+    const skip = (page - 1) * limit;
+    products = matched.slice(skip, skip + limit);
+    paginationResult = {
+      currentPage: page,
+      limit,
+      numberOfPages: Math.ceil(matched.length / limit),
+      totalDocuments: matched.length,
+      nextPage: skip + limit < matched.length ? page + 1 : null,
+      prevPage: page > 1 ? page - 1 : null,
+    };
+  } else {
+    const features = new ApiFeatures(
+      Product.find(filter).select(productSelect).populate(productPopulate),
+      safeQuery,
+    )
+      .search(['name', 'nameEn', 'nameAr'])
+      .sort();
+    await features.paginate();
+    products = await features.mongooseQuery.lean();
+    paginationResult = features.getPaginationResult();
+  }
   await refreshProductOffers(products);
 
-  const performanceById = await buildPerformanceByProductId(
-    products.map((p) => p._id),
-    periodDays,
-  );
+  // Sales aggregation ($unwind over orders) is admin-only; storefront lists skip it.
+  const wantsPerformance =
+    req.query.includePerformance === "true" || req.query.period !== undefined;
+  const performanceById = wantsPerformance
+    ? await buildPerformanceByProductId(
+        products.map((p) => p._id),
+        periodDays,
+      )
+    : new Map();
 
   const data = products.map((product) => ({
     ...product,
@@ -264,7 +323,7 @@ export const getAllProducts = asyncHandler(async (req, res) => {
 
   sendResponse(res, {
     message: "Products retrieved successfully",
-    pagination: { ...features.getPaginationResult(), results: data.length },
+    pagination: { ...paginationResult, results: data.length },
     data,
   });
 });
@@ -282,7 +341,7 @@ export const getProduct = asyncHandler(async (req, res, next) => {
       : { _id: req.params.id, ...activeFilter };
 
   const product = await Product.findOne(filter)
-    .select(`${productSelect} description advantages composition catalog`)
+    .select(`${productSelect} description advantages composition descriptionAr advantagesAr compositionAr catalog`)
     .populate(productPopulate);
 
   if (!product)

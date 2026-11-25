@@ -1,14 +1,29 @@
 // src/models/Product.js
 import mongoose from 'mongoose';
-import slugify from 'slugify';
+import {
+  syncBilingualNameOnSave,
+  syncBilingualNameOnUpdate,
+} from '../utils/bilingualName.js';
 
 const productSchema = new mongoose.Schema(
   {
+    nameEn: {
+      type: String,
+      required: [true, 'English product name is required'],
+      trim: true,
+      minlength: [2, 'English name must be at least 2 characters'],
+      maxlength: [200, 'English name must be at most 200 characters'],
+    },
+    nameAr: {
+      type: String,
+      // Optional: storefront falls back to nameEn when Arabic is missing.
+      trim: true,
+      maxlength: [200, 'Arabic name must be at most 200 characters'],
+      default: '',
+    },
     name: {
       type: String,
-      required: [true, 'Product name is required'],
       trim: true,
-      minlength: [2, 'Name must be at least 2 characters'],
       maxlength: [200, 'Name must be at most 200 characters'],
     },
     slug: { type: String, unique: true, lowercase: true, index: true },
@@ -19,6 +34,11 @@ const productSchema = new mongoose.Schema(
     description: { type: String, maxlength: 2000 },
     advantages: { type: String, maxlength: 2000 },
     composition: { type: String, maxlength: 2000 },
+    // Arabic counterparts. The fields above are the English copy (kept for existing data);
+    // the storefront shows the Arabic text in Arabic and falls back to English when empty.
+    descriptionAr: { type: String, maxlength: 2000, trim: true, default: '' },
+    advantagesAr: { type: String, maxlength: 2000, trim: true, default: '' },
+    compositionAr: { type: String, maxlength: 2000, trim: true, default: '' },
     stock: { type: Number, required: true, min: 0, default: 0 },
     // sold count
     soldCount: { type: Number, default: 0 },
@@ -56,16 +76,23 @@ const productSchema = new mongoose.Schema(
   
 );
 
-productSchema.pre('save', function () {
-  if (this.isModified('name')) {
-    this.slug = slugify(this.name, { lower: true, strict: true });
-  }
+productSchema.pre('validate', function () {
+  // pre-validate (not pre-save) so legacy docs with only `name` pass `nameEn` required.
+  syncBilingualNameOnSave(this);
   if (this.isModified('certificationImage')) {
     this.isCertified = !!this.certificationImage;
   }
 });
 
+productSchema.pre('findOneAndUpdate', function () {
+  const update = this.getUpdate() || {};
+  syncBilingualNameOnUpdate(update);
+  this.setUpdate(update);
+});
+
 productSchema.index({ category: 1, isActive: 1 });
+productSchema.index({ nameAr: 1 });
+productSchema.index({ nameEn: 1 });
 productSchema.index({ subCategory: 1, isActive: 1 });
 productSchema.index({ concerns: 1 });
 productSchema.index({ isSensitiveSkin: 1 });

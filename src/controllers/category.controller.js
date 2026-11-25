@@ -28,8 +28,8 @@ const wantsInactive = (req) =>
 const populateSubcategories = (includeInactive) => ({
   path: 'subcategories',
   match: includeInactive ? {} : { isActive: true },
-  select: 'name slug image isActive',
-  options: { sort: { name: 1 } },
+  select: 'name nameEn nameAr slug image isActive',
+  options: { sort: { nameEn: 1 } },
 });
 
 /**
@@ -47,11 +47,13 @@ export const getAllCategories = asyncHandler(async (req, res) => {
 
   const features = new ApiFeatures(
     Category.find(filter)
-      .select('name slug image isActive subcategories createdBy updatedBy createdAt updatedAt')
+      .select(
+        'name nameEn nameAr slug image isActive subcategories createdBy updatedBy createdAt updatedAt',
+      )
       .populate(populateSubcategories(includeInactive)),
     safeQuery
   )
-    .search(['name'])
+    .search(['name', 'nameEn', 'nameAr'])
     .sort();
 
   await features.paginate();

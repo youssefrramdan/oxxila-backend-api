@@ -17,7 +17,7 @@ import {
 } from '../utils/adminActivity.js';
 
 const publicFilter = { isActive: true };
-const categoryPopulate = { path: 'category', select: 'name slug isActive' };
+const categoryPopulate = { path: 'category', select: 'name nameEn nameAr slug isActive' };
 
 /** Admin may pass ?includeInactive=true with a valid admin Bearer token */
 const wantsInactive = (req) =>
@@ -51,11 +51,13 @@ export const getAllSubcategories = asyncHandler(async (req, res, next) => {
 
   const features = new ApiFeatures(
     SubCategory.find(filter)
-      .select('name slug image isActive category createdBy updatedBy createdAt updatedAt')
+      .select(
+        'name nameEn nameAr slug image isActive category createdBy updatedBy createdAt updatedAt',
+      )
       .populate(categoryPopulate),
     safeQuery
   )
-    .search(['name'])
+    .search(['name', 'nameEn', 'nameAr'])
     .sort();
 
   const subcategories = await features.mongooseQuery.lean();

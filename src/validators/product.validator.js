@@ -1,10 +1,16 @@
 // src/validators/product.validator.js
 import { check, param } from 'express-validator';
 import validate from '../middlewares/validate.middleware.js';
+import { normalizeBilingualNameBody } from '../utils/bilingualName.js';
 
 const mongoId = (p) => param(p).isMongoId().withMessage(`Invalid ${p}`);
 
 const CONCERNS = ['acne', 'pigmentation', 'sensitive-skin', 'drought', 'wrinkles', 'wide-pores'];
+
+const normalizeNames = (req, _res, next) => {
+  req.body = normalizeBilingualNameBody(req.body);
+  next();
+};
 
 /** multipart often sends one id string — normalize before array validators */
 const sanitizeSubCategoryArray = (value) => {
@@ -21,10 +27,21 @@ const sanitizeSubCategoryArray = (value) => {
 };
 
 export const createProductValidator = [
-  check('name')
+  normalizeNames,
+  check('nameEn')
     .trim()
     .notEmpty()
-    .withMessage('Product name is required')
+    .withMessage('English product name is required')
+    .isLength({ min: 2, max: 200 })
+    .withMessage('English name must be 2-200 characters'),
+  check('nameAr')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('Arabic name must be at most 200 characters'),
+  check('name')
+    .optional()
+    .trim()
     .isLength({ min: 2, max: 200 })
     .withMessage('Name must be 2-200 characters'),
 
@@ -65,13 +82,26 @@ export const createProductValidator = [
   check('description').optional().trim().isLength({ max: 2000 }).withMessage('description max 2000 characters'),
   check('advantages').optional().trim().isLength({ max: 2000 }).withMessage('advantages max 2000 characters'),
   check('composition').optional().trim().isLength({ max: 2000 }).withMessage('composition max 2000 characters'),
+  check('descriptionAr').optional().trim().isLength({ max: 2000 }).withMessage('descriptionAr max 2000 characters'),
+  check('advantagesAr').optional().trim().isLength({ max: 2000 }).withMessage('advantagesAr max 2000 characters'),
+  check('compositionAr').optional().trim().isLength({ max: 2000 }).withMessage('compositionAr max 2000 characters'),
   check('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
   validate,
 ];
 
 export const updateProductValidator = [
   mongoId('id'),
-
+  normalizeNames,
+  check('nameEn')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 200 })
+    .withMessage('English name must be 2-200 characters'),
+  check('nameAr')
+    .optional()
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('Arabic name must be at most 200 characters'),
   check('name')
     .optional()
     .trim()
@@ -113,6 +143,9 @@ export const updateProductValidator = [
   check('description').optional().trim().isLength({ max: 2000 }).withMessage('description max 2000 characters'),
   check('advantages').optional().trim().isLength({ max: 2000 }).withMessage('advantages max 2000 characters'),
   check('composition').optional().trim().isLength({ max: 2000 }).withMessage('composition max 2000 characters'),
+  check('descriptionAr').optional().trim().isLength({ max: 2000 }).withMessage('descriptionAr max 2000 characters'),
+  check('advantagesAr').optional().trim().isLength({ max: 2000 }).withMessage('advantagesAr max 2000 characters'),
+  check('compositionAr').optional().trim().isLength({ max: 2000 }).withMessage('compositionAr max 2000 characters'),
   check('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
   validate,
 ];

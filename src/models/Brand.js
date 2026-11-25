@@ -1,41 +1,51 @@
 // src/models/Brand.js
 import mongoose from 'mongoose';
-import slugify from 'slugify';
+import {
+  syncBilingualNameOnSave,
+  syncBilingualNameOnUpdate,
+} from '../utils/bilingualName.js';
 
 const brandSchema = new mongoose.Schema(
   {
-    name: {
+    nameEn: {
       type: String,
       unique: true,
-      required: [true, 'Brand name is required'],
+      required: [true, 'English brand name is required'],
       trim: true,
-      minlength: [2, 'Name must be at least 2 characters'],
+      minlength: [2, 'English name must be at least 2 characters'],
+      maxlength: [50, 'English name must be at most 50 characters'],
+    },
+    nameAr: {
+      type: String,
+      // Optional: storefront falls back to nameEn when Arabic is missing.
+      trim: true,
+      maxlength: [50, 'Arabic name must be at most 50 characters'],
+      default: '',
+    },
+    name: {
+      type: String,
+      trim: true,
       maxlength: [50, 'Name must be at most 50 characters'],
     },
-
     slug: {
       type: String,
       unique: true,
       lowercase: true,
       index: true,
     },
-
     logo: {
       type: String,
       default: null,
     },
-
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
       default: null,
     },
-
     description: {
       type: String,
       maxlength: [500, 'Description must be at most 500 characters'],
     },
-
     isActive: {
       type: Boolean,
       default: true,
@@ -48,16 +58,22 @@ const brandSchema = new mongoose.Schema(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
-  }
+  },
 );
 
-brandSchema.pre('save', function () {
-  if (this.isModified('name')) {
-    this.slug = slugify(this.name, { lower: true, strict: true });
-  }
+brandSchema.pre('validate', function () {
+  // pre-validate (not pre-save) so legacy docs with only `name` pass `nameEn` required.
+  syncBilingualNameOnSave(this);
+});
+
+brandSchema.pre('findOneAndUpdate', function () {
+  const update = this.getUpdate() || {};
+  syncBilingualNameOnUpdate(update);
+  this.setUpdate(update);
 });
 
 brandSchema.index({ isActive: 1 });
+brandSchema.index({ nameAr: 1 });
 
 const Brand = mongoose.model('Brand', brandSchema);
 export default Brand;
