@@ -574,7 +574,9 @@ export const createBostaDeliveryForOrder = async (order, carrier, options, crede
   if (!receiverName) {
     throw new ApiError('Customer name is required for Bosta delivery', 400);
   }
-  if (!user?.phone) {
+  // The order's own delivery phone wins; the account phone is the fallback for older orders.
+  const receiverPhone = order.shippingAddress?.phone || user?.phone;
+  if (!receiverPhone) {
     throw new ApiError('Customer phone is required for Bosta delivery', 400);
   }
 
@@ -599,8 +601,8 @@ export const createBostaDeliveryForOrder = async (order, carrier, options, crede
       size: options.size || 'MEDIUM',
     },
     receiverName,
-    receiverPhone: normalizeEgyptPhone(user.phone),
-    receiverEmail: user.email,
+    receiverPhone: normalizeEgyptPhone(receiverPhone),
+    receiverEmail: user?.email,
     dropOffAddress,
     cod: order.paymentMethod === 'cod' ? Math.min(BOSTA_COD_MAX_EGP, Math.round(order.totalPrice)) : 0,
     goodsAmount: order.subtotal,

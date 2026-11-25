@@ -53,3 +53,16 @@ export function validateWhatsAppPhone(phone, dialCode = '20') {
 
   return { ok: true, normalized };
 }
+
+/** Trim and collapse a contact phone for storage (keeps a leading +). */
+export function sanitizeContactPhone(value) {
+  return String(value ?? '')
+    .trim()
+    .replace(/[\s\-().]/g, '');
+}
+
+/** 8–15 digits, optional leading + / 00 (covers Egyptian 01xxxxxxxxx and international). */
+export function isValidContactPhone(value) {
+  const phone = sanitizeContactPhone(value);
+  return /^(\+|00)?\d{8,15}$/.test(phone);
+}

@@ -5,6 +5,9 @@ const paymentItemSchema = new mongoose.Schema(
   {
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     name: { type: String, required: true, trim: true },
+    // Bilingual snapshot so card orders keep Arabic names (strict mode drops unknown keys).
+    nameEn: { type: String, trim: true, default: '' },
+    nameAr: { type: String, trim: true, default: '' },
     image: { type: String, default: null },
     price: { type: Number, required: true, min: 0 },
     quantity: { type: Number, required: true, min: 1 },
@@ -27,6 +30,7 @@ const paymentShippingAddressSchema = new mongoose.Schema(
     governorateName: { type: String, required: true, trim: true },
     districtName: { type: String, required: true, trim: true },
     addressLine: { type: String, required: true, trim: true },
+    phone: { type: String, trim: true, default: '' },
     isOther: { type: Boolean, default: false },
     countryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Country', required: true },
     governorateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Governorate', required: true },
@@ -45,6 +49,7 @@ const paymentSessionSchema = new mongoose.Schema(
         message: 'Payment session must contain at least one item',
       },
     },
+    locale: { type: String, enum: ['ar', 'en'], default: 'ar' },
     shippingAddress: { type: paymentShippingAddressSchema, required: true },
     shipping: { type: paymentShippingSelectionSchema, default: () => ({}) },
     subtotal: { type: Number, required: true, min: 0 },

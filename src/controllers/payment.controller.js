@@ -130,8 +130,9 @@ const fulfillPaymentSession = async (paymentSessionId, paymentReference) => {
 };
 
 /** Shape a new PaymentSession document from prepareCheckoutFromCart output. */
-const buildPaymentSessionDoc = (userId, provider, checkout) => ({
+const buildPaymentSessionDoc = (userId, provider, checkout, locale) => ({
   user: userId,
+  locale: locale === 'en' ? 'en' : 'ar',
   items: checkout.orderItems,
   shippingAddress: checkout.shippingAddress,
   shipping: checkout.shipping,
@@ -526,7 +527,7 @@ const paymentProviders = {
  * @access  Private
  */
 export const createPaymentSession = asyncHandler(async (req, res, next) => {
-  const { addressId, governorateId, districtId, addressLine, provider, saveAddress, label, setAsDefault } =
+  const { addressId, governorateId, districtId, addressLine, phone, provider, saveAddress, label, setAsDefault, locale } =
     req.body;
   const userId = req.user._id;
 
@@ -535,18 +536,18 @@ export const createPaymentSession = asyncHandler(async (req, res, next) => {
     return next(new ApiError(`Payment provider "${provider}" is currently disabled`, 400));
   }
 
-  const addressInput = { addressId, governorateId, districtId, addressLine };
+  const addressInput = { addressId, governorateId, districtId, addressLine, phone };
   const resolved = await resolveCheckoutAddressInput(userId, addressInput);
   const checkout = await prepareCheckoutFromCart(userId, resolved);
 
-  if (saveAddress) {
+  if (saveAddress && !addressId) {
     await appendUserAddress(userId, resolved, { label, isDefault: setAsDefault ?? false });
   }
 
   const startProvider = paymentProviders[provider];
   if (!startProvider) return next(new ApiError('Invalid payment provider', 400));
 
-  const paymentSession = await PaymentSession.create(buildPaymentSessionDoc(userId, provider, checkout));
+  const paymentSession = await PaymentSession.create(buildPaymentSessionDoc(userId, provider, checkout, locale));
 
   let providerPayload;
   try {

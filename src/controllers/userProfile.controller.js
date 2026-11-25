@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import ApiError from '../utils/apiError.js';
 import sendResponse from '../utils/apiResponse.js';
 import { deleteAsset } from '../middlewares/cloudnairyMiddleware.js';
+import { sanitizeContactPhone } from '../utils/phoneNumber.js';
 import { appendUserAddress, buildShippingSnapshot, healUserAddressEntry } from './order.controller.js';
 
 /** Build a stored user address subdoc from a shipping snapshot */
@@ -44,6 +45,7 @@ const applyUserAddressUpdates = async (user, sub, updates) => {
       districtId:
         updates.districtId ?? (sub.isOther ? 'other' : sub.district?.id ?? 'other'),
       addressLine: updates.addressLine ?? sub.addressLine,
+      phone: updates.phone ?? sub.phone,
     };
     const { shippingAddress } = await buildShippingSnapshot(input);
     const rebuilt = buildUserAddressFromSnapshot(shippingAddress, {
@@ -54,6 +56,7 @@ const applyUserAddressUpdates = async (user, sub, updates) => {
   } else {
     await healUserAddressEntry(sub, { soft: true });
     if (updates.label !== undefined) sub.label = String(updates.label).trim();
+    if (updates.phone !== undefined) sub.phone = updates.phone;
     if (updates.isDefault === true) {
       clearOtherDefaults(user.addresses, sub._id);
       sub.isDefault = true;
@@ -123,16 +126,17 @@ export const addMyAddress = asyncHandler(async (req, res, next) => {
   const user = await User.findById(req.user._id);
   if (!user) return next(new ApiError('Your account no longer exists', 404));
 
-  if (!user.phone?.trim()) {
-    return next(
-      new ApiError('Add your phone number in account settings before adding an address', 400)
-    );
+  const { governorateId, districtId, addressLine, label, isDefault, phone } = req.body;
+
+  // The address carries its own phone; the account phone is only a fallback.
+  const contactPhone = sanitizeContactPhone(phone) || sanitizeContactPhone(user.phone);
+  if (!contactPhone) {
+    return next(new ApiError('A phone number is required for this address', 400));
   }
 
-  const { governorateId, districtId, addressLine, label, isDefault } = req.body;
   const created = await appendUserAddress(
     user._id,
-    { governorateId, districtId, addressLine },
+    { governorateId, districtId, addressLine, phone: contactPhone },
     { label, isDefault }
   );
 
@@ -157,13 +161,14 @@ export const updateMyAddress = asyncHandler(async (req, res, next) => {
     return next(new ApiError(`No address found with id: ${req.params.addressId}`, 404));
   }
 
-  const { governorateId, districtId, addressLine, label, isDefault } = req.body;
+  const { governorateId, districtId, addressLine, label, isDefault, phone } = req.body;
   const updated = await applyUserAddressUpdates(user, sub, {
     governorateId,
     districtId,
     addressLine,
     label,
     isDefault,
+    phone: phone === undefined ? undefined : sanitizeContactPhone(phone),
   });
 
   sendResponse(res, { message: 'Address updated successfully', data: { address: updated } });

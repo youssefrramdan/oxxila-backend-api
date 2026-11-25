@@ -2,6 +2,7 @@
 import { body, param } from 'express-validator';
 import validate from '../middlewares/validate.middleware.js';
 import ApiError from '../utils/apiError.js';
+import { isValidContactPhone } from '../utils/phoneNumber.js';
 
 const inlineAddressFields = [
   body('governorateId')
@@ -25,6 +26,11 @@ const inlineAddressFields = [
 ];
 
 const checkoutAddressExtras = [
+  body('locale').optional().isIn(['ar', 'en']).withMessage('locale must be ar or en'),
+  body('phone')
+    .optional({ values: 'falsy' })
+    .custom((value) => isValidContactPhone(value))
+    .withMessage('Enter a valid phone number (8–15 digits)'),
   body('addressId').optional().isMongoId().withMessage('Invalid address ID'),
   body('saveAddress').optional().isBoolean().withMessage('saveAddress must be a boolean'),
   body('label').optional().trim().isLength({ max: 50 }).withMessage('Label is too long'),
@@ -32,7 +38,7 @@ const checkoutAddressExtras = [
 ];
 
 const ensureCheckoutAddress = (req, res, next) => {
-  const { addressId, governorateId, addressLine, saveAddress } = req.body;
+  const { addressId, governorateId, addressLine } = req.body;
 
   if (addressId) {
     if (governorateId || addressLine || req.body.districtId || req.body.saveAddress) {
@@ -47,10 +53,9 @@ const ensureCheckoutAddress = (req, res, next) => {
     return next(new ApiError('Provide addressId or governorateId + addressLine', 400));
   }
 
-  if (saveAddress && !req.user?.phone?.trim()) {
-    return next(
-      new ApiError('Add your phone number in account settings before saving an address', 400)
-    );
+  // Phone comes with the address now; the account phone is only a fallback (see resolver).
+  if (!String(req.body.phone || '').trim() && !req.user?.phone?.trim()) {
+    return next(new ApiError('Phone number is required for delivery', 400));
   }
 
   next();

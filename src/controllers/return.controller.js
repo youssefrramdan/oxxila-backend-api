@@ -11,6 +11,7 @@ import ApiError from "../utils/apiError.js";
 import ApiFeatures from "../utils/apiFeatures.js";
 import sendResponse from "../utils/apiResponse.js";
 import { restoreStockForOrderItems, toMinorUnits, resolveZoneRefs } from "./order.controller.js";
+import { RETURN_WINDOW_DAYS, getReturnWindowEnd } from "../utils/returnWindow.js";
 import { runInTransaction } from "../utils/mongoTransaction.js";
 import { pickupDocToBostaAddress } from "./carrierPickup.controller.js";
 import {
@@ -41,7 +42,7 @@ import { buildFieldChange, recordAdminActivity } from "../utils/adminActivity.js
 
 // --- constants ---
 
-const RETURN_WINDOW_DAYS = Number(process.env.RETURN_WINDOW_DAYS) || 14;
+// RETURN_WINDOW_DAYS / getReturnWindowEnd live in utils/returnWindow.js (shared with order flags).
 
 export const PROOF_REQUIRED_REASONS = new Set([
   "damaged_item",
@@ -87,13 +88,6 @@ const resolveOrderLine = (order, orderItemId) => {
 };
 
 // --- eligibility ---
-
-/** Compute the return-window end date from deliveredAt. */
-const getReturnWindowEnd = (deliveredAt) => {
-  const end = new Date(deliveredAt);
-  end.setDate(end.getDate() + RETURN_WINDOW_DAYS);
-  return end;
-};
 
 /** Throw if the order is outside the return eligibility rules. */
 const assertOrderReturnEligible = (order) => {

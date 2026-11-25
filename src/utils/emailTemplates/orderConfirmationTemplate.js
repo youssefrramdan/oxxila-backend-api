@@ -11,19 +11,25 @@ const safe = (s) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-const fmtMoney = (n) => {
+const fmtMoney = (n, isAr = false) => {
   const num = Number(n);
   if (!Number.isFinite(num)) return '—';
-  return `${num.toFixed(2)} EGP`;
+  return `${num.toFixed(2)} ${isAr ? 'ج.م' : 'EGP'}`;
 };
 
-const paymentLabel = (method, status) => {
-  if (method === 'cod') return 'Cash on Delivery';
-  if (method === 'card') return status === 'paid' ? 'Paid by card' : 'Card';
+const paymentLabel = (method, status, isAr) => {
+  if (method === 'cod') return isAr ? 'الدفع عند الاستلام' : 'Cash on Delivery';
+  if (method === 'card') {
+    if (status === 'paid') return isAr ? 'مدفوع بالبطاقة' : 'Paid by card';
+    return isAr ? 'بطاقة' : 'Card';
+  }
   return safe(method || '—');
 };
 
 const orderConfirmationTemplate = ({
+  locale = 'ar',
+  /** General delivery-time message from site settings (the courier/ETA is set later). */
+  deliveryNote = '',
   name,
   orderId,
   orderDetailsUrl,
@@ -38,9 +44,14 @@ const orderConfirmationTemplate = ({
   shippingAddress,
   createdAt,
 } = {}) => {
+  const isAr = locale !== 'en';
+  const tr = (en, ar) => (isAr ? ar : en);
+  const money = (n) => fmtMoney(n, isAr);
+  const itemName = (item) =>
+    isAr ? item.nameAr || item.name : item.nameEn || item.name;
   const shortId = String(orderId || '').slice(-8).toUpperCase();
   const dateStr = createdAt
-    ? new Date(createdAt).toLocaleString('en-EG', {
+    ? new Date(createdAt).toLocaleString(isAr ? 'ar-EG' : 'en-EG', {
         dateStyle: 'medium',
         timeStyle: 'short',
       })
@@ -62,17 +73,17 @@ const orderConfirmationTemplate = ({
             <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
               <tr>
                 <td width="68" style="vertical-align:middle;">${img}</td>
-                <td style="vertical-align:middle;padding-left:4px;">
+                <td style="vertical-align:middle;padding-inline-start:4px;">
                   <p style="margin:0 0 4px;font-size:14px;font-weight:600;color:#ffffff;line-height:1.35;">
-                    ${safe(item.name)}
+                    ${safe(itemName(item))}
                   </p>
                   <p style="margin:0;font-size:12px;color:#8d8da8;">
-                    Qty ${qty} &middot; ${fmtMoney(unit)} each
+                    ${tr('Qty', 'الكمية')} ${qty} &middot; ${money(unit)} ${tr('each', 'للقطعة')}
                   </p>
                 </td>
-                <td align="right" style="vertical-align:middle;white-space:nowrap;padding-left:12px;">
+                <td align="right" style="vertical-align:middle;white-space:nowrap;padding-inline-start:12px;">
                   <p style="margin:0;font-size:14px;font-weight:600;color:#c9c9d6;">
-                    ${fmtMoney(lineTotal)}
+                    ${money(lineTotal)}
                   </p>
                 </td>
               </tr>
@@ -97,32 +108,32 @@ const orderConfirmationTemplate = ({
   const discountRow =
     Number(discountAmount) > 0
       ? `<tr>
-          <td style="padding:6px 0;font-size:14px;color:#8d8da8;">Discount</td>
-          <td align="right" style="padding:6px 0;font-size:14px;color:#34d399;">−${fmtMoney(discountAmount)}</td>
+          <td style="padding:6px 0;font-size:14px;color:#8d8da8;">${tr('Discount', 'الخصم')}</td>
+          <td align="right" style="padding:6px 0;font-size:14px;color:#34d399;">−${money(discountAmount)}</td>
         </tr>`
       : '';
 
   const creditRow =
     Number(storeCreditApplied) > 0
       ? `<tr>
-          <td style="padding:6px 0;font-size:14px;color:#8d8da8;">Store credit</td>
-          <td align="right" style="padding:6px 0;font-size:14px;color:#34d399;">−${fmtMoney(storeCreditApplied)}</td>
+          <td style="padding:6px 0;font-size:14px;color:#8d8da8;">${tr('Store credit', 'رصيد المتجر')}</td>
+          <td align="right" style="padding:6px 0;font-size:14px;color:#34d399;">−${money(storeCreditApplied)}</td>
         </tr>`
       : '';
 
   const html = `
 <!DOCTYPE html>
-<html lang="en">
+<html lang="${isAr ? 'ar' : 'en'}" dir="${isAr ? 'rtl' : 'ltr'}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <meta name="supported-color-schemes" content="dark" />
-    <title>Order confirmed — Oxxila</title>
+    <title>${tr('Order confirmed', 'تم تأكيد الطلب')} — Oxxila</title>
   </head>
   <body style="margin:0;padding:0;background:#0b0b14;font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;color:#eaeaf2;-webkit-font-smoothing:antialiased;">
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
-      Your Oxxila order #${safe(shortId)} is confirmed — total ${fmtMoney(totalPrice)}.
+      ${tr('Your Oxxila order', 'طلبك من أوكسيلا رقم')} #${safe(shortId)} ${tr('is confirmed — total', 'تم تأكيده — الإجمالي')} ${money(totalPrice)}.
     </div>
 
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0b0b14;padding:40px 16px;">
@@ -136,7 +147,7 @@ const orderConfirmationTemplate = ({
                   Oxxila
                 </div>
                 <div style="font-size:11px;color:#6b6b85;text-transform:uppercase;letter-spacing:4px;margin-top:6px;">
-                  Cosmetics Store
+                  ${tr('Cosmetics Store', 'متجر مستحضرات التجميل')}
                 </div>
               </td>
             </tr>
@@ -155,10 +166,10 @@ const orderConfirmationTemplate = ({
                   <span style="color:#a78bfa;">&#10003;</span>
                 </div>
                 <h1 style="margin:24px 0 10px;font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:600;color:#ffffff;letter-spacing:0.3px;">
-                  Order confirmed
+                  ${tr('Order confirmed', 'تم تأكيد طلبك')}
                 </h1>
                 <p style="margin:0;font-size:14px;color:#8d8da8;">
-                  Order <strong style="color:#a78bfa;">#${safe(shortId)}</strong>
+                  ${tr('Order', 'الطلب')} <strong style="color:#a78bfa;">#${safe(shortId)}</strong>
                   ${dateStr ? ` &middot; ${safe(dateStr)}` : ''}
                 </p>
               </td>
@@ -167,10 +178,13 @@ const orderConfirmationTemplate = ({
             <tr>
               <td style="padding:28px 40px 8px;">
                 <p style="margin:0 0 18px;font-size:15px;line-height:1.65;color:#c9c9d6;">
-                  Hi <strong style="color:#ffffff;">${safe(name || 'there')}</strong>,
+                  ${tr('Hi', 'مرحبًا')} <strong style="color:#ffffff;">${safe(name || tr('there', 'بك'))}</strong>,
                 </p>
                 <p style="margin:0 0 8px;font-size:15px;line-height:1.65;color:#c9c9d6;">
-                  Thanks for shopping with Oxxila. Your order is confirmed — use the button below to view details and track delivery.
+                  ${tr(
+                    'Thanks for shopping with Oxxila. Your order is confirmed — use the button below to view details and track delivery.',
+                    'شكرًا لتسوقك من أوكسيلا. تم تأكيد طلبك — استخدم الزر أدناه لعرض التفاصيل وتتبع التوصيل.',
+                  )}
                 </p>
               </td>
             </tr>
@@ -178,7 +192,7 @@ const orderConfirmationTemplate = ({
             <tr>
               <td style="padding:8px 40px 8px;">
                 <p style="margin:0 0 12px;font-size:11px;color:#6b6b85;text-transform:uppercase;letter-spacing:1.5px;">
-                  Items
+                  ${tr('Items', 'المنتجات')}
                 </p>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                   ${itemRows}
@@ -194,12 +208,12 @@ const orderConfirmationTemplate = ({
                     <td style="padding:14px 16px;">
                       <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                         <tr>
-                          <td style="padding:6px 0;font-size:14px;color:#8d8da8;">Subtotal</td>
-                          <td align="right" style="padding:6px 0;font-size:14px;color:#c9c9d6;">${fmtMoney(subtotal)}</td>
+                          <td style="padding:6px 0;font-size:14px;color:#8d8da8;">${tr('Subtotal', 'المجموع الفرعي')}</td>
+                          <td align="right" style="padding:6px 0;font-size:14px;color:#c9c9d6;">${money(subtotal)}</td>
                         </tr>
                         <tr>
-                          <td style="padding:6px 0;font-size:14px;color:#8d8da8;">Shipping</td>
-                          <td align="right" style="padding:6px 0;font-size:14px;color:#c9c9d6;">${fmtMoney(shippingPrice)}</td>
+                          <td style="padding:6px 0;font-size:14px;color:#8d8da8;">${tr('Shipping', 'الشحن')}</td>
+                          <td align="right" style="padding:6px 0;font-size:14px;color:#c9c9d6;">${money(shippingPrice)}</td>
                         </tr>
                         ${discountRow}
                         ${creditRow}
@@ -207,12 +221,12 @@ const orderConfirmationTemplate = ({
                           <td colspan="2" style="padding-top:10px;border-top:1px solid #2a2a42;"></td>
                         </tr>
                         <tr>
-                          <td style="padding:8px 0 4px;font-size:15px;font-weight:600;color:#ffffff;">Total</td>
-                          <td align="right" style="padding:8px 0 4px;font-size:16px;font-weight:700;color:#a78bfa;">${fmtMoney(totalPrice)}</td>
+                          <td style="padding:8px 0 4px;font-size:15px;font-weight:600;color:#ffffff;">${tr('Total', 'الإجمالي')}</td>
+                          <td align="right" style="padding:8px 0 4px;font-size:16px;font-weight:700;color:#a78bfa;">${money(totalPrice)}</td>
                         </tr>
                         <tr>
-                          <td style="padding:4px 0 0;font-size:12px;color:#6b6b85;">Payment</td>
-                          <td align="right" style="padding:4px 0 0;font-size:12px;color:#8d8da8;">${paymentLabel(paymentMethod, paymentStatus)}</td>
+                          <td style="padding:4px 0 0;font-size:12px;color:#6b6b85;">${tr('Payment', 'الدفع')}</td>
+                          <td align="right" style="padding:4px 0 0;font-size:12px;color:#8d8da8;">${paymentLabel(paymentMethod, paymentStatus, isAr)}</td>
                         </tr>
                       </table>
                     </td>
@@ -226,11 +240,31 @@ const orderConfirmationTemplate = ({
                 ? `<tr>
               <td style="padding:16px 40px 8px;">
                 <p style="margin:0 0 8px;font-size:11px;color:#6b6b85;text-transform:uppercase;letter-spacing:1.5px;">
-                  Shipping to
+                  ${tr('Shipping to', 'التوصيل إلى')}
                 </p>
                 <p style="margin:0;font-size:14px;line-height:1.55;color:#c9c9d6;">
                   ${addr}
                 </p>
+                ${
+                  shippingAddress?.phone
+                    ? `<p style="margin:6px 0 0;font-size:13px;color:#8d8da8;" dir="ltr">${safe(shippingAddress.phone)}</p>`
+                    : ''
+                }
+              </td>
+            </tr>`
+                : ''
+            }
+
+            ${
+              deliveryNote
+                ? `<tr>
+              <td style="padding:16px 40px 0;">
+                <div style="padding:14px 18px;background:#10101c;border:1px solid #2a2a42;border-radius:12px;">
+                  <p style="margin:0 0 6px;font-size:11px;color:#6b6b85;text-transform:uppercase;letter-spacing:1.5px;">
+                    ${tr('Delivery', 'التوصيل')}
+                  </p>
+                  <p style="margin:0;font-size:14px;line-height:1.6;color:#c9c9d6;">${safe(deliveryNote)}</p>
+                </div>
               </td>
             </tr>`
                 : ''
@@ -243,7 +277,7 @@ const orderConfirmationTemplate = ({
                     <td align="center" style="padding:4px 0 24px;">
                       <a href="${safe(orderDetailsUrl)}"
                         style="display:inline-block;padding:16px 48px;background:#8b5cf6;background-image:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);color:#ffffff;text-decoration:none;border-radius:12px;font-weight:600;font-size:15px;letter-spacing:0.3px;">
-                        View order &amp; track
+                        ${tr('View order &amp; track', 'عرض الطلب وتتبعه')}
                       </a>
                     </td>
                   </tr>
@@ -251,7 +285,7 @@ const orderConfirmationTemplate = ({
 
                 <div style="padding:16px 18px;background:#10101c;border:1px solid #2a2a42;border-radius:10px;">
                   <p style="margin:0 0 8px;font-size:11px;color:#6b6b85;text-transform:uppercase;letter-spacing:1.5px;">
-                    Or paste this URL into your browser
+                    ${tr('Or paste this URL into your browser', 'أو الصق هذا الرابط في المتصفح')}
                   </p>
                   <p style="margin:0;word-break:break-all;font-size:13px;color:#a78bfa;font-family:'Courier New',Consolas,monospace;">
                     ${safe(orderDetailsUrl)}
@@ -265,10 +299,10 @@ const orderConfirmationTemplate = ({
             <tr>
               <td style="padding:28px 24px 8px;text-align:center;">
                 <p style="margin:0 0 8px;font-size:12px;line-height:1.6;color:#6b6b85;">
-                  You received this email because you placed an order on Oxxila.
+                  ${tr('You received this email because you placed an order on Oxxila.', 'وصلتك هذه الرسالة لأنك أجريت طلبًا على أوكسيلا.')}
                 </p>
                 <p style="margin:0;font-size:12px;color:#4a4a60;">
-                  &copy; ${new Date().getFullYear()} Oxxila Cosmetics. All rights reserved.
+                  &copy; ${new Date().getFullYear()} Oxxila Cosmetics. ${tr('All rights reserved.', 'جميع الحقوق محفوظة.')}
                 </p>
               </td>
             </tr>
@@ -282,7 +316,7 @@ const orderConfirmationTemplate = ({
 `;
 
   return {
-    subject: `Order confirmed #${shortId} — Oxxila`,
+    subject: isAr ? `تم تأكيد طلبك #${shortId} — أوكسيلا` : `Order confirmed #${shortId} — Oxxila`,
     html,
   };
 };

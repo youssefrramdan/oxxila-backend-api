@@ -3,6 +3,7 @@ import { body, param } from 'express-validator';
 import mongoose from 'mongoose';
 import validate from '../middlewares/validate.middleware.js';
 import ApiError from '../utils/apiError.js';
+import { isValidContactPhone } from '../utils/phoneNumber.js';
 
 const objectId = (field, location = 'params') => {
   const runner = location === 'body' ? body(field) : param(field);
@@ -97,6 +98,12 @@ const addressGeoFields = {
   label: (chain) =>
     chain.optional().trim().isLength({ max: 50 }).withMessage('Label is too long'),
   isDefault: (chain) => chain.optional().isBoolean().withMessage('isDefault must be a boolean'),
+  // Delivery contact for this address; falls back to the account phone when omitted.
+  phone: (chain) =>
+    chain
+      .optional({ values: 'falsy' })
+      .custom((value) => isValidContactPhone(value))
+      .withMessage('Enter a valid phone number (8–15 digits)'),
 };
 
 export const addMyAddressValidator = [
@@ -105,6 +112,7 @@ export const addMyAddressValidator = [
   addressGeoFields.addressLine(body('addressLine')),
   addressGeoFields.label(body('label')),
   addressGeoFields.isDefault(body('isDefault')),
+  addressGeoFields.phone(body('phone')),
   validate,
 ];
 
@@ -121,10 +129,11 @@ export const updateMyAddressValidator = [
     .withMessage('addressLine must be between 6 and 500 characters'),
   addressGeoFields.label(body('label')),
   addressGeoFields.isDefault(body('isDefault')),
+  addressGeoFields.phone(body('phone')),
   validate,
   (req, res, next) => {
-    const { governorateId, districtId, addressLine, label, isDefault } = req.body;
-    if ([governorateId, districtId, addressLine, label, isDefault].every((v) => v === undefined)) {
+    const { governorateId, districtId, addressLine, label, isDefault, phone } = req.body;
+    if ([governorateId, districtId, addressLine, label, isDefault, phone].every((v) => v === undefined)) {
       return next(new ApiError('Provide at least one field to update', 400));
     }
     next();

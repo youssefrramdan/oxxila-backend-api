@@ -5,6 +5,8 @@ const orderItemSchema = new mongoose.Schema(
   {
     product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     name: { type: String, required: true, trim: true },
+    nameEn: { type: String, trim: true, default: '' },
+    nameAr: { type: String, trim: true, default: '' },
     image: { type: String, default: null },
     price: { type: Number, required: true, min: 0 },
     quantity: { type: Number, required: true, min: 1 },
@@ -26,6 +28,8 @@ const shippingAddressSchema = new mongoose.Schema(
     governorateName: { type: String, required: true, trim: true },
     districtName: { type: String, required: true, trim: true },
     addressLine: { type: String, required: true, trim: true },
+    // Delivery contact snapshot — not tied to the account phone.
+    phone: { type: String, trim: true, default: '' },
     isOther: { type: Boolean, default: false },
     countryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Country', required: true },
     governorateId: { type: mongoose.Schema.Types.ObjectId, ref: 'Governorate', required: true },
@@ -45,6 +49,8 @@ const fulfillmentSchema = new mongoose.Schema(
 const orderSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    // Language the shopper used at checkout — drives the order emails.
+    locale: { type: String, enum: ['ar', 'en'], default: 'ar' },
     // Free-text customer label for admin/B2B orders that are not tied to a registered User
     customerName: { type: String, trim: true, default: null, maxlength: 100 },
     items: {

@@ -6,6 +6,7 @@ import Coupon from '../models/Coupon.js';
 import Country from '../models/Country.js';
 import Governorate from '../models/Governorate.js';
 import District from '../models/District.js';
+import SiteSettings from '../models/SiteSettings.js';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import Shipment from '../models/Shipment.js';
@@ -15,6 +16,8 @@ import ReturnRequest from '../models/ReturnRequest.js';
 import StoreCreditTransaction from '../models/StoreCreditTransaction.js';
 import PaymentGateway from '../models/PaymentGateway.js';
 import ApiError from '../utils/apiError.js';
+import { sanitizeContactPhone } from '../utils/phoneNumber.js';
+import { RETURN_WINDOW_DAYS, getReturnWindowEnd, isWithinReturnWindow } from '../utils/returnWindow.js';
 import ApiFeatures from '../utils/apiFeatures.js';
 import sendResponse from '../utils/apiResponse.js';
 import sendEmail from '../utils/email.js';
@@ -39,7 +42,7 @@ import { runInTransaction } from '../utils/mongoTransaction.js';
 // Stripe / Paymob card gateways eligible for refund flows
 const CARD_PROVIDERS = new Set(['stripe', 'paymob']);
 // Statuses from which the buyer may cancel their own order
-const USER_CANCELLABLE_STATUSES = new Set(['pending', 'processing']);
+const USER_CANCELLABLE_STATUSES = new Set(['pending', 'confirmed', 'processing']);
 // Statuses that block admin cancel
 const ADMIN_BLOCKED_CANCEL_STATUSES = new Set(['delivered', 'cancelled']);
 // Default projection for paginated order lists (avoids shipping heavy item payloads)
@@ -407,6 +410,11 @@ export const buildOrderPresentation = (order) => ({
   orderStatusLabel: getOrderStatusLabel(order?.orderStatus),
   paymentStatusLabel: getPaymentStatusLabel(order),
   isPaid: getIsPaid(order?.paymentStatus),
+  // Server-owned action flags so the storefront never re-implements these rules.
+  canCancel: USER_CANCELLABLE_STATUSES.has(order?.orderStatus),
+  canReturn: isWithinReturnWindow(order),
+  returnWindowDays: RETURN_WINDOW_DAYS,
+  returnWindowEndsAt: order?.deliveredAt ? getReturnWindowEnd(order.deliveredAt) : null,
 });
 
 /** Fixed 4-step customer tracking stepper definition. */
@@ -610,12 +618,25 @@ export const redeemStoreCredit = async ({ userId, amount, orderId, session }) =>
   return { redeemed: rounded, balanceAfter };
 };
 
-/** After checkout succeeds; skips if user already recorded (safe for retries). */
+/**
+ * Count a coupon use AFTER the order is placed (and, for cards, paid). One atomic update:
+ *  - skips if this user is already recorded (safe for webhook/redirect retries),
+ *  - never pushes usageCount past maxUsage, so "10 uses" can't become 11 when the last
+ *    two customers check out at the same moment.
+ * Previews (guest/cart) never call this — they don't consume anything.
+ */
 const commitCouponUsage = async (couponId, userId) => {
-  await Coupon.updateOne(
-    { _id: couponId, usedBy: { $ne: userId } },
+  const result = await Coupon.updateOne(
+    {
+      _id: couponId,
+      usedBy: { $ne: userId },
+      $or: [{ maxUsage: null }, { maxUsage: { $exists: false } }, { $expr: { $lt: ['$usageCount', '$maxUsage'] } }],
+    },
     { $addToSet: { usedBy: userId }, $inc: { usageCount: 1 } }
   );
+  if (result.matchedCount === 0) {
+    logger.warn(`Coupon ${couponId} usage not recorded for user ${userId} (already counted or limit reached)`);
+  }
 };
 
 // ── Stock adjustments ──
@@ -669,7 +690,9 @@ const mapCartItemsToOrderItems = (cartItems) =>
     }
     return {
       product: product._id,
-      name: product.name,
+      name: product.nameEn || product.name,
+      nameEn: product.nameEn || product.name,
+      nameAr: product.nameAr || '',
       image: product.images?.[0] ?? null,
       // Re-resolve at checkout so an expired offer cannot keep a stale cart price.
       price: resolveProductPrice(product),
@@ -683,7 +706,7 @@ const mapCartItemsToOrderItems = (cartItems) =>
 const DEFAULT_SHIPPING_METHOD_NAME = 'Standard delivery';
 
 /** Build shipping price + address snapshot from zone ids / address line. */
-export const buildShippingSnapshot = async ({ governorateId, districtId, addressLine }) => {
+export const buildShippingSnapshot = async ({ governorateId, districtId, addressLine, phone }) => {
   const wantOther = !districtId || String(districtId).toLowerCase() === 'other';
 
   const resolved = await resolveZoneRefs(
@@ -720,6 +743,7 @@ export const buildShippingSnapshot = async ({ governorateId, districtId, address
       governorateName: governorate.name,
       districtName: isOther ? 'Other' : district.name,
       addressLine: line,
+      phone: sanitizeContactPhone(phone),
       isOther,
       countryId: governorate.country._id,
       governorateId: governorate._id,
@@ -732,7 +756,7 @@ export const buildShippingSnapshot = async ({ governorateId, districtId, address
 export const prepareCheckoutFromCart = async (userId, addressInput) => {
   const cart = await Cart.findOne({ user: userId }).populate(
     'items.product',
-    'name images price priceAfterDiscount offerEndsAt stock isActive'
+    'name nameEn nameAr images price priceAfterDiscount offerEndsAt stock isActive'
   );
   if (!cart?.items?.length) throw new ApiError('Cart is empty', 400);
 
@@ -809,10 +833,16 @@ const notifyOrderConfirmation = async (order) => {
   if (!order?.user) return;
 
   try {
-    const user = await User.findById(order.user).select('name email');
+    const [user, settings] = await Promise.all([
+      User.findById(order.user).select('name email'),
+      SiteSettings.getSingleton(),
+    ]);
     if (!user?.email) return;
 
     const { subject, html } = orderConfirmationTemplate({
+      locale: order.locale,
+      deliveryNote:
+        order.locale === 'en' ? settings?.delivery?.messageEn : settings?.delivery?.messageAr,
       name: user.name,
       orderId: order._id,
       orderDetailsUrl: buildOrderDetailsUrl(order._id),
@@ -860,6 +890,7 @@ export const fulfillCheckout = async (snapshot, payment, options = {}) => {
       [
         {
           user: userId,
+          locale: snapshot.locale === 'en' ? 'en' : 'ar',
           customerName,
           items,
           shippingAddress,
@@ -897,8 +928,9 @@ export const fulfillCheckout = async (snapshot, payment, options = {}) => {
   });
 
   if (couponId && userId) await commitCouponUsage(couponId, userId);
-  // After commit so a mail failure never rolls back the order
-  await notifyOrderConfirmation(order);
+  // After commit so a mail failure never rolls back the order; not awaited so the
+  // shopper isn't kept waiting on SMTP (notifyOrderConfirmation logs its own errors).
+  void notifyOrderConfirmation(order);
   return order;
 };
 
@@ -910,6 +942,7 @@ const buildUserAddressFromSnapshot = (shippingAddress, { label = '', isDefault =
     ? null
     : { id: shippingAddress.districtId, name: shippingAddress.districtName },
   addressLine: shippingAddress.addressLine,
+  phone: shippingAddress.phone || '',
   isOther: shippingAddress.isOther,
   isDefault: Boolean(isDefault),
 });
@@ -924,10 +957,10 @@ const clearOtherDefaults = (addresses, keepId = null) => {
 /** Resolve checkout address from saved addressId or raw zone + line input. */
 export const resolveCheckoutAddressInput = async (
   userId,
-  { addressId, governorateId, districtId, addressLine }
+  { addressId, governorateId, districtId, addressLine, phone }
 ) => {
   if (addressId) {
-    const user = await User.findById(userId).select('addresses');
+    const user = await User.findById(userId).select('addresses phone');
     const saved =
       user?.addresses?.id(addressId) || user?.addresses?.find((a) => String(a._id) === String(addressId));
     if (!saved) throw new ApiError(`No address found with id: ${addressId}`, 404);
@@ -935,10 +968,17 @@ export const resolveCheckoutAddressInput = async (
     const heal = await healUserAddressEntry(saved, { soft: false });
     if (heal.healed) await user.save();
 
+    // Each address carries its own delivery phone; older addresses fall back to the account phone.
+    const contactPhone = sanitizeContactPhone(saved.phone) || sanitizeContactPhone(user.phone);
+    if (!contactPhone) {
+      throw new ApiError('A phone number is required for delivery. Add one to this address.', 400);
+    }
+
     return {
       governorateId: saved.governorate.id,
       districtId: saved.isOther ? 'other' : saved.district?.id,
       addressLine: saved.addressLine,
+      phone: contactPhone,
     };
   }
 
@@ -952,10 +992,19 @@ export const resolveCheckoutAddressInput = async (
     isOther: !districtId || String(districtId).toLowerCase() === 'other',
   });
 
+  // Customer checkouts must have a phone: the one typed here, else the account phone.
+  let contactPhone = sanitizeContactPhone(phone);
+  if (!contactPhone && userId) {
+    const user = await User.findById(userId).select('phone');
+    contactPhone = sanitizeContactPhone(user?.phone);
+    if (!contactPhone) throw new ApiError('A phone number is required for delivery', 400);
+  }
+
   return {
     governorateId: resolved.governorateId,
     districtId: resolved.isOther ? 'other' : resolved.districtId,
     addressLine,
+    phone: contactPhone,
   };
 };
 
@@ -1102,7 +1151,7 @@ const listOrders = async (req, filter, { populateUser = false } = {}) => {
  * @access  Private
  */
 export const createOrder = asyncHandler(async (req, res, next) => {
-  const { addressId, governorateId, districtId, addressLine, paymentMethod, saveAddress, label, setAsDefault } =
+  const { addressId, governorateId, districtId, addressLine, phone, paymentMethod, saveAddress, label, setAsDefault, locale } =
     req.body;
 
   if (paymentMethod !== 'cod') {
@@ -1120,15 +1169,19 @@ export const createOrder = asyncHandler(async (req, res, next) => {
   }
 
   const userId = req.user._id;
-  const addressInput = { addressId, governorateId, districtId, addressLine };
+  const addressInput = { addressId, governorateId, districtId, addressLine, phone };
   const resolved = await resolveCheckoutAddressInput(userId, addressInput);
   const checkout = await prepareCheckoutFromCart(userId, resolved);
 
-  if (saveAddress) {
+  // Only inline addresses are saved; picking a saved address never duplicates it.
+  if (saveAddress && !addressId) {
     await appendUserAddress(userId, resolved, { label, isDefault: setAsDefault ?? false });
   }
 
-  const order = await fulfillCheckout({ ...checkout, userId }, { method: 'cod', status: 'pending' });
+  const order = await fulfillCheckout(
+    { ...checkout, userId, locale: locale === 'en' ? 'en' : 'ar' },
+    { method: 'cod', status: 'pending' }
+  );
   await respondWithOrder(res, order, { statusCode: 201, message: 'Order created successfully' });
 });
 
@@ -1161,7 +1214,7 @@ const mapB2BItemsToOrderItems = async (items) => {
 
   const productIds = normalized.map((item) => item.productId);
   const products = await Product.find({ _id: { $in: productIds } }).select(
-    'name images price priceAfterDiscount offerEndsAt stock isActive'
+    'name nameEn nameAr images price priceAfterDiscount offerEndsAt stock isActive'
   );
   const byId = new Map(products.map((p) => [String(p._id), p]));
 
@@ -1177,7 +1230,9 @@ const mapB2BItemsToOrderItems = async (items) => {
 
     return {
       product: product._id,
-      name: product.name,
+      name: product.nameEn || product.name,
+      nameEn: product.nameEn || product.name,
+      nameAr: product.nameAr || '',
       image: product.images?.[0] ?? null,
       price: resolveLineUnitPrice(product, item.unitPrice),
       quantity: item.quantity,
@@ -1406,17 +1461,27 @@ export const cancelOrder = asyncHandler(async (req, res, next) => {
     return next(new ApiError(message, 400));
   }
 
-  const updated = await Order.findByIdAndUpdate(
-    order._id,
-    {
-      orderStatus: 'cancelled',
-      cancelledAt: new Date(),
-      cancellationReason: req.body.reason?.trim() || null,
-      cancelledBy: isAdmin ? 'admin' : 'user',
-      ...(isAdmin ? { statusUpdatedBy: req.user._id } : {}),
-    },
-    { new: true, runValidators: true }
-  );
+  // Guarded by the status we just validated: a concurrent cancel/status change can't double-restore stock.
+  const updated = await runInTransaction(async (session) => {
+    const writeOpts = session ? { session } : {};
+    const doc = await Order.findOneAndUpdate(
+      { _id: order._id, orderStatus: order.orderStatus },
+      {
+        orderStatus: 'cancelled',
+        cancelledAt: new Date(),
+        cancellationReason: req.body.reason?.trim() || null,
+        cancelledBy: isAdmin ? 'admin' : 'user',
+        ...(isAdmin ? { statusUpdatedBy: req.user._id } : {}),
+      },
+      { new: true, runValidators: true, ...writeOpts }
+    );
+    if (doc) await restoreStockForOrderItems(order.items, session);
+    return doc;
+  });
+
+  if (!updated) {
+    return next(new ApiError('The order status changed. Please refresh and try again.', 409));
+  }
 
   if (isAdmin) {
     const orderLabel = buildOrderActivityLabel(updated);

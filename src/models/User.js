@@ -92,6 +92,8 @@ const userSchema = new Schema(
             trim: true,
             maxlength: 500,
           },
+          // Delivery contact for THIS address (a gift or office may differ from the account phone).
+          phone: { type: String, trim: true, maxlength: 30, default: '' },
           isOther: { type: Boolean, default: false },
           isDefault: { type: Boolean, default: false },
         },
