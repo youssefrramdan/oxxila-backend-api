@@ -36,7 +36,10 @@ class ApiFeatures {
     const { keyword } = this.queryString;
     if (!keyword || !fields.length) return this;
 
-    const regex = { $regex: keyword, $options: 'i' };
+    // Escape user input so characters like ( [ + ? don't throw or change the match.
+    const escaped = String(keyword).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (!escaped) return this;
+    const regex = { $regex: escaped, $options: 'i' };
     this.mongooseQuery = this.mongooseQuery.find({
       $or: fields.map((f) => ({ [f]: regex })),
     });
